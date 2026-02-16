@@ -46,7 +46,7 @@ The critical structural property: all items compete for the same capacity pool. 
 
 In the basic model, all transitions have rate 1.0. The mass-action dynamics determine how items are consumed:
 
-$$v(\text{take\_item}_i) = k_i \cdot M(\text{item}_i) \cdot M(\text{capacity})^{w_i}$$
+$$v(\text{take\\_item}_i) = k_i \cdot M(\text{item}_i) \cdot M(\text{capacity})^{w_i}$$
 
 With uniform rate constants ($k_i = 1$ for all items), the transition rate depends on the arc weight — items with larger weights have their rates modulated by higher powers of the remaining capacity. As capacity depletes, heavier items' rates drop faster.
 

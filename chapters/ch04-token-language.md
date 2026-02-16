@@ -178,7 +178,7 @@ In practice, inhibitor arcs model capacity limits and mutual exclusion. A buffer
 (arc consume -> empty_slots :value 1)
 ```
 
-This uses a complementary place (`empty_slots`) rather than an inhibitor arc — a common pattern that achieves the same effect while staying within the standard Petri net formalism. The P-invariant $M(\text{buffer}) + M(\text{empty\_slots}) = 5$ is maintained by the net's structure.
+This uses a complementary place (`empty_slots`) rather than an inhibitor arc — a common pattern that achieves the same effect while staying within the standard Petri net formalism. The P-invariant $M(\text{buffer}) + M(\text{empty\\_slots}) = 5$ is maintained by the net's structure.
 
 ## Tokens vs. Data
 

@@ -25,7 +25,7 @@ For poker card ranking, each rank gets a power of 2:
 
 With suit tiebreakers (spade=3, heart=2, diamond=1, club=0), the formula is:
 
-$$\text{weight} = \text{rank\_power} \times 4 + \text{suit\_value}$$
+$$\text{weight} = \text{rank\\_power} \times 4 + \text{suit\\_value}$$
 
 Every card maps to a unique integer: A-spade = 16387, A-heart = 16386, down to 2-club = 4.
 
