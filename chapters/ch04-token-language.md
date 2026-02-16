@@ -246,8 +246,8 @@ Types make the composition rules explicit. You can't accidentally link a workflo
 Real systems are compositions of multiple nets. An order system combines a WorkflowNet (order lifecycle) with a ResourceNet (inventory), linked by EventLinks:
 
 ```
-Orders (WorkflowNet):    pending → confirm → confirmed → ship → shipped
-Inventory (ResourceNet): available → reserve → reserved → ship_out → consumed
+Orders (WorkflowNet):    pending -> confirm -> confirmed -> ship -> shipped
+Inventory (ResourceNet): available -> reserve -> reserved -> ship_out -> consumed
 ```
 
 EventLinks:

@@ -25,8 +25,8 @@ The bridge from discrete to continuous comes from chemistry, where it's called *
 Consider a transition $t$ with rate constant $k$ and two input places $p_1$ and $p_2$:
 
 ```
-[p₁] ──→ t[k] ──→ [p₃]
-[p₂] ──↗
+[p₁] --> t[k] --> [p₃]
+[p₂] --/
 ```
 
 In the discrete world, $t$ fires when both $p_1$ and $p_2$ have at least one token. In the continuous world, $t$ fires at a **rate** that depends on how many tokens are in its inputs:
@@ -66,7 +66,7 @@ This says: the rate of change of the marking is the incidence matrix times the r
 The simplest non-trivial example:
 
 ```
-[p₁] → t₁[k₁] → [p₂] → t₂[k₂] → [p₃]
+[p₁] -> t₁[k₁] -> [p₂] -> t₂[k₂] -> [p₃]
 ```
 
 Incidence matrix and rate vector:
@@ -197,7 +197,7 @@ For the three-place chain, equilibrium is $M^* = [0, 0, 10]^T$ — all tokens ha
 Other nets reach **dynamic equilibrium** where transitions still fire but the marking doesn't change. A net with a cycle:
 
 ```
-[p₁] → t₁[k₁] → [p₂] → t₂[k₂] → [p₁]
+[p₁] -> t₁[k₁] -> [p₂] -> t₂[k₂] -> [p₁]
 ```
 
 reaches equilibrium when $k_1 \cdot M(p_1) = k_2 \cdot M(p_2)$ — the flow from $p_1$ to $p_2$ equals the flow back. The tokens are still moving, but the concentrations are stable.

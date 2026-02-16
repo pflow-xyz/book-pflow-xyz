@@ -23,15 +23,15 @@ Traditional implementations scatter this logic across conditionals, state variab
 The core flow is a **WorkflowNet** — a sequential state machine where a single token traces a path through phases:
 
 ```
-waiting → preflop → flop → turn_round → river → showdown → complete
+waiting -> preflop -> flop -> turn_round -> river -> showdown -> complete
 ```
 
 Each phase is a place. Phase transitions move the game forward:
 
 ```
-preflop ──→ deal_flop ──→ flop
-             ↑
-betting_done ┘
+preflop --> deal_flop --> flop
+             ^
+betting_done +
 ```
 
 The `deal_flop` transition requires two things: a token in `preflop` (we're in that phase) and a token in `betting_done` (all players have acted). Both must be present for the transition to fire. This ensures cards aren't dealt mid-betting.
@@ -112,22 +112,22 @@ The full model:
 
 ```
 Places (17+):
-  waiting, preflop, flop, turn_round,     — Phase places
+  waiting, preflop, flop, turn_round,     -- Phase places
   river, showdown, complete
-  p0_turn, p1_turn, p2_turn,              — Turn tokens
+  p0_turn, p1_turn, p2_turn,              -- Turn tokens
   p3_turn, p4_turn
-  p0_active, p1_active, p2_active,        — Active markers
+  p0_active, p1_active, p2_active,        -- Active markers
   p3_active, p4_active
-  betting_done                            — Sync signal
+  betting_done                            -- Sync signal
 
 Transitions (32):
-  start_hand, deal_flop, deal_turn,        — Phase transitions
+  start_hand, deal_flop, deal_turn,        -- Phase transitions
   deal_river, go_showdown,
   determine_winner, end_hand
-  p0_fold, p0_check, p0_call, p0_raise,   — Player 0 actions
-  p1_fold, p1_check, p1_call, p1_raise,   — Player 1 actions
-  ...                                      — (5 players × 4 actions)
-  p0_skip, p1_skip, ...                    — Skip folded players
+  p0_fold, p0_check, p0_call, p0_raise,   -- Player 0 actions
+  p1_fold, p1_check, p1_call, p1_raise,   -- Player 1 actions
+  ...                                      -- (5 players x 4 actions)
+  p0_skip, p1_skip, ...                    -- Skip folded players
 ```
 
 ### Role-Based Access Control

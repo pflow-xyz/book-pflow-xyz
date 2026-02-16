@@ -50,7 +50,7 @@ Transition D2_01:             History place _D2_01:
 
       +------+
 P01 --| D2   |---> _D2_01
-(1)   | _01  |     (0 → 1)
+(1)   | _01  |     (0 -> 1)
       +------+
 ```
 
@@ -63,10 +63,10 @@ For a 4×4 grid: 16 cells × 4 digits = **64 digit transitions** and **64 histor
 When all required digits appear in a row, column, or block, a **constraint collector** transition fires and deposits a token in the `solved` place:
 
 ```
-_D1_00 ──→ Row0_Complete ──→ solved
-_D2_01 ──→
-_D3_02 ──→
-_D4_03 ──→
+_D1_00 --> Row0_Complete --> solved
+_D2_01 -->
+_D3_02 -->
+_D4_03 -->
 ```
 
 The `Row0_Complete` transition requires history tokens for all four digits in row 0. When all four are present — meaning row 0 has digits 1, 2, 3, and 4 — the collector fires.
@@ -114,10 +114,10 @@ A placement that creates a conflict — placing a 2 in a row that already has a 
 For cell (0,1) in the 4×4 puzzle, evaluating each digit:
 
 ```
-Digit 2: solved flow = 0.31  ← Correct answer
+Digit 2: solved flow = 0.31  <-- Correct answer
 Digit 3: solved flow = 0.28
 Digit 4: solved flow = 0.15
-Digit 1: blocked (conflict — row 0 already has 1)
+Digit 1: blocked (conflict -- row 0 already has 1)
 ```
 
 The ODE ranks digit 2 highest because it enables the most downstream constraint satisfaction. Digit 1 is blocked because its row collector can never fire (the history token for "1 in row 0" already exists from the given cell).

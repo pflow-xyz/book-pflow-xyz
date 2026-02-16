@@ -142,8 +142,8 @@ The Go backend also generates SVGs from JSON-LD models using layout algorithms (
 When saved through the editor's API, models are canonicalized via URDNA2015 and hashed to produce a CIDv1 identifier (Chapter 14). The CID becomes a permanent, immutable reference:
 
 ```
-POST /api/save  →  { "cid": "zb2rh..." }
-GET /o/zb2rh...  →  { "@context": "https://pflow.xyz/schema", ... }
+POST /api/save  ->  { "cid": "zb2rh..." }
+GET /o/zb2rh...  ->  { "@context": "https://pflow.xyz/schema", ... }
 ```
 
 The CID is derived from the model's content, not from a counter or timestamp. Two editors that independently create the same model get the same CID. This enables deduplication and verifiable references.

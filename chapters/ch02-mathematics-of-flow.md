@@ -71,7 +71,7 @@ For every place $p$: subtract the tokens consumed (arc from $p$ to $t$) and add 
 Consider a simple three-place chain:
 
 ```
-[p₁] → t₁ → [p₂] → t₂ → [p₃]
+[p₁] -> t₁ -> [p₂] -> t₂ -> [p₃]
 ```
 
 With initial marking $M_0 = [1, 0, 0]^T$ (one token in $p_1$).
@@ -143,8 +143,8 @@ The state equation is powerful because it's linear. Given any firing count vecto
 Consider a net where a transition has two inputs — the synchronization pattern:
 
 ```
-[p₁] ──→ t₁ ──→ [p₃]
-[p₂] ──↗
+[p₁] --> t₁ --> [p₃]
+[p₂] --/
 ```
 
 Transition $t_1$ needs a token from both $p_1$ and $p_2$ to fire. The incidence matrix:
@@ -200,13 +200,13 @@ Not every net has a P-invariant covering all places. A net with a "source" trans
 For example, in a producer-consumer system:
 
 ```
-[source] → t_produce → [buffer] → t_consume → [sink]
+[source] -> t_produce -> [buffer] -> t_consume -> [sink]
 ```
 
 The total token count isn't conserved — $t_{produce}$ creates tokens and $t_{consume}$ destroys them. But if you add a capacity limit by looping tokens back:
 
 ```
-[empty_slots: 5] → t_produce → [buffer] → t_consume → [empty_slots]
+[empty_slots: 5] -> t_produce -> [buffer] -> t_consume -> [empty_slots]
 ```
 
 Now $M(\text{empty\_slots}) + M(\text{buffer}) = 5$ is an invariant. The buffer can never exceed 5.

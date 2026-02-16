@@ -28,10 +28,11 @@ The strongest form of verification: compute a hash of the simulation output and 
 
 ```
 JSON-LD Model
-    ↓
-Go Solver    →  State trajectory  →  Hash  ─┐
-                                              ├─  Equal?
-JS Solver    →  State trajectory  →  Hash  ─┘
+    |
+    v
+Go Solver    ->  State trajectory  ->  Hash  --+
+                                                +--  Equal?
+JS Solver    ->  State trajectory  ->  Hash  --+
 ```
 
 This is the same principle as content addressing (Chapter 14), applied to simulation results. The hash doesn't prove the simulation is correct in some absolute sense — it proves the two implementations agree. And agreement between independent implementations, written in different languages by different code paths, is strong evidence of correctness.
@@ -133,8 +134,8 @@ If both Go and JavaScript replay the same event log against the same model, they
 ```
 Event log: [brew, brew, restock, brew]
 
-Go replay:   fold(apply, initial, events)  →  State A
-JS replay:   fold(apply, initial, events)  →  State B
+Go replay:   fold(apply, initial, events)  ->  State A
+JS replay:   fold(apply, initial, events)  ->  State B
 
 State A == State B  (must hold)
 ```
@@ -207,14 +208,14 @@ Dual implementation is not just a testing technique — it's an architectural pr
 
 ```
 JSON-LD Model (source of truth)
-    │
-    ├── pflow.xyz (JavaScript)  ──  ODE simulation, visual editing
-    │
-    ├── go-pflow (Go)  ──  ODE simulation, reachability, analysis
-    │
-    ├── petri-pilot (Go)  ──  Code generation, event sourcing
-    │
-    └── ZK circuits (gnark)  ──  Cryptographic proofs
+    |
+    +-- pflow.xyz (JavaScript)  --  ODE simulation, visual editing
+    |
+    +-- go-pflow (Go)  --  ODE simulation, reachability, analysis
+    |
+    +-- petri-pilot (Go)  --  Code generation, event sourcing
+    |
+    +-- ZK circuits (gnark)  --  Cryptographic proofs
 ```
 
 The JSON-LD model is the shared contract. Each tool processes it independently. Each tool can verify its results against any other tool processing the same model. The model format is declarative (Chapter 14), so there's no ambiguity about what it means — only about how each tool computes from it. And dual implementation resolves that ambiguity.

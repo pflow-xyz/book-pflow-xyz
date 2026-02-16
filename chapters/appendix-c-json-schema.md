@@ -261,13 +261,13 @@ Navigation menu configuration. Generates `/api/navigation` endpoint.
     {
       "label": "Orders",
       "path": "/orders",
-      "icon": "📦",
+      "icon": "box",
       "roles": []
     },
     {
       "label": "Admin",
       "path": "/admin",
-      "icon": "⚙️",
+      "icon": "gear",
       "roles": ["admin"]
     }
   ]

@@ -112,10 +112,10 @@ This property is what makes seals trustworthy: a seal is a commitment to a speci
 
 ```
 JSON-LD document
-    ↓ expand (resolve @context)
-    ↓ normalize (URDNA2015 → canonical N-Quads)
-    ↓ hash (SHA-256)
-    ↓ encode (CIDv1 with base58btc)
+    v expand (resolve @context)
+    v normalize (URDNA2015 -> canonical N-Quads)
+    v hash (SHA-256)
+    v encode (CIDv1 with base58btc)
 Content-addressed identifier
 ```
 

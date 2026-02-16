@@ -61,10 +61,10 @@ Sometimes a transition needs more than one token from a place, or produces more 
 A traffic light cycles through three states: green, yellow, red. At any moment, exactly one light is on. Here's the Petri net:
 
 ```
-    ●
-   [Green]──→ [go_yellow] ──→ [Yellow]──→ [go_red] ──→ [Red]──→ [go_green]
-      ↑                                                              │
-      └──────────────────────────────────────────────────────────────┘
+    *
+   [Green]--> [go_yellow] --> [Yellow]--> [go_red] --> [Red]--> [go_green]
+      ^                                                              |
+      +--------------------------------------------------------------+
 ```
 
 Three places: `Green`, `Yellow`, `Red`. Three transitions: `go_yellow`, `go_red`, `go_green`. One token, starting in `Green`.
@@ -84,11 +84,11 @@ This is almost trivially simple — a state machine would work just as well. But
 Two lights need to coordinate. We add a shared place `Intersection_Free` that acts as a mutual exclusion lock:
 
 ```
-Light A: [Red_A] ←── [go_red_A] ←── [Green_A]
-                                        ↑
-                              [Intersection_Free] ●
-                                        ↓
-Light B: [Red_B] ──→ [go_green_B] ──→ [Green_B]
+Light A: [Red_A] <-- [go_red_A] <-- [Green_A]
+                                        ^
+                              [Intersection_Free] *
+                                        v
+Light B: [Red_B] --> [go_green_B] --> [Green_B]
 ```
 
 The token in `Intersection_Free` is consumed when one light turns green and returned when it turns red. Only one light can be green at a time — not because of a runtime check, but because there's only one token and two transitions competing for it.

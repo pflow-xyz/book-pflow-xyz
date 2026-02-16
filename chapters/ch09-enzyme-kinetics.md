@@ -38,11 +38,11 @@ Four places, three transitions:
 The arc structure encodes the chemistry directly:
 
 ```
-substrate ──→ bind ──→ complex ──→ catalyze ──→ product
-enzyme ──→          ↗              enzyme ←──┘
+substrate --> bind --> complex --> catalyze --> product
+enzyme -->          /              enzyme <--+
              unbind
-complex ──→ unbind ──→ substrate
-                  ──→ enzyme
+complex --> unbind --> substrate
+                  --> enzyme
 ```
 
 The enzyme appears as both input and output of `catalyze` — it's consumed when the complex forms and returned when the product is released. This cyclic flow is the structural signature of catalysis.

@@ -11,8 +11,8 @@ This chapter explains the architecture: how a JSON model becomes a Go backend an
 Petri-pilot's code generation follows a categorical pattern — a functor from model to code:
 
 ```
-Schema ──EnrichModel──▶ Context ──Template──▶ Artifact
-  │                        │                      │
+Schema --EnrichModel--> Context --Template--> Artifact
+  |                        |                      |
 Model                  Universal              Go/JS/YAML
 (source)               Object                 (target)
 ```
@@ -57,11 +57,11 @@ This is the key design decision: the Context is complete. Every piece of informa
 Each template file is a projection — a pure function from Context to source code:
 
 ```
-Context ──api.tmpl──────▶ api.go
-Context ──workflow.tmpl─▶ workflow.go
-Context ──events.tmpl───▶ events.go
-Context ──main.tmpl─────▶ main.js
-Context ──admin.tmpl────▶ admin.js
+Context --api.tmpl------> api.go
+Context --workflow.tmpl-> workflow.go
+Context --events.tmpl---> events.go
+Context --main.tmpl-----> main.js
+Context --admin.tmpl----> admin.js
 ```
 
 Multiple projections from the same Context produce all the files needed for a running application.
@@ -197,14 +197,14 @@ Generated code is regenerated when the model changes. But users need to customiz
 
 ```
 frontend/
-├── src/              # REGENERATED — core application code
-│   ├── main.js
-│   ├── admin.js
-│   └── views.js
-└── custom/           # PRESERVED — user customizations
-    ├── extensions.js # Hook registrations
-    ├── components.js # Custom web components
-    └── theme.css     # Custom styling
++-- src/              # REGENERATED -- core application code
+|   +-- main.js
+|   +-- admin.js
+|   +-- views.js
++-- custom/           # PRESERVED -- user customizations
+    +-- extensions.js # Hook registrations
+    +-- components.js # Custom web components
+    +-- theme.css     # Custom styling
 ```
 
 Files in `src/` are overwritten on every generation. Files in `custom/` are created once (with sensible defaults) and never overwritten — the generator uses a `SkipIfExists` flag.

@@ -30,15 +30,15 @@ Tic-tac-toe alternates between X and O. A single place `Next` controls whose tur
 Each X move transition produces a token into `Next`:
 
 ```
-P_ij  ──→  PlayX_ij  ──→  X_ij
-                      ──→  Next
+P_ij  -->  PlayX_ij  -->  X_ij
+                      -->  Next
 ```
 
 Each O move transition consumes a token from `Next`:
 
 ```
-Next  ──→  PlayO_ij  ──→  O_ij
-P_ij  ──→
+Next  -->  PlayO_ij  -->  O_ij
+P_ij  -->
 ```
 
 X goes first (Next starts at 0, so O transitions are blocked). After X plays, Next becomes 1, enabling O. After O plays, Next returns to 0. The alternation is structural — no turn counter, no modular arithmetic, just a token bouncing between "available" and "consumed."
@@ -130,17 +130,17 @@ The flows define the arc structure:
 ```go
 func (TicTacToe) Flows() []dsl.Flow {
     return []dsl.Flow{
-        // X moves: Position → PlayX → History + Next
+        // X moves: Position -> PlayX -> History + Next
         {From: "P00", To: "PlayX00"},
         {From: "PlayX00", To: "X00"},
         {From: "PlayX00", To: "Next"},
 
-        // O moves: Next + Position → PlayO → History
+        // O moves: Next + Position -> PlayO -> History
         {From: "Next", To: "PlayO00"},
         {From: "P00", To: "PlayO00"},
         {From: "PlayO00", To: "O00"},
 
-        // Win detection: 3-in-a-row → WinX
+        // Win detection: 3-in-a-row -> WinX
         {From: "X00", To: "XRow0"},
         {From: "X01", To: "XRow0"},
         {From: "X02", To: "XRow0"},
@@ -159,9 +159,9 @@ Win detection is where the model becomes compositionally interesting. There are 
 For the top row (X wins):
 
 ```
-X00 ──→ XRow0 ──→ WinX
-X01 ──→
-X02 ──→
+X00 --> XRow0 --> WinX
+X01 -->
+X02 -->
 ```
 
 The transition `XRow0` is enabled when $M(X_{00}) \geq 1$ AND $M(X_{01}) \geq 1$ AND $M(X_{02}) \geq 1$ — all three top-row cells claimed by X. When it fires, it produces a token in `WinX`.
@@ -289,10 +289,10 @@ A subtle but critical detail: what happens when a player wins? In the basic mode
 The fix is **game halting**: win transitions consume the turn token without returning it.
 
 ```
-X00 ──→ XRow0 ──→ WinX
-X01 ──→
-X02 ──→
-Next ──→             (consume turn — game stops)
+X00 --> XRow0 --> WinX
+X01 -->
+X02 -->
+Next -->             (consume turn -- game stops)
 ```
 
 When X wins, the `XRow0` transition consumes `Next` (it was O's turn). No turn token is returned. All further move transitions are blocked because they require either an empty position token or a turn token, and the turn token is gone. The win state becomes an **absorbing state** — once reached, no further flow is possible.

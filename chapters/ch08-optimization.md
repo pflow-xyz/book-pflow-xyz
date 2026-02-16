@@ -32,9 +32,9 @@ The Petri net encodes the knapsack as a dynamic system:
 For item0 (weight 2, value 10):
 
 ```
-item0 ──→ take_item0 ──→ value_taken
-           ↑                (weight 10)
-capacity ──┘
+item0 --> take_item0 --> value_taken
+           ^                (weight 10)
+capacity --+
  (weight 2)
 ```
 

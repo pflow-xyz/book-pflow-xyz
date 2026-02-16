@@ -23,13 +23,13 @@ Optional fields — resource (who did it), lifecycle (start/complete), cost, out
 A **trace** is the sequence of activities for a single case. Patient P101's trace might be:
 
 ```
-Registration → Triage → Doctor_Consultation → Discharge
+Registration -> Triage -> Doctor_Consultation -> Discharge
 ```
 
 Patient P102, who needed lab work:
 
 ```
-Registration → Triage → Doctor_Consultation → Lab_Test → Results_Review → Discharge
+Registration -> Triage -> Doctor_Consultation -> Lab_Test -> Results_Review -> Discharge
 ```
 
 These are **process variants** — different paths through the same system. In a typical hospital ER, the simple path (no lab, no imaging) accounts for about 60% of cases. Adding lab tests covers another 30%. X-rays, surgery, and other branches handle the remaining 10%. Process mining discovers these variants automatically from the log data.
@@ -57,10 +57,10 @@ Given an event log, a discovery algorithm produces a Petri net that explains the
 The simplest approach: find the most frequent trace variant and build a linear Petri net for it.
 
 ```
-Variant 1 (60% of cases): Reg → Triage → Doctor → Discharge
+Variant 1 (60% of cases): Reg -> Triage -> Doctor -> Discharge
 
 Discovered model:
-[start] → Reg → [p1] → Triage → [p2] → Doctor → [p3] → Discharge → [end]
+[start] -> Reg -> [p1] -> Triage -> [p2] -> Doctor -> [p3] -> Discharge -> [end]
 ```
 
 Each activity becomes a transition. Places are inserted between transitions to carry the control flow token. A token in `start` means the case has arrived; a token in `end` means it's complete; a token in `p2` means the patient has been triaged and is waiting for the doctor.
@@ -87,8 +87,8 @@ The algorithm builds a **footprint matrix** from the event log. For every pair o
 
 Given traces:
 ```
-Case 1: A → B → D → E
-Case 2: A → C → D → E
+Case 1: A -> B -> D -> E
+Case 2: A -> C -> D -> E
 ```
 
 The footprint matrix reveals: A → B (causal), A → C (causal), B # C (choice — they never co-occur), B → D and C → D (both causal), D → E (causal).
@@ -96,9 +96,9 @@ The footprint matrix reveals: A → B (causal), A → C (causal), B # C (choice 
 From these relations, the Alpha algorithm constructs a Petri net:
 
 ```
-       → [B] →
-[A] →          [D] → [E]
-       → [C] →
+       -> [B] ->
+[A] ->          [D] -> [E]
+       -> [C] ->
 ```
 
 B and C are alternative paths after A, both converging at D. The algorithm discovers this branching structure automatically — no human specified that B and C are alternatives.
@@ -118,10 +118,10 @@ The heuristic miner adds noise tolerance by counting how often each activity pai
 
 ```
 Observations:
-A → B: 100 times
-A → C: 95 times
-B → D: 85 times
-C → X: 2 times   ← noise (only 2% of cases)
+A -> B: 100 times
+A -> C: 95 times
+B -> D: 85 times
+C -> X: 2 times   <-- noise (only 2% of cases)
 ```
 
 With a 5% threshold, the C → X edge is filtered out. The resulting model is cleaner and more representative of the actual process, at the cost of ignoring rare behavior.
