@@ -25,8 +25,8 @@ The bridge from discrete to continuous comes from chemistry, where it's called *
 Consider a transition $t$ with rate constant $k$ and two input places $p_1$ and $p_2$:
 
 ```
-[p₁] --> t[k] --> [p₃]
-[p₂] --/
+[p1] --> t[k] --> [p3]
+[p2] --/
 ```
 
 In the discrete world, $t$ fires when both $p_1$ and $p_2$ have at least one token. In the continuous world, $t$ fires at a **rate** that depends on how many tokens are in its inputs:
@@ -66,7 +66,7 @@ This says: the rate of change of the marking is the incidence matrix times the r
 The simplest non-trivial example:
 
 ```
-[p₁] -> t₁[k₁] -> [p₂] -> t₂[k₂] -> [p₃]
+[p1] -> t1[k1] -> [p2] -> t2[k2] -> [p3]
 ```
 
 Incidence matrix and rate vector:
@@ -150,7 +150,7 @@ prob := solver.NewProblem(net, net.SetState(nil), [2]float64{0, 50}, rates)
 sol := solver.Solve(prob, solver.Tsit5(), solver.DefaultOptions())
 
 final := sol.GetFinalState()
-// final["A"] ≈ 0.0, final["C"] ≈ 10.0
+// final["A"] ~= 0.0, final["C"] ~= 10.0
 ```
 
 The `Tsit5()` solver, `DefaultOptions()` tolerance settings, and the mass-action kinetics built into `NewProblem` handle everything. The user specifies the net, the rates, and the time span. The solver does the rest.
@@ -197,7 +197,7 @@ For the three-place chain, equilibrium is $M^* = [0, 0, 10]^T$ — all tokens ha
 Other nets reach **dynamic equilibrium** where transitions still fire but the marking doesn't change. A net with a cycle:
 
 ```
-[p₁] -> t₁[k₁] -> [p₂] -> t₂[k₂] -> [p₁]
+[p1] -> t1[k1] -> [p2] -> t2[k2] -> [p1]
 ```
 
 reaches equilibrium when $k_1 \cdot M(p_1) = k_2 \cdot M(p_2)$ — the flow from $p_1$ to $p_2$ equals the flow back. The tokens are still moving, but the concentrations are stable.

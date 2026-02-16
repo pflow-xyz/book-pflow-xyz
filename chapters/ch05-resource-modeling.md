@@ -328,8 +328,8 @@ The model can trigger alerts based on inventory thresholds:
 ```go
 func CheckLowStock(state map[string]float64) map[string]bool {
     thresholds := map[string]float64{
-        "coffee_beans": 100,  // 100g ≈ 5 drinks
-        "milk":         500,  // 500ml ≈ 3 lattes
+        "coffee_beans": 100,  // 100g ~ 5 drinks
+        "milk":         500,  // 500ml ~ 3 lattes
         "cups":         10,
     }
 

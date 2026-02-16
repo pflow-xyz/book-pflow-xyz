@@ -71,7 +71,7 @@ For every place $p$: subtract the tokens consumed (arc from $p$ to $t$) and add 
 Consider a simple three-place chain:
 
 ```
-[p₁] -> t₁ -> [p₂] -> t₂ -> [p₃]
+[p1] -> t1 -> [p2] -> t2 -> [p3]
 ```
 
 With initial marking $M_0 = [1, 0, 0]^T$ (one token in $p_1$).
@@ -143,8 +143,8 @@ The state equation is powerful because it's linear. Given any firing count vecto
 Consider a net where a transition has two inputs — the synchronization pattern:
 
 ```
-[p₁] --> t₁ --> [p₃]
-[p₂] --/
+[p1] --> t1 --> [p3]
+[p2] --/
 ```
 
 Transition $t_1$ needs a token from both $p_1$ and $p_2$ to fire. The incidence matrix:
