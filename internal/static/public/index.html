@@ -7,6 +7,17 @@
 
 
         <!-- Custom HTML head -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+            onload="renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false}
+                ],
+                throwOnError: false
+            });">
+        </script>
 
         <meta name="description" content="A Practitioner&#x27;s Guide to Modeling with pflow">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -35,7 +46,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f6a99a22.js";
+            window.path_to_searchindex_js = "searchindex-e02b6274.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-b408114e.js"></script>
@@ -181,23 +192,53 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="preface"><a class="header" href="#preface">Preface</a></h1>
-<p>This book is a practitioner’s guide to modeling systems with Petri nets using the pflow ecosystem.</p>
+<p>Petri nets were invented in 1962. They predate Unix, the internet, and object-oriented programming. For most of their history, they lived in academic papers — a formalism known to theorists but invisible to working programmers.</p>
+<p>This book argues they deserve wider use. Not because they’re elegant (they are) but because they solve practical problems. A Petri net is a state machine that handles concurrency. It’s a workflow engine with formal guarantees. It’s a simulation model that converts to differential equations. It’s a specification that can be verified, compiled to code, and proven in zero knowledge.</p>
+<p>The pflow ecosystem makes this practical. You draw a net in a browser editor, simulate it, generate a running application, and verify it across implementations — all from the same JSON-LD model. The formalism provides the guarantees. The tools make the formalism accessible.</p>
 <h2 id="who-this-book-is-for"><a class="header" href="#who-this-book-is-for">Who This Book Is For</a></h2>
 <p>You know how to program but haven’t encountered Petri nets before — or you’ve seen the formalism and wondered what it’s good for in practice. Either way, this book meets you where you are.</p>
+<p>The examples are in Go and JavaScript. The mathematics uses standard notation — vectors, matrices, differential equations. When a concept requires math, the math appears alongside working code so you can verify every claim by running it.</p>
 <h2 id="how-to-read-this-book"><a class="header" href="#how-to-read-this-book">How to Read This Book</a></h2>
 <p>There are two paths through the material:</p>
 <ul>
-<li><strong>Theory track</strong>: Read Parts I and III for the mathematical foundations and advanced topics.</li>
-<li><strong>Hands-on track</strong>: Skim Part I for vocabulary, then dive into Part II’s worked examples and Part IV’s tooling guides.</li>
+<li><strong>Theory track</strong>: Read Parts I and III for the mathematical foundations and advanced topics — formal definitions, incidence matrices, ODE solvers, zero-knowledge proofs, category theory.</li>
+<li><strong>Hands-on track</strong>: Skim Part I for vocabulary, then dive into Part II’s worked examples (coffee shops, games, biochemistry) and Part IV’s tooling guides.</li>
 </ul>
 <p>Both tracks converge — the theory explains why the tools work, and the tools make the theory tangible.</p>
+<h3 id="part-i-foundations"><a class="header" href="#part-i-foundations">Part I: Foundations</a></h3>
+<p>Chapters 1-4 introduce the formalism. Places, transitions, arcs, tokens — the four primitives. Then firing rules, incidence matrices, and conservation laws. Then the key insight: converting discrete nets to continuous ODE systems via mass-action kinetics. Finally, the token language DSL for defining nets with guards and typed arcs.</p>
+<h3 id="part-ii-applications"><a class="header" href="#part-ii-applications">Part II: Applications</a></h3>
+<p>Chapters 5-10 apply the formalism to six domains: resource management (coffee shop), game mechanics (tic-tac-toe), constraint satisfaction (sudoku), combinatorial optimization (knapsack), biochemistry (enzyme kinetics), and complex state machines (Texas Hold’em). Each chapter builds a complete model from scratch, simulates it, and analyzes the results.</p>
+<h3 id="part-iii-advanced-topics"><a class="header" href="#part-iii-advanced-topics">Part III: Advanced Topics</a></h3>
+<p>Chapters 11-14 push the formalism further. Process mining discovers nets from event logs. Zero-knowledge proofs verify transitions without revealing state. Exponential weights encode scoring systems. JSON-LD makes nets self-describing and content-addressable.</p>
+<h3 id="part-iv-building-with-pflow"><a class="header" href="#part-iv-building-with-pflow">Part IV: Building with pflow</a></h3>
+<p>Chapters 15-18 cover the ecosystem tools. The visual editor for designing nets interactively. The code generator that turns models into full-stack applications. The Go library’s API and package structure. And the dual-implementation discipline that keeps Go and JavaScript in sync.</p>
 <h2 id="the-pflow-ecosystem"><a class="header" href="#the-pflow-ecosystem">The pflow Ecosystem</a></h2>
 <p>The projects referenced throughout this book form a unified ecosystem:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Project</th><th>Purpose</th><th>URL</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>go-pflow</strong></td><td>Core library — ODE simulation, reachability, process mining</td><td>github.com/pflow-xyz/go-pflow</td></tr>
+<tr><td><strong>pflow.xyz</strong></td><td>Visual browser-based editor for designing nets</td><td>pflow.xyz</td></tr>
+<tr><td><strong>petri-pilot</strong></td><td>Code generator — turns net models into running applications</td><td>pilot.pflow.xyz</td></tr>
+</tbody>
+</table>
+</div>
+<p>All three share the same JSON-LD model format. A net designed in the editor can be simulated by the library and compiled by the code generator without format conversion. The model is the source of truth.</p>
+<h2 id="conventions"><a class="header" href="#conventions">Conventions</a></h2>
 <ul>
-<li><strong>go-pflow</strong> — Core library for Petri net simulation and analysis</li>
-<li><strong>pflow.xyz</strong> — Visual browser-based editor for designing nets</li>
-<li><strong>petri-pilot</strong> — Code generator that turns net models into running applications</li>
+<li><strong>Code examples</strong> appear inline for short snippets and in separate files for longer programs</li>
+<li><strong>Mathematical notation</strong> uses standard linear algebra: bold lowercase for vectors ($\mathbf{m}$), uppercase for matrices ($\mathbf{C}$)</li>
+<li><strong>Cross-references</strong> link between chapters: “the coffee shop model (Chapter 5)” or “mass-action kinetics (Chapter 3)”</li>
+<li><strong>Go code</strong> uses the <code>go-pflow</code> library API; <strong>JavaScript</strong> uses the pflow.xyz browser modules</li>
+<li><strong>JSON-LD</strong> snippets use <code>@context: "https://pflow.xyz/schema"</code> throughout</li>
 </ul>
+<h2 id="acknowledgments"><a class="header" href="#acknowledgments">Acknowledgments</a></h2>
+<p>This book grew from blog posts, documentation, and working code written over two years. The pflow ecosystem is open source, and the ideas draw on sixty years of Petri net theory — from Carl Adam Petri’s 1962 dissertation through the process mining work of Wil van der Aalst and the zero-knowledge proof systems enabled by gnark.</p>
+<p>The best way to learn is to build. Open pflow.xyz in a browser, draw a net, and press play. The mathematics follows.</p>
 
                     </main>
 
