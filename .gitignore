@@ -1,0 +1,14 @@
+# OS
+.DS_Store
+
+# Editor
+*.swp
+*.swo
+*~
+
+# Build artifacts
+build/
+output/
+*.pdf
+*.epub
+*.mobi
