@@ -1,23 +1,326 @@
 # Game Mechanics — Tic-Tac-Toe
 
-**Learning objective**: Encode game rules, turn control, and win detection as net structure.
+**Learning objective**: Encode board positions, turns, and win conditions as token flow; use ODE simulation for move evaluation without game-specific heuristics.
 
-## The Grid Layer
+The coffee shop modeled resources — fungible tokens flowing through recipes. This chapter models a game — structured tokens encoding board state, turn order, move history, and win detection. The Petri net is the same formalism, but the pattern is fundamentally different: a **GameNet** instead of a ResourceNet.
 
-<!-- 9 places, 18 transitions -->
+The central insight: strategic value emerges from model topology alone. We don't code "prefer the center" or "block two-in-a-row." The Petri net's structure — which positions participate in more winning patterns — creates these preferences automatically through the ODE dynamics. The model discovers tic-tac-toe strategy the way mass-action kinetics discovers chemical equilibrium: by following the rates.
+
+## The Board as Places
+
+A tic-tac-toe board has nine cells. Each cell is a place, initialized with one token meaning "available":
+
+```
+P00: 1    P01: 1    P02: 1
+P10: 1    P11: 1    P12: 1
+P20: 1    P21: 1    P22: 1
+```
+
+The naming convention is `P{row}{col}`, zero-indexed. `P00` is the top-left corner, `P11` is the center, `P22` is the bottom-right corner.
+
+When a player claims a cell, the token is consumed from the position place. An empty place ($M(P_{ij}) = 0$) means the cell is occupied. This is the enabling condition in action: a move transition for cell $(i,j)$ requires $M(P_{ij}) \geq 1$. Once the token is consumed, no other transition can claim that cell. The bipartite structure of the Petri net enforces the rule "you can't play in an occupied cell" without any conditional logic.
 
 ## Turn Control via Mutual Exclusion
 
-<!-- Alternating play -->
+Tic-tac-toe alternates between X and O. A single place `Next` controls whose turn it is:
+
+- `Next = 0` means X's turn
+- `Next = 1` means O's turn
+
+Each X move transition produces a token into `Next`:
+
+```
+P_ij  ──→  PlayX_ij  ──→  X_ij
+                      ──→  Next
+```
+
+Each O move transition consumes a token from `Next`:
+
+```
+Next  ──→  PlayO_ij  ──→  O_ij
+P_ij  ──→
+```
+
+X goes first (Next starts at 0, so O transitions are blocked). After X plays, Next becomes 1, enabling O. After O plays, Next returns to 0. The alternation is structural — no turn counter, no modular arithmetic, just a token bouncing between "available" and "consumed."
+
+This is the same mutual exclusion pattern from the traffic intersection in Chapter 1. The `Next` token is a shared resource that enforces sequential access, exactly like the shared token that prevents both lights from being green simultaneously.
 
 ## History Places for Pattern Detection
 
-<!-- Tracking moves -->
+The basic model tracks where tokens are (board state) but not where they came from (move history). Adding history places upgrades the model from "what's on the board" to "who played where."
+
+For each cell, two history places record which player claimed it:
+
+```
+X00, X01, X02, ..., X22    (9 places — X's moves)
+O00, O01, O02, ..., O22    (9 places — O's moves)
+```
+
+When X plays at position (1,1):
+- Consume token from `P11` (cell becomes occupied)
+- Produce token in `X11` (record X played here)
+- Produce token in `Next` (pass turn to O)
+
+When O plays at position (0,2):
+- Consume token from `Next` (it's O's turn)
+- Consume token from `P02` (cell becomes occupied)
+- Produce token in `O02` (record O played here)
+
+The history layer doesn't change the game mechanics — it adds information without altering what moves are legal. But it enables win detection, which needs to know not just that a cell is occupied, but *which player* occupies it.
+
+### The Full Place Set
+
+The complete model has 30 places:
+
+| Category | Places | Count |
+|----------|--------|-------|
+| Board positions | P00–P22 | 9 |
+| X history | X00–X22 | 9 |
+| O history | O00–O22 | 9 |
+| Turn control | Next | 1 |
+| Win detection | WinX, WinO | 2 |
+
+And a conservation constraint ties them together:
+
+$$\sum_{i,j} M(P_{ij}) + \sum_{i,j} M(X_{ij}) + \sum_{i,j} M(O_{ij}) = 9$$
+
+Every cell is in exactly one state: available ($P_{ij} = 1$), claimed by X ($X_{ij} = 1$), or claimed by O ($O_{ij} = 1$). The total is always 9 — the board size. This is a P-invariant verified by the incidence matrix.
+
+### In the DSL
+
+Using the struct tag syntax from Chapter 4:
+
+```go
+type TicTacToe struct {
+    _ struct{} `meta:"name:tic-tac-toe,version:v1.0.0"`
+
+    // Board positions (1 = available)
+    P00 dsl.TokenState `meta:"initial:1"`
+    P01 dsl.TokenState `meta:"initial:1"`
+    // ... P02 through P22
+
+    // X move history (0 = not played)
+    X00 dsl.TokenState `meta:"initial:0"`
+    X01 dsl.TokenState `meta:"initial:0"`
+    // ... X02 through X22
+
+    // O move history
+    O00 dsl.TokenState `meta:"initial:0"`
+    // ... O01 through O22
+
+    // Turn control and win detection
+    Next dsl.TokenState `meta:"initial:0"`
+    WinX dsl.TokenState `meta:"initial:0"`
+    WinO dsl.TokenState `meta:"initial:0"`
+
+    // Move actions (18 total: 9 for X, 9 for O)
+    PlayX00 dsl.Action `meta:""`
+    PlayO00 dsl.Action `meta:""`
+    // ...
+
+    // Win detection (16 total: 8 for X, 8 for O)
+    XRow0 dsl.Action `meta:""`  // X00, X01, X02
+    XDg0  dsl.Action `meta:""`  // X00, X11, X22
+    // ...
+}
+```
+
+The flows define the arc structure:
+
+```go
+func (TicTacToe) Flows() []dsl.Flow {
+    return []dsl.Flow{
+        // X moves: Position → PlayX → History + Next
+        {From: "P00", To: "PlayX00"},
+        {From: "PlayX00", To: "X00"},
+        {From: "PlayX00", To: "Next"},
+
+        // O moves: Next + Position → PlayO → History
+        {From: "Next", To: "PlayO00"},
+        {From: "P00", To: "PlayO00"},
+        {From: "PlayO00", To: "O00"},
+
+        // Win detection: 3-in-a-row → WinX
+        {From: "X00", To: "XRow0"},
+        {From: "X01", To: "XRow0"},
+        {From: "X02", To: "XRow0"},
+        {From: "XRow0", To: "WinX"},
+        // ... all 8 patterns for each player
+    }
+}
+```
+
+The total model: 30 places, 34 transitions, 118 arcs. Every rule of tic-tac-toe — valid moves, turn alternation, win conditions — encoded purely in arc structure.
 
 ## Win Detection Without Search
 
-<!-- Structural win conditions -->
+Win detection is where the model becomes compositionally interesting. There are 8 winning patterns in tic-tac-toe: 3 rows, 3 columns, 2 diagonals. Each pattern is a transition that consumes three history tokens and produces a win token.
+
+For the top row (X wins):
+
+```
+X00 ──→ XRow0 ──→ WinX
+X01 ──→
+X02 ──→
+```
+
+The transition `XRow0` is enabled when $M(X_{00}) \geq 1$ AND $M(X_{01}) \geq 1$ AND $M(X_{02}) \geq 1$ — all three top-row cells claimed by X. When it fires, it produces a token in `WinX`.
+
+This is a **pattern collector**: a transition that recognizes a specific configuration of history tokens. Each winning pattern gets its own collector. No conditional logic, no "check all rows and columns" procedure — just 8 independent transitions, each watching for its specific three-token combination.
+
+The 16 pattern collectors (8 for X, 8 for O) are the complete game-over detection system. When any one fires, the game has been won. Multiple can potentially fire (if a player completes two lines simultaneously), but in practice the first one to fire determines the winner.
+
+### Why Composition Matters
+
+Each pattern collector is independent. Adding a new win condition (say, for a variant game) means adding a new transition with three input arcs and one output arc. Removing a condition means removing a transition. The rest of the model is untouched.
+
+This is the compositional advantage of Petri nets over procedural game logic. In code, win detection is typically a function that iterates over patterns:
+
+```go
+winPatterns := [][]string{
+    {"00", "01", "02"}, {"10", "11", "12"}, ...
+}
+for _, pattern := range winPatterns {
+    if allMarked(pattern) { return true }
+}
+```
+
+The procedural version works, but it's monolithic — changing the win conditions means changing the function. The Petri net version is modular — each pattern is an independent structural element that composes with the rest.
+
+### Position Value from Topology
+
+Here's the key insight that connects game structure to strategy. Each board position participates in a different number of winning patterns:
+
+| Position | Patterns | Type |
+|----------|----------|------|
+| Center (1,1) | 4 | Row + Column + 2 Diagonals |
+| Corners (0,0), (0,2), (2,0), (2,2) | 3 | Row + Column + 1 Diagonal |
+| Edges (0,1), (1,0), (1,2), (2,1) | 2 | Row + Column |
+
+The center participates in 4 winning patterns. Corners participate in 3. Edges participate in 2. This structural fact — encoded in the arc connectivity — is the source of strategic value. More connections to pattern collectors means more paths to victory, which the ODE dynamics translate into higher scores.
+
+No game theory is needed to derive this. It falls directly from the net's topology.
 
 ## ODE-Guided Strategy
 
-<!-- Heatmaps from topology -->
+With the model defined, we can use the continuous relaxation to evaluate moves. The algorithm is simple:
+
+1. For each available move, create a hypothetical state after making that move
+2. Run the ODE simulation forward from that state
+3. Read the final values of `WinX` and `WinO`
+4. Score = my_win - opponent_win
+
+The move with the highest score is the best move.
+
+### The Scoring Function
+
+```go
+targetPlace := "win_x"
+oppPlace := "win_o"
+if currentTurn == PlayerO {
+    targetPlace = "win_o"
+    oppPlace = "win_x"
+}
+
+for _, move := range availableMoves {
+    // Create hypothetical state
+    hypState := copyState(currentState)
+    hypState[position] -= 1
+    hypState[historyPlace] += 1
+
+    // Run ODE
+    prob := solver.NewProblem(net, hypState,
+        [2]float64{0, 3.0}, rates)
+    sol := solver.Solve(prob, solver.Tsit5(), opts)
+    final := sol.GetFinalState()
+
+    // Score
+    score := final[targetPlace] - final[oppPlace]
+}
+```
+
+The ODE simulation with mass-action kinetics explores all possible continuations simultaneously. When X has tokens in positions that participate in many patterns, the flow toward `WinX` is higher. When O can block a pattern, that flow is diverted. The final token counts in `WinX` and `WinO` represent the aggregate outcome across all possible game continuations — weighted by their structural likelihood.
+
+### What the ODE Discovers
+
+**Empty board evaluation.** X evaluates all 9 positions. The ODE reveals:
+
+- Center (1,1): score 1.27 — highest, because 4 pattern connections create the most flow toward WinX
+- Corners: score 0.95 — second, 3 patterns each
+- Edges: score 0.63 — lowest, 2 patterns each
+
+The ODE has "discovered" the opening strategy: play the center. No minimax tree, no alpha-beta pruning, no opening book — just mass-action kinetics flowing through the net's topology.
+
+**Responding to center.** After X takes center, O evaluates defensive options. All scores are negative (X has the advantage), but corners (-1.04) minimize X's lead better than edges (-1.38). The ODE discovers the defensive principle: play corners against center.
+
+**Finding winning threats.** When X has center and a corner, the ODE identifies the opposite corner as the best move (score 1.39) because it creates a two-way threat — a fork that completes one diagonal while opening another. The pattern collectors naturally amplify fork positions because they have higher connectivity.
+
+**Blocking.** When X has two in a row, O's best move is the blocking position (score 0.80 vs. 0.74-0.77 for other moves). The ODE discovers blocking because the flow toward WinX is dramatically higher along the threatened pattern. Placing a token to block cuts off that flow.
+
+### Performance
+
+Each move evaluation requires one ODE solve. With 9 possible moves on an empty board, that's 9 solves. Using tuned solver options:
+
+```go
+opts := &solver.Options{
+    Dt:     0.2,
+    Reltol: 1e-3,
+}
+```
+
+Each solve takes roughly 4 milliseconds, making a full game (about 45 total evaluations across all moves) complete in about 1.8 seconds. Fast enough for interactive play.
+
+### ODE vs. Random: Results
+
+Running the ODE AI against a random player over many games:
+
+| Matchup | X Wins | O Wins | Draws |
+|---------|--------|--------|-------|
+| ODE vs Random | ~95% | ~2% | ~3% |
+| Random vs ODE | ~15% | ~70% | ~15% |
+| ODE vs ODE | ~10% | ~5% | ~85% |
+
+The ODE AI dominates random play. When both players use ODE evaluation, the game usually draws — the correct outcome for optimal play. The model, without any game-specific heuristics, approximates optimal strategy.
+
+## Game Halting and Draw Detection
+
+A subtle but critical detail: what happens when a player wins? In the basic model, tokens continue flowing after a win — the ODE doesn't know the game should stop. This distorts strategic values because the simulation averages over impossible continuations.
+
+The fix is **game halting**: win transitions consume the turn token without returning it.
+
+```
+X00 ──→ XRow0 ──→ WinX
+X01 ──→
+X02 ──→
+Next ──→             (consume turn — game stops)
+```
+
+When X wins, the `XRow0` transition consumes `Next` (it was O's turn). No turn token is returned. All further move transitions are blocked because they require either an empty position token or a turn token, and the turn token is gone. The win state becomes an **absorbing state** — once reached, no further flow is possible.
+
+### Draw Detection
+
+Draw detection adds a move counter. Each play transition deposits a token into `move_tokens`. A `draw` transition fires when:
+- 9 move tokens have accumulated (all squares filled)
+- `game_active` is still marked (no winner)
+
+The draw transition awards a point to `WinO`, encoding the principle that "a draw is a win for the defender." This changes the ODE dynamics:
+
+**Without draw detection:** O's scores are always negative. The model only sees win paths, so it favors positions with more winning lines even when blocking is essential.
+
+**With draw detection:** O's scores become positive because draws count as partial victories. Blocking a threat now has measurable value — it preserves the possibility of a draw, which has positive worth.
+
+## The GameNet Pattern
+
+Tic-tac-toe demonstrates the GameNet pattern from Chapter 4:
+
+1. **Board state as places** — each cell is a place, tokens mark availability
+2. **Move history as places** — separate tracking of who played where
+3. **Turn control as a shared token** — mutual exclusion enforces alternation
+4. **Pattern collectors as transitions** — compositional win detection
+5. **ODE scoring** — strategic value emerges from topology
+
+The same pattern scales to more complex games. A Connect Four model would have 42 position places (7 columns × 6 rows) and more pattern collectors (horizontal, vertical, diagonal sequences of 4). A Go model would have 361 position places. The complexity is in the number of places and patterns, not in the logic — the logic is always the same: tokens flow, patterns collect, scores emerge.
+
+The mathematical foundation is identical to the coffee shop. The incidence matrix encodes all arcs. Conservation laws guarantee no tokens are created or destroyed. The ODE simulation finds the natural flow. The difference is interpretation: in the coffee shop, tokens are grams of beans; in tic-tac-toe, tokens are board positions and move records. The mathematics doesn't care.
+
+The next chapter applies Petri nets to constraint satisfaction — modeling Sudoku as a system where arc weights and conservation laws enforce the puzzle's rules, and the ODE relaxation finds valid configurations.
