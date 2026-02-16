@@ -164,7 +164,7 @@ rates := map[string]float64{
 
 The firing rate for each transition follows mass-action kinetics:
 
-$$v(\text{make\\_latte}) = k_{\text{latte}} \cdot M(\text{beans})^{18} \cdot M(\text{water})^{30} \cdot M(\text{milk})^{180} \cdot M(\text{cups})^{1}$$
+<div>$$v(\text{make\_latte}) = k_{\text{latte}} \cdot M(\text{beans})^{18} \cdot M(\text{water})^{30} \cdot M(\text{milk})^{180} \cdot M(\text{cups})^{1}$$</div>
 
 Wait — that looks wrong. With arc weight 18, the rate would depend on the 18th power of the bean count? That's the literal mass-action formula, but with large token counts (1,000 beans) and large exponents (18), the numbers explode to astronomical values.
 
