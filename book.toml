@@ -21,4 +21,3 @@ limit-results = 20
 
 [preprocessor.katex]
 after = ["links"]
-optional = true
