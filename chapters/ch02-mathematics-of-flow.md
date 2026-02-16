@@ -114,7 +114,11 @@ Positive means the transition produces tokens in that place. Negative means it c
 
 For the three-place chain:
 
-$$N = \begin{array}{c|cc} & t_1 & t_2 \\ \hline p_1 & -1 & 0 \\ p_2 & +1 & -1 \\ p_3 & 0 & +1 \end{array}$$
+| | $t_1$ | $t_2$ |
+|:---:|:---:|:---:|
+| $p_1$ | $-1$ | $0$ |
+| $p_2$ | $+1$ | $-1$ |
+| $p_3$ | $0$ | $+1$ |
 
 Reading column $t_1$: firing $t_1$ removes one token from $p_1$ and adds one to $p_2$. Reading column $t_2$: firing $t_2$ removes one from $p_2$ and adds one to $p_3$. Each column is a change vector — the delta applied to the marking when that transition fires.
 
@@ -145,7 +149,11 @@ Consider a net where a transition has two inputs — the synchronization pattern
 
 Transition $t_1$ needs a token from both $p_1$ and $p_2$ to fire. The incidence matrix:
 
-$$N = \begin{array}{c|c} & t_1 \\ \hline p_1 & -1 \\ p_2 & -1 \\ p_3 & +1 \end{array}$$
+| | $t_1$ |
+|:---:|:---:|
+| $p_1$ | $-1$ |
+| $p_2$ | $-1$ |
+| $p_3$ | $+1$ |
 
 With $M_0 = [1, 1, 0]^T$, firing $t_1$ gives $M_1 = [0, 0, 1]^T$. With $M_0 = [1, 0, 0]^T$, $t_1$ is not enabled — $p_2$ has no token. The synchronization is enforced by the structure.
 
