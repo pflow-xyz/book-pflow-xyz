@@ -5,7 +5,7 @@ import (
 	"io/fs"
 )
 
-//go:embed public
+//go:embed all:public
 var content embed.FS
 
 func Public() (fs.FS, error) {

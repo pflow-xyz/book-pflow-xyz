@@ -13,3 +13,6 @@ output/
 *.pdf
 *.epub
 *.mobi
+
+# Generated static files (rebuilt from chapters/ by mdBook)
+internal/static/public/

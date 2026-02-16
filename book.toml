@@ -1,0 +1,24 @@
+[book]
+title = "Petri Nets as a Universal Abstraction"
+authors = ["stackdump"]
+description = "A Practitioner's Guide to Modeling with pflow"
+src = "chapters"
+language = "en"
+
+[build]
+build-dir = "build/html"
+create-missing = false
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/pflow-xyz/book-pflow-xyz"
+edit-url-template = "https://github.com/pflow-xyz/book-pflow-xyz/edit/main/chapters/{path}"
+
+[output.html.search]
+enable = true
+limit-results = 20
+
+[preprocessor.katex]
+after = ["links"]
+optional = true

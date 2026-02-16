@@ -1,0 +1,31 @@
+---
+title: "Petri Nets as a Universal Abstraction"
+subtitle: "A Practitioner's Guide to Modeling with pflow"
+author: "stackdump"
+lang: en-US
+rights: "All rights reserved"
+description: >
+  A hands-on guide to modeling systems with Petri nets.
+  Covers foundations, applications in games and biochemistry,
+  advanced topics like zero-knowledge proofs, and the pflow toolchain.
+
+# EPUB settings
+cover-image: figures/cover.svg
+css: templates/epub.css
+
+# PDF settings (xelatex)
+documentclass: book
+fontsize: 11pt
+geometry:
+  - margin=1in
+mainfont: "Latin Modern Roman"
+monofont: "Latin Modern Mono"
+mathfont: "Latin Modern Math"
+
+# Table of contents
+toc: true
+toc-depth: 2
+number-sections: true
+
+# Code highlighting
+highlight-style: tango
