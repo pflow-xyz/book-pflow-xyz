@@ -124,25 +124,25 @@ The arc weight from `milk` to `make_latte` is 180. This means `make_latte` is en
 
 The incidence matrix for the full model captures every recipe in a single data structure. Each column is a drink type. Each row is an ingredient (or tracking place). Reading column `make_latte`:
 
-$$N[\text{coffee\\_beans}, \text{make\\_latte}] = -18$$
-$$N[\text{milk}, \text{make\\_latte}] = -180$$
-$$N[\text{water}, \text{make\\_latte}] = -30$$
-$$N[\text{cups}, \text{make\\_latte}] = -1$$
+$$N[\text{coffee\_beans}, \text{make\_latte}] = -18$$
+$$N[\text{milk}, \text{make\_latte}] = -180$$
+$$N[\text{water}, \text{make\_latte}] = -30$$
+$$N[\text{cups}, \text{make\_latte}] = -1$$
 
 Negative entries are consumption. Positive entries in the tracking rows mirror them:
 
-$$N[\text{beans\\_used}, \text{make\\_latte}] = +18$$
-$$N[\text{milk\\_used}, \text{make\\_latte}] = +180$$
+$$N[\text{beans\_used}, \text{make\_latte}] = +18$$
+$$N[\text{milk\_used}, \text{make\_latte}] = +180$$
 
 ### Conservation Laws
 
 The paired structure — every token consumed from an ingredient place appears in the corresponding tracking place — creates P-invariants. For coffee beans:
 
-$$M(\text{coffee\\_beans}) + M(\text{beans\\_used}) = 1000$$
+$$M(\text{coffee\_beans}) + M(\text{beans\_used}) = 1000$$
 
 For milk:
 
-$$M(\text{milk}) + M(\text{milk\\_used}) = 5000$$
+$$M(\text{milk}) + M(\text{milk\_used}) = 5000$$
 
 These hold for all time, under any firing sequence. The conservation law is structural — it follows from the arc weights summing to zero across each ingredient/tracking pair. No beans are created or destroyed. They're consumed from stock into the "used" counter.
 
@@ -202,7 +202,7 @@ Running the simulation from the initial inventory reveals depletion trajectories
 
 The conservation laws hold throughout the simulation. At any point in time:
 
-$$M(\text{coffee\\_beans}) + M(\text{beans\\_used}) = 1000$$
+$$M(\text{coffee\_beans}) + M(\text{beans\_used}) = 1000$$
 
 This is verifiable from the simulation output and provides a built-in sanity check.
 
@@ -316,7 +316,7 @@ The supply places start at zero — no restocking scheduled. When external event
 
 This creates a two-level conservation structure:
 
-- **Inner loop**: $M(\text{beans}) + M(\text{beans\\_used}) = c_1$ (within one restocking cycle)
+- **Inner loop**: $M(\text{beans}) + M(\text{beans\_used}) = c_1$ (within one restocking cycle)
 - **Outer loop**: Deliveries increase $c_1$ as supply tokens arrive
 
 The inner conservation law tells you whether beans leak. The outer structure tells you whether deliveries keep up with consumption.

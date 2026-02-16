@@ -209,7 +209,7 @@ The total token count isn't conserved — $t_{produce}$ creates tokens and $t_{c
 [empty_slots: 5] → t_produce → [buffer] → t_consume → [empty_slots]
 ```
 
-Now $M(\text{empty\\_slots}) + M(\text{buffer}) = 5$ is an invariant. The buffer can never exceed 5.
+Now $M(\text{empty\_slots}) + M(\text{buffer}) = 5$ is an invariant. The buffer can never exceed 5.
 
 ### In Code
 
