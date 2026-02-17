@@ -323,4 +323,6 @@ The same pattern scales to more complex games. A Connect Four model would have 4
 
 The mathematical foundation is identical to the coffee shop. The incidence matrix encodes all arcs. Conservation laws guarantee no tokens are created or destroyed. The ODE simulation finds the natural flow. The difference is interpretation: in the coffee shop, tokens are grams of beans; in tic-tac-toe, tokens are board positions and move records. The mathematics doesn't care.
 
+> **Try it live:** Play against the ODE solver in the [Tic-Tac-Toe demo](https://pilot.pflow.xyz/tic-tac-toe/) or try the [ZK variant](https://pilot.pflow.xyz/zk-tic-tac-toe/) for privacy-preserving moves at [pilot.pflow.xyz](https://pilot.pflow.xyz/).
+
 The next chapter applies Petri nets to constraint satisfaction — modeling Sudoku as a system where arc weights and conservation laws enforce the puzzle's rules, and the ODE relaxation finds valid configurations.

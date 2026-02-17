@@ -135,3 +135,5 @@ The model becomes the specification. The code becomes a derived artifact. When t
 This is the opposite of how most software is built, where the code *is* the model and the specification exists (if at all) as outdated documentation. With Petri nets, the model is a living, executable, analyzable artifact that stays authoritative throughout the project's life.
 
 The rest of this book shows what this looks like in practice — from a coffee shop inventory system to a zero-knowledge proof of a game move, all built from places, transitions, arcs, and tokens.
+
+> **Try it live:** See the [Stoplight](https://pilot.pflow.xyz/stoplight/) for a cyclic state machine or the [Dining Philosophers](https://pilot.pflow.xyz/dining-philosophers/) for mutual exclusion — both generated from Petri net models at [pilot.pflow.xyz](https://pilot.pflow.xyz/).

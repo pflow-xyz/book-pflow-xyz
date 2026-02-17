@@ -190,3 +190,5 @@ Once the model stabilizes, it travels through the ecosystem:
 4. **ZK circuit** — add privacy with zero-knowledge proofs
 
 The editor is the entry point. The formalism behind it makes everything else possible. The circles and rectangles on screen are the same places and transitions that appear in incidence matrices, ODE systems, and ZK circuits. The visual representation is sugar. The mathematics is the substance.
+
+> **Try it live:** Design your own Petri net at [pflow.xyz](https://pflow.xyz/), then see generated applications at [pilot.pflow.xyz](https://pilot.pflow.xyz/) — every example in this book was built with these tools.

@@ -157,3 +157,5 @@ The knapsack model demonstrates a fourth application pattern, distinct from reso
 5. **Continuous relaxation** approximates the optimum; structural insight guides to the exact solution
 
 This is optimization by simulation rather than search. The ODE doesn't find the optimal solution directly — it reveals the solution's structure. That structure, in turn, makes finding the optimum straightforward.
+
+> **Try it live:** Explore the [Knapsack optimizer](https://pilot.pflow.xyz/knapsack/) at pilot.pflow.xyz to see mass-action kinetics reveal optimal item selection.

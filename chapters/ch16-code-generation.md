@@ -259,3 +259,5 @@ A typical petri-pilot workflow:
 6. **Iterate** — When the model changes, regenerate. Customizations survive.
 
 The model is the contract. Everything else — events, routes, handlers, views, admin panels — is derived. Change the model, regenerate, and the application reflects the new structure. The Petri net formalism makes this possible: because the model has formal semantics (places, transitions, firing rules), the code generator knows exactly what each element means and how to implement it.
+
+> **Try it live:** Every generated application — [Tic-Tac-Toe](https://pilot.pflow.xyz/tic-tac-toe/), [Coffee Shop](https://pilot.pflow.xyz/coffeeshop/), [Texas Hold'em](https://pilot.pflow.xyz/texas-holdem/), [Knapsack](https://pilot.pflow.xyz/knapsack/) — is available at [pilot.pflow.xyz](https://pilot.pflow.xyz/).

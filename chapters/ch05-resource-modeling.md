@@ -407,4 +407,6 @@ The Petri net isn't a simulation that approximates the real system. It *is* the 
 
 This is the ResourceNet pattern: tokens count fungible things, arc weights specify recipes, conservation laws guarantee integrity, and ODE simulation answers capacity questions. The same pattern appears wherever you count things — inventory management, budget allocation, resource scheduling, supply chain modeling.
 
+> **Try it live:** Explore the [Coffee Shop model](https://pilot.pflow.xyz/coffeeshop/) at pilot.pflow.xyz to interactively adjust capacity and see how resources flow.
+
 The next chapter applies a different pattern — the GameNet — to tic-tac-toe, where tokens encode board positions and turn order, and the hypothesis evaluator finds optimal moves.
