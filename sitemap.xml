@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://book.pflow.xyz/</loc><priority>1.0</priority></url>
+  <url><loc>https://book.pflow.xyz/preface.html</loc><priority>0.9</priority></url>
+  <url><loc>https://book.pflow.xyz/ch01-why-petri-nets.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/ch02-mathematics-of-flow.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/ch03-discrete-to-continuous.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/ch04-token-language.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/ch05-resource-modeling.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/ch06-game-mechanics.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/ch07-constraint-satisfaction.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/ch08-optimization.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/ch09-enzyme-kinetics.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/ch10-complex-state-machines.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/ch11-process-mining.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/ch12-zero-knowledge-proofs.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/ch13-topology-driven-verification.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/ch13-exponential-weights.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/ch14-declarative-infrastructure.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/ch15-visual-editor.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/ch16-code-generation.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/ch17-go-pflow-library.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/ch18-dual-implementation.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/ch19-epilogue.html</loc><priority>0.8</priority></url>
+  <url><loc>https://book.pflow.xyz/appendix-a-solver-reference.html</loc><priority>0.5</priority></url>
+  <url><loc>https://book.pflow.xyz/appendix-b-token-grammar.html</loc><priority>0.5</priority></url>
+  <url><loc>https://book.pflow.xyz/appendix-c-json-schema.html</loc><priority>0.5</priority></url>
+  <url><loc>https://book.pflow.xyz/appendix-d-glossary.html</loc><priority>0.5</priority></url>
+</urlset>

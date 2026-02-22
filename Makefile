@@ -30,7 +30,7 @@ CHAPTERS = chapters/preface.md \
 # mdBook → HTML site
 book:
 	mdbook build
-	cp robots.txt build/html/robots.txt
+	cp robots.txt sitemap.xml build/html/
 
 # Pandoc → EPUB
 epub: build/book.epub
