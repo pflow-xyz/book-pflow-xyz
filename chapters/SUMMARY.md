@@ -22,6 +22,7 @@
 
 - [Process Mining](ch11-process-mining.md)
 - [Zero-Knowledge Proofs](ch12-zero-knowledge-proofs.md)
+- [Topology-Driven Verification](ch13-topology-driven-verification.md)
 - [Exponential Weights and Scoring Systems](ch13-exponential-weights.md)
 - [Declarative Infrastructure](ch14-declarative-infrastructure.md)
 
