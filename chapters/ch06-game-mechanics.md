@@ -309,6 +309,64 @@ The draw transition awards a point to `WinO`, encoding the principle that "a dra
 
 **With draw detection:** O's scores become positive because draws count as partial victories. Blocking a threat now has measurable value — it preserves the possibility of a draw, which has positive worth.
 
+## The Integer Reduction
+
+The ODE scores from the empty board — center 1.27, corners 0.95, edges 0.63 — are suspiciously proportional. Divide each by the smallest:
+
+$$1.27 : 0.95 : 0.63 \approx 4 : 3 : 2$$
+
+These are not approximate ratios. They are the exact answer. The ODE was computing three integers the entire time.
+
+### Incidence Degree to Terminals
+
+The win transitions in this model are **terminal** — they are sinks in the net. Every position-to-win path flows toward them and halts. The steady-state ODE values are determined entirely by how many of these terminal transitions each place can reach. That count is the **incidence degree**: the number of arcs from a place to its downstream win transitions.
+
+| Position | Win patterns | Incidence degree |
+|----------|-------------|-----------------|
+| Center (1,1) | Row + Column + 2 Diagonals | 4 |
+| Corners (0,0), (0,2), (2,0), (2,2) | Row + Column + 1 Diagonal | 3 |
+| Edges (0,1), (1,0), (1,2), (2,1) | Row + Column | 2 |
+
+The full board heatmap is `[3, 2, 3, 2, 4, 2, 3, 2, 3]`. The continuous dynamics were a roundabout proof of a combinatorial fact: the strategic value of a position in a game with terminal win states is its incidence degree to those terminals.
+
+### Why It Works: Mass Action and Full Enablement
+
+Under mass action kinetics, the flow rate through a transition is proportional to the token concentration in its input places. When you set the initial marking of each place to its incidence degree, you give it exactly enough tokens to simultaneously enable all of its downstream transitions.
+
+At that point, the ODE dynamics become trivial. There is no competition for tokens, no bottleneck to resolve through simulation. The system is already at equilibrium at $t = 0$. The float collapses to the int because the incidence degree marking *is* the mass action fixed point.
+
+The integer algorithm and the ODE are not two different approaches to evaluation — they are the same result viewed from different ends. The ODE discovers the equilibrium through simulation; the incidence degree reads it off the graph directly.
+
+### Dynamic Evaluation: Injecting Current State
+
+The empty board is the easy case. The real utility comes from injecting the current game state as the marking and recomputing.
+
+When a position is occupied, its token has been consumed — it drops out of the calculation. The incidence degree is now computed only against still-reachable win transitions. A corner that participates in 3 win patterns on an empty board might participate in only 1 if the opponent has blocked the other two. The heatmap updates to reflect the live topology.
+
+This is the general "next step" evaluator. Given any board state:
+
+1. Identify which win transitions are still reachable (not blocked by opponent pieces)
+2. For each empty position, count the number of reachable win transitions it connects to
+3. The highest count is the best move
+
+No search tree. No minimax. No alpha-beta pruning. Just count the edges to live terminals.
+
+### The Boundary Between Counting and Simulation
+
+Tic-tac-toe reduces to `{4, 3, 2}` precisely because it is simple enough that topology is all you need. The win transitions are independent sinks. No position participates in resource competition with another. The incidence structure has no interesting dynamics — just a direct count.
+
+For more complex games — poker with its multi-phase betting structure, or governance models with competing resource flows — the incidence structure is rich enough that positions do not reduce to small integers. Multiple paths interact, resource constraints create bottlenecks, and the dynamics through the net have real work to do. The ODE earns its keep in those cases.
+
+But the mechanism is identical:
+
+1. Model the system as a Petri net with terminal (win/loss/goal) transitions
+2. Inject the current state as the marking
+3. Compute the evaluation from token flow to reachable terminals
+
+For simple nets, step 3 is integer counting. For complex nets, step 3 is ODE simulation. The boundary between them is the boundary between systems where topology alone determines strategy and systems where dynamics matter.
+
+What we have is a **static evaluation function defined purely by net topology and current state**. No heuristics, no training data, no game-specific knowledge beyond the Petri net model itself. For any game or system modeled as a Petri net with designated terminal states, the function is: *for each position, how connected is it to winning?* The Petri net is the domain knowledge — the topology encodes the rules, and the incidence structure encodes the strategy.
+
 ## The GameNet Pattern
 
 Tic-tac-toe demonstrates the GameNet pattern from Chapter 4:
@@ -318,11 +376,12 @@ Tic-tac-toe demonstrates the GameNet pattern from Chapter 4:
 3. **Turn control as a shared token** — mutual exclusion enforces alternation
 4. **Pattern collectors as transitions** — compositional win detection
 5. **ODE scoring** — strategic value emerges from topology
+6. **Integer reduction** — for simple games, the ODE collapses to incidence degree counting
 
-The same pattern scales to more complex games. A Connect Four model would have 42 position places (7 columns × 6 rows) and more pattern collectors (horizontal, vertical, diagonal sequences of 4). A Go model would have 361 position places. The complexity is in the number of places and patterns, not in the logic — the logic is always the same: tokens flow, patterns collect, scores emerge.
+The same pattern scales to more complex games. A Connect Four model would have 42 position places (7 columns × 6 rows) and more pattern collectors (horizontal, vertical, diagonal sequences of 4). A Go model would have 361 position places. The complexity is in the number of places and patterns, not in the logic — the logic is always the same: tokens flow, patterns collect, scores emerge. And when the game is simple enough, the scores are integers you can read off the graph without running the solver at all.
 
 The mathematical foundation is identical to the coffee shop. The incidence matrix encodes all arcs. Conservation laws guarantee no tokens are created or destroyed. The ODE simulation finds the natural flow. The difference is interpretation: in the coffee shop, tokens are grams of beans; in tic-tac-toe, tokens are board positions and move records. The mathematics doesn't care.
 
 > **Try it live:** Play against the ODE solver in the [Tic-Tac-Toe demo](https://pilot.pflow.xyz/tic-tac-toe/) or try the [ZK variant](https://pilot.pflow.xyz/zk-tic-tac-toe/) for privacy-preserving moves at [pilot.pflow.xyz](https://pilot.pflow.xyz/).
 
-The next chapter applies Petri nets to constraint satisfaction — modeling Sudoku as a system where arc weights and conservation laws enforce the puzzle's rules, and the ODE relaxation finds valid configurations.
+The next chapter applies Petri nets to constraint satisfaction — modeling Sudoku as a system where arc weights and conservation laws enforce the puzzle's rules, and the ODE relaxation finds valid configurations. Chapter 13 returns to the integer reduction from a different angle: deriving rate constants automatically from graph connectivity, and feeding them directly into the ZK verification pipeline.
