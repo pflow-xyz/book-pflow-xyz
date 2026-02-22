@@ -33,6 +33,10 @@
 - [The go-pflow Library](ch17-go-pflow-library.md)
 - [Dual Implementation and Verification](ch18-dual-implementation.md)
 
+# Epilogue
+
+- [What the Abstraction Sits On](ch19-epilogue.md)
+
 # Appendices
 
 - [Solver Parameter Reference](appendix-a-solver-reference.md)

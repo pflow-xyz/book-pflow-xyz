@@ -21,6 +21,7 @@ CHAPTERS = chapters/preface.md \
 	chapters/ch16-code-generation.md \
 	chapters/ch17-go-pflow-library.md \
 	chapters/ch18-dual-implementation.md \
+	chapters/ch19-epilogue.md \
 	chapters/appendix-a-solver-reference.md \
 	chapters/appendix-b-token-grammar.md \
 	chapters/appendix-c-json-schema.md \

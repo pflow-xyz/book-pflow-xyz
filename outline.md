@@ -200,6 +200,18 @@
 
 ---
 
+## Epilogue: What the Abstraction Sits On
+**Learning objective**: Name the layered architecture the book built, see the applications through the net type taxonomy, and identify the open problems.
+
+- The four-layer stack: graph theory → Petri net semantics → ODE dynamics → ZK verification
+- Six applications, five types — retrospective taxonomy table (Coffee Shop=ResourceNet, TTT=GameNet, Sudoku=ClassificationNet, Knapsack=ComputationNet, Enzyme=ComputationNet, Hold'em=GameNet)
+- What the book proved: small models beat black boxes, one formalism / multiple tools, topology is primary
+- What the book didn't solve: multi-hop connectivity, weighted targets, dynamic rates, circuit scaling, composition verification
+- The premise revisited: the Petri net is a layer, not the foundation — the topology was always there
+- **Source material**: Ch 1 (opening premise), Ch 4 (net taxonomy), Ch 13 (graph theory insight, limitations)
+
+---
+
 ## Appendices
 
 ### Appendix A: Solver Parameter Reference
@@ -222,7 +234,7 @@
 
 ## Estimated Scope
 
-- **18 chapters + 4 appendices**
+- **18 chapters + epilogue + 4 appendices**
 - **~60,000–80,000 words** target
 - **Existing material covers ~70%** of outlined content
 - **Gaps to write from scratch**: Ch 15 (editor walkthrough), Ch 18 (dual implementation), narrative transitions, exercises
