@@ -315,11 +315,11 @@ The ODE scores from the empty board — center 1.27, corners 0.95, edges 0.63 �
 
 $$1.27 : 0.95 : 0.63 \approx 4 : 3 : 2$$
 
-These are not approximate ratios. They are the exact answer. The ODE was computing three integers the entire time.
+The ODE is tracking three integers. Not computing them exactly — the ratios are approximate, within a few percent — but recovering the same ranking and grouping that the integers predict.
 
 ### Incidence Degree to Terminals
 
-The win transitions in this model are **terminal** — they are sinks in the net. Every position-to-win path flows toward them and halts. The steady-state ODE values are determined entirely by how many of these terminal transitions each place can reach. That count is the **incidence degree**: the number of arcs from a place to its downstream win transitions.
+The win transitions in this model are **terminal** — they are sinks in the net. The number of arcs from a position's history place to downstream win transitions is its **incidence degree**. This is a graph property — count the arcs, get an integer. No simulation needed.
 
 | Position | Win patterns | Incidence degree |
 |----------|-------------|-----------------|
@@ -327,15 +327,23 @@ The win transitions in this model are **terminal** — they are sinks in the net
 | Corners (0,0), (0,2), (2,0), (2,2) | Row + Column + 1 Diagonal | 3 |
 | Edges (0,1), (1,0), (1,2), (2,1) | Row + Column | 2 |
 
-The full board heatmap is `[3, 2, 3, 2, 4, 2, 3, 2, 3]`. The continuous dynamics were a roundabout proof of a combinatorial fact: the strategic value of a position in a game with terminal win states is its incidence degree to those terminals.
+The full board heatmap is `[3, 2, 3, 2, 4, 2, 3, 2, 3]`. The strategic value of a position in a game with terminal win states is determined by its incidence degree to those terminals. The ODE recovers this ranking through dynamics; the graph gives it directly.
 
-### Why It Works: Mass Action and Full Enablement
+### Generalizing to Any Board Size
 
-Under mass action kinetics, the flow rate through a transition is proportional to the token concentration in its input places. When you set the initial marking of each place to its incidence degree, you give it exactly enough tokens to simultaneously enable all of its downstream transitions.
+The incidence degree formula works for any $n \times n$ board. Each position at $(i, j)$ gets:
 
-At that point, the ODE dynamics become trivial. There is no competition for tokens, no bottleneck to resolve through simulation. The system is already at equilibrium at $t = 0$. The float collapses to the int because the incidence degree marking *is* the mass action fixed point.
+- 2 (its row + its column), always
+- +1 if on the main diagonal ($i = j$)
+- +1 if on the anti-diagonal ($i + j = n - 1$)
 
-The integer algorithm and the ODE are not two different approaches to evaluation — they are the same result viewed from different ends. The ODE discovers the equilibrium through simulation; the incidence degree reads it off the graph directly.
+So the only possible degrees are {4, 3, 2}, and degree 4 only occurs at the center of odd-sized boards. Running the ODE with uniform rates across board sizes from 3×3 to 7×7 confirms that the same predictive behavior holds at every scale:
+
+- Positions with the same incidence degree always receive the same ODE score
+- Higher incidence degree always produces a higher score
+- The ranking center > diagonal > non-diagonal is preserved
+
+The ODE ratios approximate the integer ratios closely for small boards (~2% error at 3×3) and less closely for larger ones (~10% at 7×7), because more positions compete for flow through shared win transitions. But the ranking — which is what matters for move selection — never changes. The incidence degree is an exact predictor of ODE ranking for all tested board sizes.
 
 ### Dynamic Evaluation: Injecting Current State
 
