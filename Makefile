@@ -14,6 +14,7 @@ CHAPTERS = chapters/preface.md \
 	chapters/ch10-complex-state-machines.md \
 	chapters/ch11-process-mining.md \
 	chapters/ch12-zero-knowledge-proofs.md \
+	chapters/ch13-topology-driven-verification.md \
 	chapters/ch13-exponential-weights.md \
 	chapters/ch14-declarative-infrastructure.md \
 	chapters/ch15-visual-editor.md \
