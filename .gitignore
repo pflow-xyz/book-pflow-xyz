@@ -16,3 +16,6 @@ output/
 
 # Generated static files (rebuilt from chapters/ by mdBook)
 internal/static/public/
+
+# Playwright logs
+.playwright-mcp/
