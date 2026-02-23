@@ -67,6 +67,8 @@ A traffic light cycles through three states: green, yellow, red. At any moment, 
       +--------------------------------------------------------------+
 ```
 
+![Traffic light Petri net — one token cycles through three places](../figures/ch01-traffic-light.svg)
+
 Three places: `Green`, `Yellow`, `Red`. Three transitions: `go_yellow`, `go_red`, `go_green`. One token, starting in `Green`.
 
 The token's position tells you which light is on. Fire `go_yellow` and the token moves from `Green` to `Yellow`. Fire `go_red` and it moves from `Yellow` to `Red`. Fire `go_green` and it cycles back to `Green`.
@@ -90,6 +92,8 @@ Light A: [Red_A] <-- [go_red_A] <-- [Green_A]
                                         v
 Light B: [Red_B] --> [go_green_B] --> [Green_B]
 ```
+
+![Intersection mutual exclusion — a shared token prevents both lights from being green](../figures/ch01-intersection.svg)
 
 The token in `Intersection_Free` is consumed when one light turns green and returned when it turns red. Only one light can be green at a time — not because of a runtime check, but because there's only one token and two transitions competing for it.
 

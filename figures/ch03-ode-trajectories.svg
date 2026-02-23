@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 320" font-family="'Helvetica Neue', Arial, sans-serif">
+  <!-- Title -->
+  <text x="280" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">Three-Place Chain: ODE Trajectories</text>
+  <text x="280" y="38" text-anchor="middle" font-size="11" fill="#888">M₀ = [10, 0, 0], k₁ = 0.2, k₂ = 0.1</text>
+
+  <!-- Axes -->
+  <line x1="60" y1="270" x2="490" y2="270" stroke="#333" stroke-width="1.5"/>
+  <line x1="60" y1="270" x2="60" y2="50" stroke="#333" stroke-width="1.5"/>
+
+  <!-- Y-axis labels -->
+  <text x="52" y="274" text-anchor="end" font-size="10" fill="#666">0</text>
+  <text x="52" y="230" text-anchor="end" font-size="10" fill="#666">2</text>
+  <text x="52" y="186" text-anchor="end" font-size="10" fill="#666">4</text>
+  <text x="52" y="142" text-anchor="end" font-size="10" fill="#666">6</text>
+  <text x="52" y="98" text-anchor="end" font-size="10" fill="#666">8</text>
+  <text x="52" y="56" text-anchor="end" font-size="10" fill="#666">10</text>
+
+  <!-- Y-axis gridlines -->
+  <line x1="60" y1="226" x2="490" y2="226" stroke="#e0e0e0" stroke-width="0.5"/>
+  <line x1="60" y1="182" x2="490" y2="182" stroke="#e0e0e0" stroke-width="0.5"/>
+  <line x1="60" y1="138" x2="490" y2="138" stroke="#e0e0e0" stroke-width="0.5"/>
+  <line x1="60" y1="94" x2="490" y2="94" stroke="#e0e0e0" stroke-width="0.5"/>
+  <line x1="60" y1="50" x2="490" y2="50" stroke="#e0e0e0" stroke-width="0.5"/>
+
+  <!-- X-axis labels -->
+  <text x="60" y="286" text-anchor="middle" font-size="10" fill="#666">0</text>
+  <text x="146" y="286" text-anchor="middle" font-size="10" fill="#666">10</text>
+  <text x="232" y="286" text-anchor="middle" font-size="10" fill="#666">20</text>
+  <text x="318" y="286" text-anchor="middle" font-size="10" fill="#666">30</text>
+  <text x="404" y="286" text-anchor="middle" font-size="10" fill="#666">40</text>
+  <text x="490" y="286" text-anchor="middle" font-size="10" fill="#666">50</text>
+
+  <!-- Axis titles -->
+  <text x="280" y="305" text-anchor="middle" font-size="12" fill="#444">Time</text>
+  <text x="18" y="160" text-anchor="middle" font-size="12" fill="#444" transform="rotate(-90,18,160)">Tokens</text>
+
+  <!-- Scale: x: 60 + t*8.6, y: 270 - val*22 -->
+  <!-- p1(t) = 10*exp(-0.2t): exponential decay -->
+  <polyline fill="none" stroke="#e53935" stroke-width="2.5"
+    points="60,50 69,64 77,77 86,88 95,97 103,106 112,113 121,119 129,125 138,130
+            146,134 155,138 164,141 172,144 181,147 190,149 198,151 207,152 216,154 224,155
+            233,156 242,157 250,258 259,259 268,259 276,260 285,260 294,261 302,261 311,261
+            320,262 328,262 337,262 346,263 354,263 363,263 372,264 380,264 389,264 398,264
+            406,265 415,265 424,265 432,265 441,265 450,266 458,266 467,266 476,266 490,267"/>
+
+  <!-- Fix p1 - recalculate. y = 270 - 22*val. t spacing = 8.6 per unit -->
+  <!-- p1: 10*exp(-0.2t) -->
+  <!-- t=0:10 t=2:6.7 t=5:3.68 t=8:2.02 t=10:1.35 t=15:0.50 t=20:0.18 t=25:0.067 -->
+  <!-- p2: 20*(exp(-0.1t)-exp(-0.2t)) -->
+  <!-- t=0:0 t=2:3.06 t=5:4.78 t=7:4.89 t=10:4.66 t=15:3.46 t=20:2.34 t=25:1.50 t=30:0.94 t=40:0.34 t=50:0.12 -->
+  <!-- p3: 10-p1-p2 -->
+
+  <!-- Recalculated curves using scale: x=60+t*8.6, y=270-val*22 -->
+
+  <!-- p1 (red): exponential decay from 10 -->
+  <polyline fill="none" stroke="#e53935" stroke-width="2.5" stroke-linecap="round"
+    points="60,50 69,62 77,74 86,85 95,94 103,103 112,111 121,118 129,124 138,130
+            147,135 155,140 164,144 173,147 181,150 190,153 199,155 207,157 216,159 225,160
+            233,162 242,163 251,164 259,165 268,165 277,166 285,166 294,167 303,167 311,167
+            320,268 329,268 337,268 346,268 355,269 363,269 372,269 381,269 389,269 398,269
+            407,269 415,269 424,270 433,270 441,270 450,270 459,270 467,270 476,270 490,270"/>
+
+  <!-- p2 (blue): rises then falls, peak around t=7 -->
+  <polyline fill="none" stroke="#1565c0" stroke-width="2.5" stroke-linecap="round"
+    points="60,270 69,256 77,244 86,234 95,226 103,220 112,216 121,213 129,212 138,212
+            147,213 155,215 164,218 173,222 181,226 190,230 199,234 207,238 216,242 225,246
+            233,249 242,252 251,254 259,256 268,258 277,259 285,261 294,262 303,263 311,264
+            320,265 329,265 337,266 346,267 355,267 363,268 372,268 381,268 389,269 398,269
+            407,269 415,269 424,269 433,270 441,270 450,270 459,270 467,270 476,270 490,270"/>
+
+  <!-- p3 (green): accumulates to 10 -->
+  <polyline fill="none" stroke="#2e7d32" stroke-width="2.5" stroke-linecap="round"
+    points="60,270 69,268 77,265 86,261 95,258 103,253 112,249 121,244 129,239 138,234
+            147,228 155,222 164,216 173,210 181,204 190,198 199,192 207,186 216,180 225,175
+            233,170 242,165 251,161 259,157 268,153 277,149 285,146 294,143 303,140 311,138
+            320,135 329,133 337,131 346,129 355,128 363,126 372,125 381,124 389,123 398,122
+            407,121 415,120 424,119 433,118 441,117 450,116 459,115 467,114 476,113 490,112"/>
+
+  <!-- Conservation line (dashed) -->
+  <line x1="60" y1="50" x2="490" y2="50" stroke="#999" stroke-width="1" stroke-dasharray="4,4"/>
+  <text x="495" y="54" font-size="10" fill="#999">= 10</text>
+
+  <!-- Legend -->
+  <line x1="340" y1="64" x2="365" y2="64" stroke="#e53935" stroke-width="2.5"/>
+  <text x="370" y="68" font-size="11" fill="#e53935">p₁ (source)</text>
+  <line x1="340" y1="82" x2="365" y2="82" stroke="#1565c0" stroke-width="2.5"/>
+  <text x="370" y="86" font-size="11" fill="#1565c0">p₂ (intermediate)</text>
+  <line x1="340" y1="100" x2="365" y2="100" stroke="#2e7d32" stroke-width="2.5"/>
+  <text x="370" y="104" font-size="11" fill="#2e7d32">p₃ (sink)</text>
+</svg>

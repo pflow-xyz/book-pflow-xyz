@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 340" font-family="'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="a" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+      <path d="M0,0 L7,2.5 L0,5 Z" fill="#444"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="300" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">Coffee Shop Petri Net</text>
+
+  <!-- Column labels -->
+  <text x="80" y="46" text-anchor="middle" font-size="11" font-weight="bold" fill="#888">Ingredients</text>
+  <text x="300" y="46" text-anchor="middle" font-size="11" font-weight="bold" fill="#888">Recipes</text>
+  <text x="520" y="46" text-anchor="middle" font-size="11" font-weight="bold" fill="#888">Tracking</text>
+
+  <!-- Ingredient places (left column) -->
+  <!-- Beans -->
+  <circle cx="80" cy="90" r="24" fill="#fff8e1" stroke="#444" stroke-width="1.5"/>
+  <text x="80" y="87" text-anchor="middle" font-size="9" fill="#333">beans</text>
+  <text x="80" y="99" text-anchor="middle" font-size="9" font-weight="bold" fill="#666">1000g</text>
+
+  <!-- Water -->
+  <circle cx="80" cy="155" r="24" fill="#e3f2fd" stroke="#444" stroke-width="1.5"/>
+  <text x="80" y="152" text-anchor="middle" font-size="9" fill="#333">water</text>
+  <text x="80" y="164" text-anchor="middle" font-size="9" font-weight="bold" fill="#666">10000ml</text>
+
+  <!-- Milk -->
+  <circle cx="80" cy="220" r="24" fill="#fce4ec" stroke="#444" stroke-width="1.5"/>
+  <text x="80" y="217" text-anchor="middle" font-size="9" fill="#333">milk</text>
+  <text x="80" y="229" text-anchor="middle" font-size="9" font-weight="bold" fill="#666">5000ml</text>
+
+  <!-- Cups -->
+  <circle cx="80" cy="285" r="24" fill="#f3e5f5" stroke="#444" stroke-width="1.5"/>
+  <text x="80" y="282" text-anchor="middle" font-size="9" fill="#333">cups</text>
+  <text x="80" y="294" text-anchor="middle" font-size="9" font-weight="bold" fill="#666">100</text>
+
+  <!-- Transitions (center column) -->
+  <!-- Espresso -->
+  <rect x="270" y="72" width="60" height="22" fill="#444" rx="2"/>
+  <text x="300" y="87" text-anchor="middle" font-size="9" fill="#fff">espresso</text>
+
+  <!-- Latte -->
+  <rect x="270" y="137" width="60" height="22" fill="#444" rx="2"/>
+  <text x="300" y="152" text-anchor="middle" font-size="9" fill="#fff">latte</text>
+
+  <!-- Cappuccino -->
+  <rect x="270" y="202" width="60" height="22" fill="#444" rx="2"/>
+  <text x="300" y="217" text-anchor="middle" font-size="9" fill="#fff">cappuccino</text>
+
+  <!-- Mocha -->
+  <rect x="270" y="267" width="60" height="22" fill="#444" rx="2"/>
+  <text x="300" y="282" text-anchor="middle" font-size="9" fill="#fff">mocha</text>
+
+  <!-- Tracking places (right column) -->
+  <circle cx="520" cy="90" r="24" fill="#e8f5e9" stroke="#444" stroke-width="1.5"/>
+  <text x="520" y="87" text-anchor="middle" font-size="9" fill="#333">beans</text>
+  <text x="520" y="99" text-anchor="middle" font-size="9" fill="#666">used</text>
+
+  <circle cx="520" cy="155" r="24" fill="#e8f5e9" stroke="#444" stroke-width="1.5"/>
+  <text x="520" y="152" text-anchor="middle" font-size="9" fill="#333">water</text>
+  <text x="520" y="164" text-anchor="middle" font-size="9" fill="#666">used</text>
+
+  <circle cx="520" cy="220" r="24" fill="#e8f5e9" stroke="#444" stroke-width="1.5"/>
+  <text x="520" y="217" text-anchor="middle" font-size="9" fill="#333">milk</text>
+  <text x="520" y="229" text-anchor="middle" font-size="9" fill="#666">used</text>
+
+  <circle cx="520" cy="285" r="24" fill="#e8f5e9" stroke="#444" stroke-width="1.5"/>
+  <text x="520" y="282" text-anchor="middle" font-size="9" fill="#333">cups</text>
+  <text x="520" y="294" text-anchor="middle" font-size="9" fill="#666">used</text>
+
+  <!-- Input arcs: beans → all transitions -->
+  <line x1="104" y1="83" x2="268" y2="83" stroke="#444" stroke-width="1" marker-end="url(#a)"/>
+  <text x="180" y="78" text-anchor="middle" font-size="9" fill="#c62828">18</text>
+  <line x1="104" y1="90" x2="268" y2="142" stroke="#444" stroke-width="1" marker-end="url(#a)" opacity="0.6"/>
+  <line x1="104" y1="95" x2="268" y2="208" stroke="#444" stroke-width="1" marker-end="url(#a)" opacity="0.4"/>
+  <line x1="104" y1="98" x2="268" y2="272" stroke="#444" stroke-width="1" marker-end="url(#a)" opacity="0.3"/>
+
+  <!-- Input arcs: water → espresso, latte, cappuccino, mocha -->
+  <line x1="104" y1="150" x2="268" y2="88" stroke="#444" stroke-width="1" marker-end="url(#a)" opacity="0.5"/>
+  <line x1="104" y1="155" x2="268" y2="148" stroke="#444" stroke-width="1" marker-end="url(#a)"/>
+  <text x="180" y="156" text-anchor="middle" font-size="9" fill="#c62828">30</text>
+  <line x1="104" y1="160" x2="268" y2="213" stroke="#444" stroke-width="1" marker-end="url(#a)" opacity="0.5"/>
+  <line x1="104" y1="163" x2="268" y2="275" stroke="#444" stroke-width="1" marker-end="url(#a)" opacity="0.4"/>
+
+  <!-- Input arcs: milk → latte, cappuccino, mocha -->
+  <line x1="104" y1="218" x2="268" y2="150" stroke="#444" stroke-width="1" marker-end="url(#a)"/>
+  <text x="175" y="188" text-anchor="middle" font-size="9" fill="#c62828">180</text>
+  <line x1="104" y1="220" x2="268" y2="215" stroke="#444" stroke-width="1" marker-end="url(#a)"/>
+  <text x="180" y="222" text-anchor="middle" font-size="9" fill="#c62828">120</text>
+  <line x1="104" y1="225" x2="268" y2="278" stroke="#444" stroke-width="1" marker-end="url(#a)" opacity="0.6"/>
+
+  <!-- Input arcs: cups → all transitions -->
+  <line x1="104" y1="280" x2="268" y2="90" stroke="#444" stroke-width="1" marker-end="url(#a)" opacity="0.3"/>
+  <line x1="104" y1="282" x2="268" y2="153" stroke="#444" stroke-width="1" marker-end="url(#a)" opacity="0.4"/>
+  <line x1="104" y1="284" x2="268" y2="218" stroke="#444" stroke-width="1" marker-end="url(#a)" opacity="0.5"/>
+  <line x1="104" y1="285" x2="268" y2="278" stroke="#444" stroke-width="1" marker-end="url(#a)"/>
+  <text x="180" y="290" text-anchor="middle" font-size="9" fill="#c62828">1</text>
+
+  <!-- Output arcs: transitions → tracking places -->
+  <line x1="330" y1="83" x2="494" y2="83" stroke="#2e7d32" stroke-width="1" marker-end="url(#a)"/>
+  <line x1="330" y1="148" x2="494" y2="148" stroke="#2e7d32" stroke-width="1" marker-end="url(#a)"/>
+  <line x1="330" y1="90" x2="494" y2="155" stroke="#2e7d32" stroke-width="1" marker-end="url(#a)" opacity="0.5"/>
+  <line x1="330" y1="148" x2="494" y2="220" stroke="#2e7d32" stroke-width="1" marker-end="url(#a)" opacity="0.6"/>
+  <line x1="330" y1="213" x2="494" y2="220" stroke="#2e7d32" stroke-width="1" marker-end="url(#a)" opacity="0.6"/>
+  <line x1="330" y1="83" x2="494" y2="285" stroke="#2e7d32" stroke-width="1" marker-end="url(#a)" opacity="0.3"/>
+  <line x1="330" y1="148" x2="494" y2="285" stroke="#2e7d32" stroke-width="1" marker-end="url(#a)" opacity="0.4"/>
+  <line x1="330" y1="213" x2="494" y2="285" stroke="#2e7d32" stroke-width="1" marker-end="url(#a)" opacity="0.5"/>
+  <line x1="330" y1="278" x2="494" y2="285" stroke="#2e7d32" stroke-width="1" marker-end="url(#a)"/>
+
+  <!-- Conservation annotation -->
+  <text x="300" y="332" text-anchor="middle" font-size="10" fill="#888">Conservation: beans + beans_used = 1000 for all time</text>
+</svg>

@@ -197,6 +197,8 @@ Here's the key insight that connects game structure to strategy. Each board posi
 | Corners (0,0), (0,2), (2,0), (2,2) | 3 | Row + Column + 1 Diagonal |
 | Edges (0,1), (1,0), (1,2), (2,1) | 2 | Row + Column |
 
+![Position value heatmap — incidence degree to win transitions](../figures/ch06-ttt-heatmap.svg)
+
 The center participates in 4 winning patterns. Corners participate in 3. Edges participate in 2. This structural fact — encoded in the arc connectivity — is the source of strategic value. More connections to pattern collectors means more paths to victory, which the ODE dynamics translate into higher scores.
 
 No game theory is needed to derive this. It falls directly from the net's topology.

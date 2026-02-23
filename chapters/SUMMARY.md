@@ -23,19 +23,20 @@
 - [Process Mining](ch11-process-mining.md)
 - [Zero-Knowledge Proofs](ch12-zero-knowledge-proofs.md)
 - [Topology-Driven Verification](ch13-topology-driven-verification.md)
-- [Exponential Weights and Scoring Systems](ch13-exponential-weights.md)
-- [Declarative Infrastructure](ch14-declarative-infrastructure.md)
+- [On-Chain ZK Verification](ch14-on-chain-verification.md)
+- [Exponential Weights and Scoring Systems](ch15-exponential-weights.md)
+- [Declarative Infrastructure](ch16-declarative-infrastructure.md)
 
 # Part IV: Building with pflow
 
-- [The Visual Editor — pflow.xyz](ch15-visual-editor.md)
-- [Code Generation — From Model to Application](ch16-code-generation.md)
-- [The go-pflow Library](ch17-go-pflow-library.md)
-- [Dual Implementation and Verification](ch18-dual-implementation.md)
+- [The Visual Editor — pflow.xyz](ch17-visual-editor.md)
+- [Code Generation — From Model to Application](ch18-code-generation.md)
+- [The go-pflow Library](ch19-go-pflow-library.md)
+- [Dual Implementation and Verification](ch20-dual-implementation.md)
 
 # Epilogue
 
-- [What the Abstraction Sits On](ch19-epilogue.md)
+- [What the Abstraction Sits On](ch21-epilogue.md)
 
 # Appendices
 

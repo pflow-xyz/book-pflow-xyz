@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 200" font-family="'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#444"/>
+    </marker>
+  </defs>
+
+  <!-- Green place -->
+  <circle cx="70" cy="90" r="32" fill="#f0faf0" stroke="#444" stroke-width="2"/>
+  <text x="70" y="95" text-anchor="middle" font-size="13" fill="#333">Green</text>
+  <circle cx="70" cy="74" r="5" fill="#333"/>
+
+  <!-- Arrow: Green → go_yellow -->
+  <line x1="102" y1="90" x2="148" y2="90" stroke="#444" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- go_yellow transition -->
+  <rect x="150" y="76" width="10" height="28" fill="#444" rx="1"/>
+  <text x="155" y="125" text-anchor="middle" font-size="11" fill="#666">go_yellow</text>
+
+  <!-- Arrow: go_yellow → Yellow -->
+  <line x1="160" y1="90" x2="198" y2="90" stroke="#444" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Yellow place -->
+  <circle cx="230" cy="90" r="32" fill="#fffbe6" stroke="#444" stroke-width="2"/>
+  <text x="230" y="95" text-anchor="middle" font-size="13" fill="#333">Yellow</text>
+
+  <!-- Arrow: Yellow → go_red -->
+  <line x1="262" y1="90" x2="308" y2="90" stroke="#444" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- go_red transition -->
+  <rect x="310" y="76" width="10" height="28" fill="#444" rx="1"/>
+  <text x="315" y="125" text-anchor="middle" font-size="11" fill="#666">go_red</text>
+
+  <!-- Arrow: go_red → Red -->
+  <line x1="320" y1="90" x2="358" y2="90" stroke="#444" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Red place -->
+  <circle cx="390" cy="90" r="32" fill="#fef0f0" stroke="#444" stroke-width="2"/>
+  <text x="390" y="95" text-anchor="middle" font-size="13" fill="#333">Red</text>
+
+  <!-- Arrow: Red → go_green (curved underneath) -->
+  <path d="M390,122 C390,170 70,170 70,122" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- go_green label on curve -->
+  <text x="230" y="178" text-anchor="middle" font-size="11" fill="#666">go_green</text>
+
+  <!-- Title -->
+  <text x="230" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">Traffic Light Petri Net</text>
+  <text x="230" y="36" text-anchor="middle" font-size="11" fill="#888">One token cycles through three places</text>
+</svg>

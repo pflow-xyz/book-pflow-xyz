@@ -58,6 +58,8 @@ make_cappuccino
 make_mocha
 ```
 
+![Coffee shop Petri net — ingredients flow through recipes into tracking places](../figures/ch05-coffee-shop.svg)
+
 The bipartite structure is clean: ingredient places connect to transitions (input arcs), and transitions connect to tracking places (output arcs). No place connects to another place. No transition connects to another transition. The Petri net enforces this separation by construction.
 
 ### In Code

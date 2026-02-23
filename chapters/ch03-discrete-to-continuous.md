@@ -83,6 +83,8 @@ $$\frac{dM(p_3)}{dt} = k_2 \cdot M(p_2)$$
 
 Starting from $M_0 = [10, 0, 0]^T$ with $k_1 = 0.2$ and $k_2 = 0.1$:
 
+![ODE trajectories for the three-place chain](../figures/ch03-ode-trajectories.svg)
+
 - Tokens drain from $p_1$ exponentially: $M(p_1, t) = 10 \cdot e^{-0.2t}$
 - Tokens build up in $p_2$, then drain to $p_3$
 - Eventually all tokens accumulate in $p_3$

@@ -15,13 +15,14 @@ CHAPTERS = chapters/preface.md \
 	chapters/ch11-process-mining.md \
 	chapters/ch12-zero-knowledge-proofs.md \
 	chapters/ch13-topology-driven-verification.md \
-	chapters/ch13-exponential-weights.md \
-	chapters/ch14-declarative-infrastructure.md \
-	chapters/ch15-visual-editor.md \
-	chapters/ch16-code-generation.md \
-	chapters/ch17-go-pflow-library.md \
-	chapters/ch18-dual-implementation.md \
-	chapters/ch19-epilogue.md \
+	chapters/ch14-on-chain-verification.md \
+	chapters/ch15-exponential-weights.md \
+	chapters/ch16-declarative-infrastructure.md \
+	chapters/ch17-visual-editor.md \
+	chapters/ch18-code-generation.md \
+	chapters/ch19-go-pflow-library.md \
+	chapters/ch20-dual-implementation.md \
+	chapters/ch21-epilogue.md \
 	chapters/appendix-a-solver-reference.md \
 	chapters/appendix-b-token-grammar.md \
 	chapters/appendix-c-json-schema.md \

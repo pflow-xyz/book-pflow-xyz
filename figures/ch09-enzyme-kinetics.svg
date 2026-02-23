@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 520" font-family="'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="ea" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+      <path d="M0,0 L7,2.5 L0,5 Z" fill="#444"/>
+    </marker>
+  </defs>
+
+  <!-- Part 1: Reaction Diagram -->
+  <text x="270" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">Enzyme-Substrate Reaction Network</text>
+
+  <g transform="translate(0, 40)">
+    <!-- Substrate -->
+    <circle cx="70" cy="60" r="28" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+    <text x="70" y="57" text-anchor="middle" font-size="11" fill="#1565c0">S</text>
+    <text x="70" y="70" text-anchor="middle" font-size="9" fill="#1565c0">100</text>
+
+    <!-- Enzyme -->
+    <circle cx="70" cy="140" r="28" fill="#fff3e0" stroke="#e65100" stroke-width="2"/>
+    <text x="70" y="137" text-anchor="middle" font-size="11" fill="#e65100">E</text>
+    <text x="70" y="150" text-anchor="middle" font-size="9" fill="#e65100">10</text>
+
+    <!-- Complex -->
+    <circle cx="270" cy="100" r="28" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/>
+    <text x="270" y="97" text-anchor="middle" font-size="11" fill="#7b1fa2">ES</text>
+    <text x="270" y="110" text-anchor="middle" font-size="9" fill="#7b1fa2">0</text>
+
+    <!-- Product -->
+    <circle cx="470" cy="60" r="28" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+    <text x="470" y="57" text-anchor="middle" font-size="11" fill="#2e7d32">P</text>
+    <text x="470" y="70" text-anchor="middle" font-size="9" fill="#2e7d32">0</text>
+
+    <!-- bind transition -->
+    <rect x="160" y="88" width="10" height="24" fill="#444" rx="1"/>
+    <text x="165" y="82" text-anchor="middle" font-size="10" fill="#666">bind</text>
+    <text x="165" y="126" text-anchor="middle" font-size="9" fill="#999">k₁=0.01</text>
+
+    <!-- S → bind -->
+    <line x1="98" y1="68" x2="158" y2="95" stroke="#444" stroke-width="1.5" marker-end="url(#ea)"/>
+    <!-- E → bind -->
+    <line x1="98" y1="132" x2="158" y2="105" stroke="#444" stroke-width="1.5" marker-end="url(#ea)"/>
+    <!-- bind → ES -->
+    <line x1="170" y1="100" x2="240" y2="100" stroke="#444" stroke-width="1.5" marker-end="url(#ea)"/>
+
+    <!-- unbind transition -->
+    <rect x="160" y="148" width="10" height="24" fill="#444" rx="1"/>
+    <text x="165" y="145" text-anchor="middle" font-size="10" fill="#666">unbind</text>
+    <text x="165" y="186" text-anchor="middle" font-size="9" fill="#999">k₋₁=0.1</text>
+
+    <!-- ES → unbind -->
+    <path d="M250,118 Q210,140 172,155" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#ea)"/>
+    <!-- unbind → S -->
+    <path d="M160,155 Q120,140 95,75" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#ea)"/>
+    <!-- unbind → E -->
+    <path d="M160,165 Q120,155 98,148" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#ea)"/>
+
+    <!-- catalyze transition -->
+    <rect x="370" y="88" width="10" height="24" fill="#444" rx="1"/>
+    <text x="375" y="82" text-anchor="middle" font-size="10" fill="#666">catalyze</text>
+    <text x="375" y="126" text-anchor="middle" font-size="9" fill="#999">k_cat=0.5</text>
+
+    <!-- ES → catalyze -->
+    <line x1="298" y1="100" x2="368" y2="100" stroke="#444" stroke-width="1.5" marker-end="url(#ea)"/>
+    <!-- catalyze → P -->
+    <line x1="380" y1="95" x2="440" y2="68" stroke="#444" stroke-width="1.5" marker-end="url(#ea)"/>
+    <!-- catalyze → E (enzyme recycled) -->
+    <path d="M375,114 Q375,180 200,180 Q100,180 85,170" fill="none" stroke="#e65100" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#ea)"/>
+    <text x="260" y="195" text-anchor="middle" font-size="9" fill="#e65100">enzyme recycled</text>
+  </g>
+
+  <!-- Part 2: Concentration Curves -->
+  <text x="280" y="265" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">Concentration Over Time</text>
+
+  <g transform="translate(0, 275)">
+    <!-- Axes -->
+    <line x1="60" y1="190" x2="500" y2="190" stroke="#333" stroke-width="1.5"/>
+    <line x1="60" y1="190" x2="60" y2="10" stroke="#333" stroke-width="1.5"/>
+
+    <!-- Y labels -->
+    <text x="52" y="194" text-anchor="end" font-size="9" fill="#666">0</text>
+    <text x="52" y="158" text-anchor="end" font-size="9" fill="#666">25</text>
+    <text x="52" y="122" text-anchor="end" font-size="9" fill="#666">50</text>
+    <text x="52" y="86" text-anchor="end" font-size="9" fill="#666">75</text>
+    <text x="52" y="50" text-anchor="end" font-size="9" fill="#666">100</text>
+
+    <!-- Gridlines -->
+    <line x1="60" y1="154" x2="500" y2="154" stroke="#eee" stroke-width="0.5"/>
+    <line x1="60" y1="118" x2="500" y2="118" stroke="#eee" stroke-width="0.5"/>
+    <line x1="60" y1="82" x2="500" y2="82" stroke="#eee" stroke-width="0.5"/>
+    <line x1="60" y1="46" x2="500" y2="46" stroke="#eee" stroke-width="0.5"/>
+
+    <!-- X labels -->
+    <text x="60" y="205" text-anchor="middle" font-size="9" fill="#666">0</text>
+    <text x="148" y="205" text-anchor="middle" font-size="9" fill="#666">10</text>
+    <text x="236" y="205" text-anchor="middle" font-size="9" fill="#666">20</text>
+    <text x="324" y="205" text-anchor="middle" font-size="9" fill="#666">30</text>
+    <text x="412" y="205" text-anchor="middle" font-size="9" fill="#666">40</text>
+    <text x="500" y="205" text-anchor="middle" font-size="9" fill="#666">50</text>
+    <text x="280" y="222" text-anchor="middle" font-size="11" fill="#444">Time (s)</text>
+
+    <!-- Scale: x = 60 + t*8.8, y = 190 - val*1.8 -->
+
+    <!-- [S] substrate (blue): starts 100, decreases -->
+    <polyline fill="none" stroke="#1565c0" stroke-width="2.5" stroke-linecap="round"
+      points="60,10 69,12 78,15 86,20 95,27 104,35 112,45 121,56 130,68 138,80
+              147,92 156,103 165,113 173,122 182,130 191,137 199,143 208,148 217,153 225,157
+              234,161 243,164 251,166 260,169 269,171 277,173 286,174 295,176 304,177 312,178
+              321,179 330,180 338,181 347,182 356,182 365,183 373,183 382,184 391,184 400,185
+              408,185 417,186 426,186 434,186 443,187 452,187 461,187 470,188 478,188 500,189"/>
+
+    <!-- [E] enzyme (orange): dips then recovers -->
+    <polyline fill="none" stroke="#e65100" stroke-width="2.5" stroke-linecap="round"
+      points="60,172 69,168 78,165 86,164 95,163 104,163 112,163 121,164 130,165 138,166
+              147,167 156,169 165,170 173,171 182,173 191,174 199,175 208,176 217,177 225,178
+              234,178 243,179 251,179 260,180 269,180 277,181 286,181 295,182 304,182 312,182
+              321,183 330,183 338,183 347,184 356,184 365,184 373,184 382,185 391,185 400,185
+              408,185 417,185 426,186 434,186 443,186 452,186 461,186 470,187 478,187 500,188"/>
+
+    <!-- [ES] complex (purple): rises then falls -->
+    <polyline fill="none" stroke="#7b1fa2" stroke-width="2.5" stroke-linecap="round"
+      points="60,190 69,184 78,178 86,174 95,172 104,171 112,171 121,170 130,170 138,170
+              147,171 156,172 165,173 173,175 182,177 191,178 199,179 208,180 217,181 225,182
+              234,182 243,183 251,183 260,184 269,184 277,184 286,185 295,185 304,185 312,185
+              321,186 330,186 338,186 347,186 356,186 365,186 373,187 382,187 391,187 400,187
+              408,188 417,188 426,188 434,188 443,188 452,188 461,189 470,189 478,189 500,190"/>
+
+    <!-- [P] product (green): S-curve increase -->
+    <polyline fill="none" stroke="#2e7d32" stroke-width="2.5" stroke-linecap="round"
+      points="60,190 69,188 78,186 86,183 95,178 104,172 112,165 121,157 130,148 138,139
+              147,130 156,122 165,114 173,108 182,102 191,96 199,92 208,87 217,84 225,80
+              234,77 243,74 251,72 260,70 269,68 277,66 286,65 295,63 304,62 312,61
+              321,60 330,58 338,57 347,56 356,55 365,55 373,54 382,53 391,53 400,52
+              408,52 417,51 426,51 434,50 443,50 452,50 461,49 470,49 478,48 500,47"/>
+
+    <!-- Legend -->
+    <line x1="350" y1="20" x2="375" y2="20" stroke="#1565c0" stroke-width="2.5"/>
+    <text x="380" y="24" font-size="10" fill="#1565c0">[S] Substrate</text>
+    <line x1="350" y1="36" x2="375" y2="36" stroke="#e65100" stroke-width="2.5"/>
+    <text x="380" y="40" font-size="10" fill="#e65100">[E] Enzyme</text>
+    <line x1="350" y1="52" x2="375" y2="52" stroke="#7b1fa2" stroke-width="2.5"/>
+    <text x="380" y="56" font-size="10" fill="#7b1fa2">[ES] Complex</text>
+    <line x1="350" y1="68" x2="375" y2="68" stroke="#2e7d32" stroke-width="2.5"/>
+    <text x="380" y="72" font-size="10" fill="#2e7d32">[P] Product</text>
+  </g>
+</svg>

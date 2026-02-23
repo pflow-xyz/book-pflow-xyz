@@ -35,6 +35,8 @@ Four places, three transitions:
 | `unbind` | $k_{-1} = 0.1$ | complex → substrate + enzyme |
 | `catalyze` | $k_{cat} = 0.5$ | complex → product + enzyme |
 
+![Enzyme kinetics reaction network and concentration curves over time](../figures/ch09-enzyme-kinetics.svg)
+
 The arc structure encodes the chemistry directly:
 
 ```
