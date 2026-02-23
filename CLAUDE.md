@@ -29,6 +29,15 @@ Content draws from three sibling projects in this workspace:
 | petri-pilot | `~/Workspace/petri-pilot/` | Docs, 13 example models, generated apps |
 | go-pflow | `~/Workspace/go-pflow/` | 60+ docs, 18 examples, research paper outline |
 
+## Building & Publishing
+
+- **HTML site**: `make book` (mdbook)
+- **EPUB/PDF**: `make epub` / `make pdf` — requires pandoc and xelatex, which are only on `pflow.dev`
+- **Full rebuild** (epub + pdf + webserver): `make build` — run on `pflow.dev`, not locally
+- **Local dev**: `make serve` for mdbook hot-reload, or `make build-web` for the Go webserver (no pandoc needed)
+- **Deploy**: push to main, then on pflow.dev: `cd ~/Workspace/book-pflow-xyz && git pull && make build && ~/services restart book-pflow-xyz`
+- **Releases**: tag with `git tag vX.Y.Z`, create GitHub release with `gh release create`, attach `build/book.epub` and `build/book.pdf` built on pflow.dev
+
 ## Workflow
 
 - Draft chapters in `chapters/` as markdown
