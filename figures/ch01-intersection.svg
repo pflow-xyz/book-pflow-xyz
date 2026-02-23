@@ -1,81 +1,87 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320" font-family="'Helvetica Neue', Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 380" font-family="'Helvetica Neue', Arial, sans-serif">
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
       <path d="M0,0 L8,3 L0,6 Z" fill="#444"/>
     </marker>
+    <marker id="arr-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#1a237e"/>
+    </marker>
   </defs>
 
   <!-- Title -->
-  <text x="240" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">Intersection: Mutual Exclusion</text>
+  <text x="250" y="24" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">Intersection: Mutual Exclusion</text>
 
-  <!-- Light A -->
-  <text x="110" y="52" text-anchor="middle" font-size="12" font-weight="bold" fill="#555">Light A</text>
+  <!-- ===== Light A ===== -->
+  <text x="130" y="56" text-anchor="middle" font-size="12" font-weight="bold" fill="#555">Light A</text>
 
-  <!-- Red_A -->
-  <circle cx="50" cy="90" r="26" fill="#fef0f0" stroke="#444" stroke-width="1.5"/>
-  <text x="50" y="94" text-anchor="middle" font-size="11" fill="#333">Red_A</text>
-  <circle cx="50" y="78" r="4" fill="#333"/>
+  <!-- Red_A (with token) -->
+  <circle cx="60" cy="100" r="28" fill="#fef0f0" stroke="#444" stroke-width="1.5"/>
+  <text x="60" y="104" text-anchor="middle" font-size="11" fill="#333">Red_A</text>
+  <circle cx="60" cy="84" r="4" fill="#333"/>
 
   <!-- go_green_A transition -->
-  <rect x="115" y="78" width="10" height="24" fill="#444" rx="1"/>
-  <text x="120" y="118" text-anchor="middle" font-size="10" fill="#666">go_green_A</text>
+  <rect x="130" y="88" width="10" height="24" fill="#444" rx="1"/>
+  <text x="135" y="128" text-anchor="middle" font-size="10" fill="#666">go_green_A</text>
 
   <!-- Green_A -->
-  <circle cx="190" cy="90" r="26" fill="#f0faf0" stroke="#444" stroke-width="1.5"/>
-  <text x="190" y="94" text-anchor="middle" font-size="11" fill="#333">Green_A</text>
+  <circle cx="210" cy="100" r="28" fill="#f0faf0" stroke="#444" stroke-width="1.5"/>
+  <text x="210" y="104" text-anchor="middle" font-size="11" fill="#333">Green_A</text>
 
   <!-- go_red_A transition -->
-  <rect x="255" y="78" width="10" height="24" fill="#444" rx="1"/>
-  <text x="260" y="118" text-anchor="middle" font-size="10" fill="#666">go_red_A</text>
+  <rect x="280" y="88" width="10" height="24" fill="#444" rx="1"/>
+  <text x="285" y="128" text-anchor="middle" font-size="10" fill="#666">go_red_A</text>
 
-  <!-- Arcs for Light A -->
-  <line x1="76" y1="90" x2="113" y2="90" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
-  <line x1="125" y1="90" x2="162" y2="90" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
-  <line x1="216" y1="90" x2="253" y2="90" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
-  <!-- go_red_A back to Red_A (curved) -->
-  <path d="M265,90 Q300,50 300,90 Q300,45 50,50 Q30,50 50,64" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Arcs: Red_A → go_green_A → Green_A → go_red_A -->
+  <line x1="88" y1="100" x2="128" y2="100" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="140" y1="100" x2="180" y2="100" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="238" y1="100" x2="278" y2="100" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
 
-  <!-- Shared Intersection_Free place -->
-  <circle cx="240" cy="185" r="32" fill="#e8eaf6" stroke="#1a237e" stroke-width="2"/>
-  <text x="240" y="181" text-anchor="middle" font-size="10" fill="#1a237e">Intersection</text>
-  <text x="240" y="194" text-anchor="middle" font-size="10" fill="#1a237e">Free</text>
-  <circle cx="240" cy="168" r="4" fill="#1a237e"/>
+  <!-- go_red_A → Red_A (curved arc above) -->
+  <path d="M290,88 C290,50 60,50 60,72" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
 
-  <!-- Light B -->
-  <text x="110" y="248" text-anchor="middle" font-size="12" font-weight="bold" fill="#555">Light B</text>
+  <!-- ===== Shared Intersection_Free place ===== -->
+  <circle cx="250" cy="200" r="34" fill="#e8eaf6" stroke="#1a237e" stroke-width="2"/>
+  <text x="250" y="196" text-anchor="middle" font-size="10" fill="#1a237e">Intersection</text>
+  <text x="250" y="209" text-anchor="middle" font-size="10" fill="#1a237e">Free</text>
+  <circle cx="250" cy="182" r="4" fill="#1a237e"/>
+
+  <!-- ===== Light B ===== -->
+  <text x="130" y="266" text-anchor="middle" font-size="12" font-weight="bold" fill="#555">Light B</text>
 
   <!-- Red_B -->
-  <circle cx="50" cy="280" r="26" fill="#fef0f0" stroke="#444" stroke-width="1.5"/>
-  <text x="50" y="284" text-anchor="middle" font-size="11" fill="#333">Red_B</text>
-  <circle cx="50" y="268" r="4" fill="#333"/>
+  <circle cx="60" cy="300" r="28" fill="#fef0f0" stroke="#444" stroke-width="1.5"/>
+  <text x="60" y="304" text-anchor="middle" font-size="11" fill="#333">Red_B</text>
 
   <!-- go_green_B transition -->
-  <rect x="115" y="268" width="10" height="24" fill="#444" rx="1"/>
-  <text x="120" y="308" text-anchor="middle" font-size="10" fill="#666">go_green_B</text>
+  <rect x="130" y="288" width="10" height="24" fill="#444" rx="1"/>
+  <text x="135" y="330" text-anchor="middle" font-size="10" fill="#666">go_green_B</text>
 
   <!-- Green_B -->
-  <circle cx="190" cy="280" r="26" fill="#f0faf0" stroke="#444" stroke-width="1.5"/>
-  <text x="190" y="284" text-anchor="middle" font-size="11" fill="#333">Green_B</text>
+  <circle cx="210" cy="300" r="28" fill="#f0faf0" stroke="#444" stroke-width="1.5"/>
+  <text x="210" y="304" text-anchor="middle" font-size="11" fill="#333">Green_B</text>
 
   <!-- go_red_B transition -->
-  <rect x="255" y="268" width="10" height="24" fill="#444" rx="1"/>
-  <text x="260" y="308" text-anchor="middle" font-size="10" fill="#666">go_red_B</text>
+  <rect x="280" y="288" width="10" height="24" fill="#444" rx="1"/>
+  <text x="285" y="330" text-anchor="middle" font-size="10" fill="#666">go_red_B</text>
 
-  <!-- Arcs for Light B -->
-  <line x1="76" y1="280" x2="113" y2="280" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
-  <line x1="125" y1="280" x2="162" y2="280" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
-  <line x1="216" y1="280" x2="253" y2="280" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
-  <path d="M265,280 Q300,320 300,280 Q300,325 50,320 Q30,320 50,306" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Arcs: Red_B → go_green_B → Green_B → go_red_B -->
+  <line x1="88" y1="300" x2="128" y2="300" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="140" y1="300" x2="180" y2="300" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="238" y1="300" x2="278" y2="300" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
 
-  <!-- Shared arcs: Intersection_Free → go_green_A -->
-  <line x1="222" y1="158" x2="120" y2="104" stroke="#1a237e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+  <!-- go_red_B → Red_B (curved arc below) -->
+  <path d="M290,312 C290,355 60,355 60,328" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
 
-  <!-- go_red_A → Intersection_Free -->
-  <line x1="260" y1="104" x2="252" y2="155" stroke="#1a237e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+  <!-- ===== Shared arcs (dashed blue) ===== -->
+  <!-- Intersection_Free → go_green_A (consumed when A turns green) -->
+  <line x1="232" y1="172" x2="137" y2="114" stroke="#1a237e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-blue)"/>
 
-  <!-- Intersection_Free → go_green_B -->
-  <line x1="222" y1="212" x2="120" y2="266" stroke="#1a237e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+  <!-- go_red_A → Intersection_Free (returned when A turns red) -->
+  <line x1="287" y1="114" x2="268" y2="170" stroke="#1a237e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-blue)"/>
 
-  <!-- go_red_B → Intersection_Free -->
-  <line x1="260" y1="266" x2="252" y2="215" stroke="#1a237e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+  <!-- Intersection_Free → go_green_B (consumed when B turns green) -->
+  <line x1="232" y1="228" x2="137" y2="286" stroke="#1a237e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-blue)"/>
+
+  <!-- go_red_B → Intersection_Free (returned when B turns red) -->
+  <line x1="287" y1="286" x2="268" y2="230" stroke="#1a237e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-blue)"/>
 </svg>
