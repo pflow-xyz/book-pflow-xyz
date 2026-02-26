@@ -80,12 +80,62 @@ The limitations section of Chapter 13 was honest, but it was framed as caveats. 
 
 **Composition verification.** Chapter 4 described cross-schema composition with EventLinks, DataLinks, TokenLinks, and GuardLinks. Chapter 13 described single-net ZK verification. The gap: proving that a composed system of multiple nets preserves the invariants of each component. Assume-guarantee reasoning suggests this is tractable — each component's proof is independent, and composition only needs to verify the boundaries. But the ZK pipeline doesn't implement this yet.
 
+## What the ODE Was Actually Computing
+
+The four-layer stack describes *what* the book built. This section names *what it computes* — and the answer is more precise than "equilibrium concentrations."
+
+### The Round-Trip Matrix
+
+Chapter 2 introduced the incidence matrix $N$ with its input and output components. But there's a simpler object underneath. Let $B$ be the **input adjacency matrix** of the bipartite graph: $B[i,j] = 1$ if place $i$ is an input to transition $j$, and 0 otherwise. This is the "who feeds whom" structure at Layer 1 — pure graph connectivity, no Petri net semantics.
+
+The matrix product $BB^T$ is a square matrix on places:
+
+$$(BB^T)[i,j] = \sum_k B[i,k] \cdot B[j,k]$$
+
+This counts the number of transitions that places $i$ and $j$ both feed into — their co-occurrence through the transition layer. The diagonal entry $(BB^T)[i,i]$ counts how many transitions consume from place $i$: its outflow degree.
+
+$BB^T$ is a round-trip: start at places, pass through transitions, return to places. In categorical language, $B$ is a morphism from the place space to the transition space and $B^T$ is its adjoint going back. The composite $BB^T$ is an **endofunctor** — a mapping from the place space to itself. It encodes how the transition layer mediates relationships among places.
+
+### The Diagonal Is the Invariant
+
+Now look at what the poker analysis net computed in Chapter 13. Each value place $\text{val}_H$ had one play transition producing tokens (constant inflow) and $n$ drain transitions consuming tokens (outflow proportional to $n$). The drain count $n$ is exactly $(BB^T)[\text{val}_H, \text{val}_H]$ — the diagonal entry for that place. And the equilibrium concentration was:
+
+$$\text{val}_H^* = \frac{1}{n} = \frac{1}{(BB^T)_{ii}}$$
+
+The ODE system relaxed to a steady state that depends only on the diagonal of $BB^T$. Not the full matrix — just the diagonal. Each place's equilibrium is determined by its own connectivity, independent of every other place.
+
+This independence is not accidental. The catalytic-pump construction decouples the places: each value accumulator has its own source, its own drains, and no cross-talk with other accumulators. The full matrix $BB^T$ has off-diagonal entries — multiple value places might share drain transitions in a more complex net — but the construction projects those away. At equilibrium, only the diagonal survives.
+
+### The Categorical Trace
+
+In category theory, the **trace** of an endomorphism extracts the diagonal information — it maps a square matrix to the sum of its diagonal entries, discarding everything off-diagonal. For a finite-dimensional endomorphism $f$, $\text{tr}(f) = \sum_i f_{ii}$.
+
+The ODE system computes something stronger than the scalar trace: it computes each diagonal entry individually. The equilibrium vector $M^*$ is a function of the diagonal of $BB^T$ alone. The system *relaxes into reading only the diagonal* of the round-trip endofunctor.
+
+This is what Chapter 13's rate auto-derivation was doing all along. When the algorithm counted drain connections per candidate and derived rate constants from those counts, it was reading $(BB^T)_{ii}$ for each candidate. When the ODE solver ran those rates to equilibrium, it was dynamically computing the same readout. Both paths arrive at the diagonal of $BB^T$. The rate derivation computes it statically by counting. The ODE computes it dynamically by relaxing. They agree because they are computing the same invariant of the same structure.
+
+The tic-tac-toe result — center (4) > corner (3) > edge (2) — is a diagonal readout of $BB^T$ restricted to win-line connectivity. The poker result — straight flush (1 drain) > four of a kind (2 drains) > ... > high card (32 drains) — is the inverse diagonal readout. Both are the categorical trace of the entity-constraint endofunctor, computed through simulation.
+
+### Portability
+
+The construction — bipartite structure, round-trip endofunctor, diagonal readout via ODE — has nothing to do with games. Games are where the book validated it. But the pattern applies to anything expressible as "entities participate in constraints":
+
+**Financial networks.** Assets are places, portfolio allocations are transitions. $(BB^T)_{ii}$ counts how many portfolios asset $i$ participates in — its exposure. The ODE equilibrium ranks assets by systemic importance.
+
+**Supply chains.** Components are places, products are transitions. The diagonal counts how many products each component feeds. The equilibrium identifies strategic bottlenecks without supply chain domain knowledge.
+
+**Access control.** Principals are places, permission sets are transitions. The diagonal measures privilege surface area. Higher connectivity means higher risk exposure.
+
+**Governance.** Voters are places, decisions are transitions. The diagonal measures structural influence — how many decision points each voter participates in.
+
+In every case, the recipe is identical: encode the entity-constraint structure as a bipartite graph, form $BB^T$, and read the diagonal — either by counting (static analysis) or by ODE relaxation (dynamic computation). The equilibrium concentrations rank entities by structural importance within the constraint network. No training data. No domain heuristics. Just topology.
+
 ## The Premise, Revisited
 
 Chapter 1 opened with a complaint: informal models fail because they don't capture the structure of the systems they represent. Concurrency is an afterthought. Resources are invisible. State is implicit.
 
 Petri nets fix this by making structure explicit. Places hold state. Transitions change it. Arcs constrain what can flow where. Conservation laws fall out of the topology. The model is the specification.
 
-But the deeper lesson — the one that emerged through writing this book, not before it — is that the Petri net formalism is itself a layer over something simpler. The structure that matters most is the directed bipartite graph. The Petri net adds semantics to that graph. The ODE adds dynamics. The ZK circuit adds proof. Each layer is useful. None is the whole story.
+But the deeper lesson — the one that emerged through writing this book, not before it — is that the Petri net formalism is itself a layer over something simpler. The structure that matters most is the directed bipartite graph. The Petri net adds semantics to that graph. The ODE adds dynamics. The ZK circuit adds proof. Each layer is useful. None is the whole story. And the invariant that connects them — the diagonal of $BB^T$, computed dynamically by the ODE and verified cryptographically by the ZK circuit — is a categorical property of the bipartite structure itself. It exists whether you call the formalism a Petri net, a chemical reaction network, or a bipartite constraint graph.
 
-If there's a single sentence version of what this book argues, it might be: **the topology of a system — what connects to what, through what — determines more about its behavior than any amount of parameter tuning, training data, or runtime optimization.** The Petri net is one way to read that topology. It turned out to be a very good way. But the topology was always there, waiting to be read.
+If there's a single sentence version of what this book argues, it might be: **the topology of a system — what connects to what, through what — determines more about its behavior than any amount of parameter tuning, training data, or runtime optimization.** The Petri net is one way to read that topology. The ODE is one way to compute its invariants. The diagonal of $BB^T$ is one such invariant — and it turned out to be the one that matters most. The topology was always there, waiting to be read.
