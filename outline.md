@@ -201,14 +201,15 @@
 ---
 
 ## Epilogue: What the Abstraction Sits On
-**Learning objective**: Name the layered architecture the book built, see the applications through the net type taxonomy, and identify the open problems.
+**Learning objective**: Name the layered architecture the book built, see the applications through the net type taxonomy, identify the categorical structure that makes it all cohere, and identify the open problems.
 
 - The four-layer stack: graph theory → Petri net semantics → ODE dynamics → ZK verification
 - Six applications, five types — retrospective taxonomy table (Coffee Shop=ResourceNet, TTT=GameNet, Sudoku=ClassificationNet, Knapsack=ComputationNet, Enzyme=ComputationNet, Hold'em=GameNet)
 - What the book proved: small models beat black boxes, one formalism / multiple tools, topology is primary
 - What the book didn't solve: multi-hop connectivity, weighted targets, dynamic rates, circuit scaling, composition verification
+- The structure underneath: transitions as morphisms in a symmetric monoidal category, two composition modes (sequential and parallel), the SMC as the reason techniques transfer across chapters
 - The premise revisited: the Petri net is a layer, not the foundation — the topology was always there
-- **Source material**: Ch 1 (opening premise), Ch 4 (net taxonomy), Ch 13 (graph theory insight, limitations)
+- **Source material**: Ch 1 (opening premise), Ch 4 (net taxonomy), Ch 13 (graph theory insight, limitations), blog/symmetric-monoidal-categories
 
 ---
 
@@ -230,11 +231,20 @@
 ### Appendix D: Glossary
 - Place, transition, arc, token, marking, firing, reachability, P-invariant, ...
 
+### Appendix E: Categorical Foundations
+- Symmetric monoidal categories: definition and coherence
+- The free SMC theorem (Sassone, Meseguer-Montanari)
+- Three functors: ODE, ZK, and analysis as monoidal functors
+- Lenses in monoidal categories and product decomposition
+- Net types as sub-SMCs; typed links as functors
+- The 2-categorical view: assume-guarantee as 2-cell composition
+- **Source material**: blog/symmetric-monoidal-categories, blog/categorical-net-types
+
 ---
 
 ## Estimated Scope
 
-- **18 chapters + epilogue + 4 appendices**
+- **18 chapters + epilogue + 5 appendices**
 - **~60,000–80,000 words** target
 - **Existing material covers ~70%** of outlined content
 - **Gaps to write from scratch**: Ch 15 (editor walkthrough), Ch 18 (dual implementation), narrative transitions, exercises

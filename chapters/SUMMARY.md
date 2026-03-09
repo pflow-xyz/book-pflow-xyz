@@ -44,3 +44,4 @@
 - [Token Language Grammar](appendix-b-token-grammar.md)
 - [JSON Schema Reference](appendix-c-json-schema.md)
 - [Glossary](appendix-d-glossary.md)
+- [Categorical Foundations](appendix-e-categorical-foundations.md)
