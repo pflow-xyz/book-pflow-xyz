@@ -40,11 +40,13 @@ build/book.epub: $(CHAPTERS) metadata.yaml templates/epub.css
 	@mkdir -p build
 	pandoc --metadata-file=metadata.yaml \
 		--toc --toc-depth=2 \
+		--resource-path=chapters \
 		--epub-cover-image=figures/cover.svg \
 		--css=templates/epub.css \
 		-o build/book.epub $(CHAPTERS) 2>/dev/null || \
 	pandoc --metadata-file=metadata.yaml \
 		--toc --toc-depth=2 \
+		--resource-path=chapters \
 		--css=templates/epub.css \
 		-o build/book.epub $(CHAPTERS)
 
@@ -55,6 +57,7 @@ build/book.pdf: $(CHAPTERS) metadata.yaml
 	@mkdir -p build
 	pandoc --metadata-file=metadata.yaml \
 		--pdf-engine=xelatex \
+		--resource-path=chapters \
 		--toc --toc-depth=2 \
 		-o build/book.pdf $(CHAPTERS)
 
