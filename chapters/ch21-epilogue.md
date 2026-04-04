@@ -172,6 +172,24 @@ This theorem has been silently at work in every chapter:
 
 - **Mass-action kinetics is well-behaved** (Chapter 3) because it's a monoidal functor from the discrete SMC to continuous dynamics. It preserves the product structure: independent components stay independent.
 
+### What the Category Doesn't See
+
+The SMC encoding captures process structure — which compositions are valid, which transitions are independent. But it flattens something every computation in this book depends on: the privileged present.
+
+In the free SMC, tokens are objects, firing sequences are morphisms, and all markings are homogeneous. There is no distinguished "current state." The marking that a DDM simulation reads on every step — the thing that determines which transitions are enabled right now — has no special status. It's just another object, related to other objects by transition morphisms.
+
+But every engine we built tells a different story. Execution state has a three-part structure — a *zipper* in the sense of Huet (1997):
+
+- **Left context (past).** The tropical semiring accumulates firing history into a compressed summary. Past firings are irreversible; the tropical core is the proof. This is the accumulator layer from Chapters 15–16.
+- **Hole (present).** The current marking. It is simultaneously the output of tropical accumulation and the input to the predicate layer. Change the marking and you are in a different universe — different history is relevant, different transitions are enabled.
+- **Right context (future).** Guards and predicates constrain what fires next, computed fresh from the marking on every step. Win detection, turn enforcement, balance checks — all recomputed when the hole moves.
+
+The SMC has no hole. It was never meant to. The categorical encoding is a theorem about what compositions are valid — the right tool for structure. But computation requires focus, and focus requires a boundary between what has happened and what might happen next.
+
+Two established treatments of time illuminate the gap. Schultz and Spivak's temporal type theory treats time as a parameter — an interval you index over, where the current moment has no special status. Prior's tense logic treats past and future as modalities — operators that shift perspective relative to an implicit now. Both smuggle the present in through the side door. The zipper makes it structural: the marking *is* the present, and the present is a universe relative to which past and future are both defined.
+
+This is not a deficiency of the SMC framework — it's a scope boundary. The category tells you what can compose. The zipper tells you where you are in the composition. Every serious computational use of Petri nets — workflow engines, protocol stacks, ZK circuits — bolts mutable execution state onto the immutable categorical skeleton. The zipper names that joint.
+
 ### The Ecosystem Through Categorical Eyes
 
 Step back and look at what this book built. The layers compose because they form a categorical structure:
