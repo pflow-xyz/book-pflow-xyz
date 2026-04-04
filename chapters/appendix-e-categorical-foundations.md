@@ -111,6 +111,54 @@ $$\text{Lens}(A \otimes B) \cong \text{Lens}(A) \otimes \text{Lens}(B)$$
 
 Each place gets its own lens, composed in parallel. Updating one place's view doesn't touch the others. This is why dynamic evaluation (Chapter 13) works — inject a new board state, and each position's lens independently resolves its new value from its remaining drain connections.
 
+## The Execution Zipper
+
+The free SMC $\mathcal{F}(N)$ captures the morphism structure of a net — which compositions are valid, which transitions are independent. But it has no privileged present. Every marking is just another object, related to others by transition morphisms. Computation requires something more: a *focus*.
+
+A **zipper** (Huet, 1997) decomposes a structure into a focused element and its surrounding context. For a Petri net execution, the decomposition is:
+
+$$\text{Exec}(N) = \mathcal{L}(N) \times M \times \mathcal{R}(N, M)$$
+
+where:
+
+- **$M \in \mathbb{N}^P$** is the current marking — the hole. It is the object in $\mathcal{F}(N)$ at which execution is focused.
+- **$\mathcal{L}(N)$** is the left context — the accumulated history of past firings. This is a element of the tropical semiring $(\mathbb{R}_{\max}, \oplus, \otimes)$ where $a \oplus b = \max(a,b)$ and $a \otimes b = a + b$. The tropical core compresses firing history into longest-path summaries: $\mathcal{L}_{ij}$ records the longest causal chain from transition $i$ to transition $j$. Tropical matrix multiplication is fast-forward: $\mathcal{L}^{(n)} = \mathcal{L}^{(n-1)} \otimes \mathcal{L}^{(1)}$.
+- **$\mathcal{R}(N, M)$** is the right context — the set of transitions enabled at marking $M$. This is a predicate on $\mathcal{F}(N)$'s generators: $\mathcal{R}(N, M) = \{ t \in T \mid \text{pre}(t) \leq M \}$. It is computed fresh from the hole on every step.
+
+### The Zipper Step
+
+A single execution step is a zipper movement. When transition $t$ fires at marking $M$:
+
+1. The hole updates: $M' = M - \text{pre}(t) + \text{post}(t)$
+2. The left context grows: $\mathcal{L}' = \mathcal{L} \otimes_{\text{trop}} e_t$ where $e_t$ is the one-step matrix for $t$
+3. The right context recomputes: $\mathcal{R}(N, M')$ — a new set of enabled transitions
+
+The left context is closed and irreversible — tropical accumulation is lossy. The right context is open and ephemeral — it exists only relative to the current hole. The hole is the tense boundary between them.
+
+### Relationship to the SMC
+
+The zipper is not an alternative to the free SMC — it is a *refinement*. The SMC $\mathcal{F}(N)$ is the space of all valid compositions. The zipper is a pointed structure *within* that space: a position (the marking), a summary of the path taken to reach it (the tropical core), and the set of available next steps (enabled transitions).
+
+Formally, the zipper arises from a **comonad** on the category of markings. The comonad $W : \mathbb{N}^P \to \mathbb{N}^P$ sends each marking to its context — the pair of left and right contexts surrounding it. The counit $\varepsilon : W(M) \to M$ extracts the current marking (the focus). The comultiplication $\delta : W(M) \to W(W(M))$ re-contextualizes — it says that the context itself has a context, which is how nested simulation (a DDM step within a DDM step) becomes well-defined.
+
+The coKleisli category of this comonad — the category whose morphisms are $W(A) \to B$ — is the category of *context-dependent computations*. Every DDM engine in this book is a coKleisli morphism: it reads the full execution context (accumulated history, current marking, enabled transitions) and produces the next state.
+
+### Tense Structure
+
+The three components of the zipper correspond to three treatments of time:
+
+| Component | Tense | Algebraic Structure | Property |
+|-----------|-------|-------------------|----------|
+| $\mathcal{L}(N)$ | Past | Tropical semiring | Closed, irreversible, lossy |
+| $M$ | Present | Free commutative monoid $\mathbb{N}^P$ | The universe — defines what "past" and "future" mean |
+| $\mathcal{R}(N, M)$ | Future | Predicate on generators | Open, recomputed, ephemeral |
+
+This contrasts with two established frameworks. Schultz and Spivak's temporal type theory (2019) treats time as a parameter — an interval domain indexing a presheaf. The current moment is a point on the index, with no special status. Prior's tense logic treats time as a modality — operators $\square$ (always in the past) and $\diamond$ (sometime in the future) shift perspective relative to an implicit now. Both frameworks derive the present from something else.
+
+The zipper inverts this: the present is foundational. The marking $M$ is not a point on a timeline or an implicit reference — it is the universe relative to which past ($\mathcal{L}$) and future ($\mathcal{R}$) are both defined. Move the hole and you are in a different universe.
+
+This is the formal content behind the "scope boundary" noted in Chapter 21. The SMC sees morphism structure. The zipper sees execution state. Genovese et al. (2019) gave independent evidence for this boundary: forcing a functorial adjunction between nets and free SMCs breaks practical computational requirements — precisely because the adjunction cannot accommodate the mutable focus that computation demands.
+
 ## Net Types as Sub-SMCs
 
 The five net types from Chapter 4 are sub-SMCs of the free category $\mathcal{F}(N)$, each with additional structure:
