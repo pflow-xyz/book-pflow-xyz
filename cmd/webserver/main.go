@@ -19,6 +19,7 @@ func main() {
 	}
 
 	server := &http.ServeMux{}
+	registerDeployRoutes(server)
 	server.Handle("/", http.FileServerFS(publicFS))
 
 	addr := fmt.Sprintf(":%d", *port)
