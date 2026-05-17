@@ -277,6 +277,53 @@ conf := mining.CheckConformance(log, net)
 
 The 13% non-fitting traces represent process variants not captured by the common-path model. Switching to the Alpha algorithm or heuristic miner would increase fitness at the cost of model complexity.
 
+## Generator and Recognizer: Closing the Loop
+
+Process mining infers structure from observations. There is a complementary
+move worth naming: *executing* a declared structure to produce observations.
+Both end at the same artifact — a Petri net — but they travel in opposite
+directions.
+
+Take a streaming pipeline of the kind Apache Beam popularised: a chain of
+windowed aggregations over a keyed event stream. The `tokenmodel/dataflow`
+package lowers such a pipeline to a bundle of Petri net subnets — one per
+key, one per (key, window) accumulator, one for the watermark. Feed the
+pipeline an event stream and every order, every ingredient unit, every
+window pane becomes a token in the net. The pipeline is the *generator*.
+
+Mining is the *recognizer*. Give it the execution trace and ask it to
+recover the structure that produced it:
+
+```go
+log := pipeline.ToEventLog()
+res, _ := mining.DiscoverPipeline(log, mining.PipelineDiscoveryOptions{
+    IdealEventsPerWindow: 7,
+})
+// Recovered: window kind=fixed, size≈60min, 6 keys — matches the spec.
+```
+
+Run a coffee shop's worth of orders through the lowered pipeline, export
+the input history, and `DiscoverPipeline` recovers the original window
+strategy, key set, and trigger family from the inter-arrival statistics
+alone. The window *size* it recovers is heuristic — the stream's timing
+cannot reveal that "60 minutes" was chosen because that's an hour — but
+the qualitative structure is exact.
+
+This is the same duality that runs through the whole book, made explicit:
+
+- **Generator** is total and deterministic — a spec fully determines the
+  net.
+- **Recognizer** is partial and statistical — a log under-determines the
+  net, which is why we have algorithms like Alpha and the heuristic miner
+  to choose between candidates.
+
+The two directions meet in the middle, at the Petri net. Whether you
+arrive by declaration or by induction, the resulting object obeys the same
+incidence matrix, the same conservation laws, the same simulation
+dynamics. That is the practical reason the formalism is worth the
+investment: it gives you one mathematical surface on which generator and
+recognizer can compose.
+
 ## From Data to Model to Prediction
 
 Process mining completes the Petri net toolkit. Parts I and II showed how to build models from domain knowledge — encoding rules as structure. This chapter shows how to extract models from data — discovering rules from behavior.
