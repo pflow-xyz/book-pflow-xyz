@@ -44,3 +44,19 @@ Content draws from three sibling projects in this workspace:
 - Pull and adapt content from source projects — don't copy verbatim, rewrite for book narrative
 - Each chapter should have a clear learning objective stated at the top
 - Every concept introduced should have a corresponding working example
+
+## Decommissioning
+
+The book at book.pflow.xyz (pflow.dev :8087).
+
+See [Archiving, backing up and taking down a project](../stackdump-com/CLAUDE.md#archiving-backing-up-and-taking-down-a-project) for the ecosystem-wide procedure and the ordering. This section records only what **this** project holds, which is the part that differs.
+
+**State that is not in git** (every path below is gitignored):
+
+| Host | Path | Size | What it is |
+|---|---|---|---|
+| pflow.dev | `~/Workspace/book-pflow-xyz/` | - | no database found; content is in git |
+
+**Specific to this project:**
+
+- Content lives in the repo, so archiving the GitHub repo preserves the book itself.
