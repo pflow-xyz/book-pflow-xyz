@@ -1,0 +1,117 @@
+# Petri Nets as a Universal Abstraction
+
+> A Practitioner's Guide to Modeling with pflow — a technical book arguing
+> that Petri nets (places, transitions, arcs, tokens) are one formalism for
+> state machines, workflows, resource flows, games, chemical kinetics, ZK
+> circuits, and token standards. Every chapter pairs the math with working
+> models from the pflow ecosystem: the browser editor (pflow.xyz), the Go
+> library (go-pflow), and the code generator / MCP server (pilot.pflow.xyz).
+> Models are JSON-LD (`@context: https://pflow.xyz/schema`); the same model
+> runs as a discrete net, as a mass-action ODE system, and as a verified
+> application.
+
+Read it linearly for the argument, or jump to Part II for worked examples
+and Part IV for the tooling. The full text in one file is at
+[llms-full.txt](https://book.pflow.xyz/llms-full.txt).
+
+## Front matter
+
+- [Preface](https://book.pflow.xyz/preface.html): why a 1962 formalism
+  deserves working programmers' attention, who the book is for, how it is
+  organized
+
+## Part I: Foundations
+
+- [Why Petri Nets?](https://book.pflow.xyz/ch01-why-petri-nets.html): what
+  breaks in flowcharts, state machines and ad-hoc models, and what a
+  bipartite graph with tokens fixes (concurrency, conservation, analysis)
+- [The Mathematics of Flow](https://book.pflow.xyz/ch02-mathematics-of-flow.html):
+  the formal 5-tuple, firing rules, incidence matrix, state equation,
+  P- and T-invariants, reachability
+- [From Discrete to Continuous](https://book.pflow.xyz/ch03-discrete-to-continuous.html):
+  relaxing integer tokens to concentrations — mass-action kinetics, the ODE
+  system a net induces, and why adaptive Runge-Kutta (Tsit5) is the default
+- [The Token Language](https://book.pflow.xyz/ch04-token-language.html): the
+  four-term pflow DSL for guards, roles, typed state, invariants and
+  categorical net types (ResourceNet, GameNet, WorkflowNet, ...)
+
+## Part II: Applications
+
+- [Resource Modeling — The Coffee Shop](https://book.pflow.xyz/ch05-resource-modeling.html):
+  inventory, recipes and throughput as token flow; finding bottlenecks and
+  stock-outs by simulation
+- [Game Mechanics — Tic-Tac-Toe](https://book.pflow.xyz/ch06-game-mechanics.html):
+  board, turns and win conditions as a GameNet; strategic value emerging from
+  topology alone via ODE move evaluation
+- [Constraint Satisfaction — Sudoku](https://book.pflow.xyz/ch07-constraint-satisfaction.html):
+  constraints as token conservation, continuous relaxation as a move-ranking
+  heuristic
+- [Optimization — The Knapsack Problem](https://book.pflow.xyz/ch08-optimization.html):
+  approximate solutions to an NP-hard problem with mass-action dynamics
+- [Biochemistry — Enzyme Kinetics](https://book.pflow.xyz/ch09-enzyme-kinetics.html):
+  the formalism's home turf — recovering Michaelis-Menten from a net
+- [Complex State Machines — Texas Hold'em](https://book.pflow.xyz/ch10-complex-state-machines.html):
+  multi-player, multi-phase systems with roles and guards
+
+## Part III: Advanced Topics
+
+- [Process Mining](https://book.pflow.xyz/ch11-process-mining.html):
+  discovering nets from event logs, conformance checking, prediction
+- [Zero-Knowledge Proofs](https://book.pflow.xyz/ch12-zero-knowledge-proofs.html):
+  proving a transition fired validly without revealing the marking (gnark,
+  MiMC, hand-built circuits)
+- [Topology-Driven Verification](https://book.pflow.xyz/ch13-topology-driven-verification.html):
+  generating ZK circuits automatically from net topology with petrigen
+- [On-Chain ZK Verification](https://book.pflow.xyz/ch14-on-chain-verification.html):
+  guards and invariants as arithmetic constraints, Merkle-committed state,
+  Solidity verifiers
+- [Exponential Weights and Scoring Systems](https://book.pflow.xyz/ch15-exponential-weights.html):
+  power-of-2 arc weights to encode scoring and ranking in net structure
+- [Declarative Infrastructure](https://book.pflow.xyz/ch16-declarative-infrastructure.html):
+  JSON-LD, semantic vocabularies, and content addressing (CIDs) that make
+  nets self-describing and composable across tools
+
+## Part IV: Building with pflow
+
+- [The Visual Editor — pflow.xyz](https://book.pflow.xyz/ch17-visual-editor.html):
+  designing nets interactively, how the drawing maps to the formalism,
+  export/import
+- [Code Generation — From Model to Application](https://book.pflow.xyz/ch18-code-generation.html):
+  petri-pilot — from a JSON model to a Go backend, event store and JS
+  frontend that survive regeneration
+- [The go-pflow Library](https://book.pflow.xyz/ch19-go-pflow-library.html):
+  package layout, builder API, solver configuration, state machines and
+  workflows
+- [Dual Implementation and Verification](https://book.pflow.xyz/ch20-dual-implementation.html):
+  Go/JS parity, event sourcing, and state roots as proof of an unambiguous
+  specification
+
+## Epilogue
+
+- [What the Abstraction Sits On](https://book.pflow.xyz/ch21-epilogue.html):
+  the layered architecture the book actually built, the six applications
+  seen as net types, and open problems
+
+## Appendices
+
+- [Solver Parameter Reference](https://book.pflow.xyz/appendix-a-solver-reference.html):
+  Tsit5 and other methods, tolerances, presets in go-pflow's `solver`
+- [Token Language Grammar](https://book.pflow.xyz/appendix-b-token-grammar.html):
+  S-expression DSL lexer and grammar
+- [JSON Schema Reference](https://book.pflow.xyz/appendix-c-json-schema.html):
+  the petri-pilot model format — places, transitions, arcs, roles, views,
+  event sourcing
+- [Glossary](https://book.pflow.xyz/appendix-d-glossary.html): definitions
+  from arc to T-invariant
+- [Categorical Foundations](https://book.pflow.xyz/appendix-e-categorical-foundations.html):
+  symmetric monoidal categories and the formal framework behind the net types
+
+## Related
+
+- [pflow.xyz](https://pflow.xyz): the editor and browser ODE library
+  ([llms.txt](https://pflow.xyz/llms.txt))
+- [pilot.pflow.xyz](https://pilot.pflow.xyz): code generation and the
+  petri-pilot MCP server (`/mcp`)
+- [blog.stackdump.com](https://blog.stackdump.com): essays the book grew out of
+- [Source](https://github.com/pflow-xyz/book-pflow-xyz): markdown chapters,
+  EPUB/PDF builds on the releases page
