@@ -71,7 +71,7 @@ Item consumption (fraction taken):
 
 The continuous relaxation takes *fractional* amounts of each item — all at approximately 71.4%. This is the nature of ODE simulation: it finds a smooth approximation rather than discrete 0/1 choices. The total value is 35.71, compared to the discrete optimum of 38.
 
-The fractional solution is the LP (linear programming) relaxation of the knapsack. It's always an upper bound on the discrete optimum — you can't do better by restricting to integers. The gap between 35.71 and 38 tells us that simple rounding won't find the optimum. We need more information about the solution structure.
+The fractional solution looks like the LP (linear programming) relaxation of the knapsack, but it is not one: an LP relaxation is an upper bound on the integer optimum, while the ODE settles at 35.71, *below* the integer optimum of 38. Mass-action kinetics spreads consumption across items proportionally; it is a smooth dynamics, not a maximiser. The gap between 35.71 and 38 tells us that simple rounding won't find the optimum. We need more information about the solution structure.
 
 ## Exclusion Analysis for Sensitivity
 
@@ -87,7 +87,7 @@ This is where the Petri net approach delivers insight that branch-and-bound does
 
 Three of the four items behave as expected — excluding them reduces the total value. But item2 is anomalous: **excluding it *increases* the value from 35.71 to 37.75**.
 
-This means item2 is actively hurting the solution. It's not just "not included in the optimum" — it's competing for capacity that other items would use more effectively. By consuming 6 units of capacity at an efficiency of only 2.0, item2 crowds out items 0 and 3 which have better value-for-weight ratios.
+This means item2 is actively hurting the solution. It's not just "not included in the optimum" — it's competing for capacity that other items would use more effectively. By consuming 6 units of capacity at an efficiency of only 2.0, item2 crowds out items 0 and 3, which have better value-for-weight ratios.
 
 The exclusion analysis tells us exactly which item to remove from the model. No combinatorial search needed — one sensitivity pass reveals the suboptimal item.
 

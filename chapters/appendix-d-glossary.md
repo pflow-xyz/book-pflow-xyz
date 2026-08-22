@@ -10,7 +10,7 @@
 : A net is bounded if every place has a finite maximum token count across all reachable markings. A net is $k$-bounded if no place ever exceeds $k$ tokens. Boundedness is a safety property — it guarantees the system can't accumulate unbounded resources.
 
 **CID (Content Identifier)**
-: A hash-based identifier for content-addressed data. In the pflow ecosystem, CIDs identify JSON-LD models deterministically — the same model always produces the same CID regardless of where or when it's computed (Chapter 14).
+: A hash-based identifier for content-addressed data. In the pflow ecosystem, CIDs identify JSON-LD models deterministically — the same model always produces the same CID regardless of where or when it's computed (Chapter 16).
 
 **Compression ratio ($\rho$)**
 : For a transition, tokens consumed divided by tokens produced. $\rho = 1$ is the reversible core; $\rho > 1$ is an observer that destroys state to produce a verdict. A property of the incidence matrix column, so every analysis of $C$ can see it. See *Core–observer boundary*.
@@ -19,7 +19,7 @@
 : An equation $\mathbf{y}^T \mathbf{C} = \mathbf{0}$ where $\mathbf{y}$ is a vector of weights and $\mathbf{C}$ is the incidence matrix. Conservation laws prove that weighted sums of token counts remain constant across all firings. Example: in an SIR model, $S + I + R = N$ for all time.
 
 **Context (code generation)**
-: The universal intermediate representation in petri-pilot's code generation pipeline. The Context computes everything templates need from the raw model — derived structures, feature flags, helper methods. Templates are pure functions from Context to source code (Chapter 16).
+: The universal intermediate representation in petri-pilot's code generation pipeline. The Context computes everything templates need from the raw model — derived structures, feature flags, helper methods. Templates are pure functions from Context to source code (Chapter 18).
 
 **Contextual arc**
 : A read arc (fires only if a place holds a token, without consuming it) or an inhibitor arc (fires only if it holds none). Neither appears in the incidence matrix, since neither changes the marking. Nets with contextual arcs do not generate the free symmetric monoidal category of ordinary nets (Montanari & Rossi, 1995); they are the categorical half of the core–observer boundary, and the natural home of guards.
@@ -40,7 +40,7 @@
 : A state where all derivatives are approximately zero — the system has stopped changing. The solver's equilibrium detector monitors the derivative norm and stops early when the system reaches steady state.
 
 **Event sourcing**
-: A state management pattern where state is computed by replaying an immutable log of events from the initial state: $\text{State}(t) = \text{fold}(\text{apply}, \text{initialState}, \text{events}[0..t])$. In Petri net terms, events are transition firings and state is the marking (Chapter 18).
+: A state management pattern where state is computed by replaying an immutable log of events from the initial state: $\text{State}(t) = \text{fold}(\text{apply}, \text{initialState}, \text{events}[0..t])$. In Petri net terms, events are transition firings and state is the marking (Chapter 20).
 
 **Firing rule**
 : The execution semantics of Petri nets. When a transition fires, it atomically removes tokens from input places and adds tokens to output places according to arc weights. The new marking is $\mathbf{m}' = \mathbf{m} + \mathbf{C} \cdot \mathbf{e}_t$ where $\mathbf{e}_t$ is the unit vector for transition $t$.
@@ -55,10 +55,10 @@
 : The matrix $\mathbf{C} = \mathbf{C}^+ - \mathbf{C}^-$ where $\mathbf{C}^+$ is the output matrix (tokens produced) and $\mathbf{C}^-$ is the input matrix (tokens consumed). Each column represents a transition; each row represents a place. The entry $\mathbf{C}_{ij}$ is the net change in place $i$ when transition $j$ fires (Chapter 2).
 
 **Interleaving vs. partial-order semantics**
-: Two readings of concurrent behaviour. Interleaving semantics considers one firing at a time and asks which markings are reachable; partial-order (unfolding) semantics additionally records which firings were independent. Encoding a read arc as a consume-then-restore self-loop is exact under the first and inequivalent under the second (Vogler, Semenov & Yakovlev, 1998). A single-transition ZK proof has only interleaving semantics.
+: Two readings of concurrent behavior. Interleaving semantics considers one firing at a time and asks which markings are reachable; partial-order (unfolding) semantics additionally records which firings were independent. Encoding a read arc as a consume-then-restore self-loop is exact under the first and inequivalent under the second (Vogler, Semenov & Yakovlev, 1998). A single-transition ZK proof has only interleaving semantics.
 
 **JSON-LD**
-: JSON for Linked Data. The pflow ecosystem uses JSON-LD as its model interchange format, with `@context: "https://pflow.xyz/schema"`. JSON-LD makes models self-describing and content-addressable (Chapter 14).
+: JSON for Linked Data. The pflow ecosystem uses JSON-LD as its model interchange format, with `@context: "https://pflow.xyz/schema"`. JSON-LD makes models self-describing and content-addressable (Chapter 16).
 
 **Liveness**
 : A transition is live if it can eventually fire from every reachable marking (possibly after other transitions fire first). A net is live if all transitions are live. Liveness means the system never permanently loses capability.
@@ -94,7 +94,7 @@
 : The algebraic relation $\mathbf{m}' = \mathbf{m}_0 + \mathbf{C} \cdot \boldsymbol{\sigma}$ where $\boldsymbol{\sigma}$ is the firing count vector (how many times each transition has fired). A necessary but not sufficient condition for reachability — the actual firing sequence must also be valid.
 
 **State root**
-: A hash of the simulation output used for cross-implementation verification. If the Go server and JavaScript browser produce the same state root from the same model, the implementations agree (Chapter 18).
+: A hash of the simulation output used for cross-implementation verification. If the Go server and JavaScript browser produce the same state root from the same model, the implementations agree (Chapter 20).
 
 **Token**
 : A marker in a place. Tokens represent the presence of a resource, the truth of a condition, or a unit of something being processed. In the discrete model, tokens are non-negative integers. In the continuous relaxation, they become non-negative real numbers.
@@ -106,7 +106,7 @@
 : Tsitouras 5th-order Runge-Kutta method with embedded 4th-order error estimator. The default ODE solver in go-pflow and pflow.xyz. Uses adaptive step size control for automatic accuracy management (Appendix A).
 
 **URDNA2015**
-: Universal RDF Dataset Normalization Algorithm 2015. Used in pflow to canonicalize JSON-LD models before hashing, ensuring that semantically equivalent documents produce identical content identifiers regardless of key order or formatting (Chapter 14).
+: Universal RDF Dataset Normalization Algorithm 2015. Used in pflow to canonicalize JSON-LD models before hashing, ensuring that semantically equivalent documents produce identical content identifiers regardless of key order or formatting (Chapter 16).
 
 **Weight**
 : The number of tokens consumed or produced by an arc when its transition fires. A weight of $k$ on an input arc means the transition requires at least $k$ tokens in the source place and removes $k$ tokens when firing. Default weight is 1.

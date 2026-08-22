@@ -63,7 +63,7 @@ The guard compiler doesn't verify Merkle proofs itself. It registers what state 
 
 ## Merkle State Commitment
 
-Chapter 12 committed state with a flat MiMC hash: feed all place values into a single hash and publish the result. This works for small nets — the tic-tac-toe model has 33 places, and hashing 33 values costs ~300 constraints.
+Chapter 12 committed state with a flat MiMC hash: feed all place values into a single hash and publish the result. This works for small nets — the ZK tic-tac-toe model has 33 places, and hashing 33 values costs ~300 constraints.
 
 But real applications have thousands or millions of state entries. An ERC-20 token has one balance per address. A workflow system has one case state per process instance. Flat hashing doesn't scale.
 
@@ -159,7 +159,7 @@ func (c *InvariantCompiler) CompileConservation(
 }
 ```
 
-This is the state equation from Chapter 2 ($M' = M + N \cdot \sigma$) enforced cryptographically. The incidence matrix determines the deltas; the invariant compiler verifies they satisfy the conservation law.
+This is the state equation from Chapter 2 ($M' = M + C \cdot \vec{\sigma}$) enforced cryptographically. The incidence matrix determines the deltas; the invariant compiler verifies they satisfy the conservation law.
 
 ### Non-Negativity
 
@@ -353,7 +353,7 @@ The `ZKHoldem` contract uses the same Groth16 verifier pattern as `ZkOde`, but a
 
 **Commit-reveal shuffle.** Before the game starts, the house publishes `Poseidon(seed)` as a binding commitment. The deck is shuffled via Fisher-Yates with the seed as a deterministic PRNG. At showdown, the house reveals the seed. Anyone can verify `Poseidon(seed) == commitment` and derive the cards independently. If the house doesn't reveal within a timeout window, the player claims the pot.
 
-**State root chaining per action.** Each game action — deal, check, bet, call, fold — fires a transition on a game net (18 places, 16 transitions) and produces a Groth16 proof. The post-state Poseidon hash of one action becomes the pre-state hash of the next, forming an unbroken proof chain.
+**State root chaining per action.** Each game action — deal, check, bet, call, fold — fires a transition on a reduced heads-up game net (18 places, 16 transitions — not the Chapter 10 model) and produces a Groth16 proof. The post-state Poseidon hash of one action becomes the pre-state hash of the next, forming an unbroken proof chain.
 
 **Topology-derived bonus payouts.** The winner takes the pot plus a bonus proportional to the integer reduction value of their hand:
 
@@ -444,5 +444,3 @@ The technique generalizes. Two games now demonstrate topology-derived strategic 
 | Hold'em | Hand ranking: SF=32, 4K=16, ..., HC=1 | 18p x 113t |
 
 In both cases, ODE simulation with uniform rates extracts integers (or integer-like ratios) that encode strategic value. No game-specific heuristics. No training data. Just topology. The same proof system — Groth16 over BN254, Poseidon state hashing, stoichiometry-based constraints — covers both. The circuit doesn't know what game it's proving. It only knows the topology.
-
-One circuit structure. Any Petri net. Automatically generated, topology-driven, cryptographically verified.

@@ -91,8 +91,8 @@ A complete model from the editor:
 This file can be:
 - Loaded back into the editor (visual round-trip)
 - Parsed by go-pflow for ODE simulation (Chapter 3)
-- Compiled by petri-pilot into a running service (Chapter 16)
-- Sealed with a content-addressed CID (Chapter 14)
+- Compiled by petri-pilot into a running service (Chapter 18)
+- Sealed with a content-addressed CID (Chapter 16)
 - Shared via URL
 
 ## In-Browser Simulation
@@ -111,7 +111,7 @@ Step through the model one transition at a time. The editor highlights enabled t
 
 Run the ODE simulation forward. Token counts become continuous values — a place might hold 47.3 tokens. The editor displays a time-series plot showing how each place's token count evolves over the simulation period.
 
-The continuous simulation uses the same Tsit5 solver as go-pflow, with the same mass-action kinetics. Models designed in the browser produce the same dynamics when loaded into the Go library. This is the dual-implementation guarantee covered in Chapter 18.
+The continuous simulation uses the same Tsit5 solver as go-pflow, with the same mass-action kinetics. Models designed in the browser produce the same dynamics when loaded into the Go library. This is the dual-implementation guarantee covered in Chapter 20.
 
 ### Matching Go and JavaScript
 
@@ -139,7 +139,7 @@ The Go backend also generates SVGs from JSON-LD models using layout algorithms (
 
 ### Content-Addressed Storage
 
-When saved through the editor's API, models are canonicalized via URDNA2015 and hashed to produce a CIDv1 identifier (Chapter 14). The CID becomes a permanent, immutable reference:
+When saved through the editor's API, models are canonicalized via URDNA2015 and hashed to produce a CIDv1 identifier (Chapter 16). The CID becomes a permanent, immutable reference:
 
 ```
 POST /api/save  ->  { "cid": "zb2rh..." }

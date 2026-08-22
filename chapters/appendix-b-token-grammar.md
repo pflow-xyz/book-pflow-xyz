@@ -144,7 +144,7 @@ The expression is enclosed in `{...}` braces, like guard expressions. Constraint
 
 ```lisp
 ; Conservation law
-(constraint conservation {sum(balances) == totalSupply})
+(constraint conservation {sum(balances) == total_supply})
 
 ; Mutual exclusion
 (constraint mutex {pending + shipped + delivered == 1})
@@ -160,7 +160,7 @@ Guard expressions (used in both `:guard` and `constraint`) support:
 | Boolean | `&&`, `\|\|`, `!` | `a > 0 && b > 0` |
 | Arithmetic | `+`, `-`, `*`, `/` | `sum(balances)` |
 | Map access | `name[key]` | `balances[from]` |
-| Aggregates | `sum()`, `count()`, `tokens()`, `minOf()`, `maxOf()` | `sum(balances) == totalSupply` |
+| Aggregates | `sum()`, `count()`, `tokens()`, `minOf()`, `maxOf()` | `sum(balances) == total_supply` |
 
 Guard expressions are opaque to the DSL parser — the lexer captures everything between `{` and `}` as a single token. The guard DSL parser in petri-pilot evaluates these expressions at runtime against the current state.
 

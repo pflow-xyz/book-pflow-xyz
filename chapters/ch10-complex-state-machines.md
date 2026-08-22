@@ -38,7 +38,7 @@ The `deal_flop` transition requires two things: a token in `preflop` (we're in t
 
 The phase token is a cursor — exactly one phase place holds a token at any time. The P-invariant:
 
-$$M(\text{waiting}) + M(\text{preflop}) + M(\text{flop}) + M(\text{turn}) + M(\text{river}) + M(\text{showdown}) + M(\text{complete}) = 1$$
+$$M(\text{waiting}) + M(\text{preflop}) + M(\text{flop}) + M(\text{turn\_round}) + M(\text{river}) + M(\text{showdown}) + M(\text{complete}) = 1$$
 
 This is the WorkflowNet guarantee: mutual exclusion. The game is always in exactly one phase.
 
@@ -111,7 +111,7 @@ Five players × four actions = 20 player transitions, plus 5 skip transitions fo
 The full model:
 
 ```
-Places (17+):
+Places (18+):
   waiting, preflop, flop, turn_round,     -- Phase places
   river, showdown, complete
   p0_turn, p1_turn, p2_turn,              -- Turn tokens
@@ -162,7 +162,7 @@ The Petri net's discrete transitions map perfectly to event sourcing:
 - **Audit**: Verify that every transition was enabled when it fired — illegal moves are provably impossible
 - **Undo**: Roll back to any previous state by replaying up to that point
 
-This is the event sourcing pattern from the workspace's `CLAUDE.md`: $\text{State}(t) = \text{fold}(\text{apply}, \text{initialState}, \text{events}[0..t])$. Each event is a transition firing. Each state is a marking. The fold is the firing rule applied sequentially.
+This is the event sourcing pattern, revisited in Chapter 20: $\text{State}(t) = \text{fold}(\text{apply}, \text{initialState}, \text{events}[0..t])$. Each event is a transition firing. Each state is a marking. The fold is the firing rule applied sequentially.
 
 ## ODE Analysis of Game Flow
 

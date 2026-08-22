@@ -185,7 +185,7 @@ The `name` and `author` come from schema.org. The `places` come from pflow.xyz. 
 
 ## Infrastructure, Not a Feature
 
-JSON-LD is not a feature of the pflow ecosystem. It is infrastructure — the kind that works precisely because it does less, not more. It asserts, it expands, it canonicalizes. Everything else is the consumer's problem.
+JSON-LD is not a feature of the pflow ecosystem but infrastructure — the kind that works precisely because it does less, not more. It asserts, it expands, it canonicalizes. Everything else is the consumer's problem.
 
 This division of responsibility is what makes composable systems possible. The model format doesn't know about editors, solvers, code generators, or blockchain bridges. It doesn't need to. It describes a Petri net — places, transitions, arcs — and each consumer extracts what it needs.
 

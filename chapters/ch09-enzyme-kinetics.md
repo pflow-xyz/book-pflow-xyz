@@ -86,7 +86,7 @@ $$v(\text{bind}) = k_1 \cdot [S] \cdot [E]$$
 $$v(\text{unbind}) = k_{-1} \cdot [ES]$$
 $$v(\text{catalyze}) = k_{cat} \cdot [ES]$$
 
-The ODE system follows directly from the Petri net topology. Using the incidence matrix $N$ and rate vector $v(M)$:
+The ODE system follows directly from the Petri net topology. Using the incidence matrix $C$ and rate vector $v(M)$:
 
 $$\frac{d[S]}{dt} = -k_1 \cdot [S] \cdot [E] + k_{-1} \cdot [ES]$$
 
@@ -110,7 +110,7 @@ $$v = \frac{V_{max} \cdot [S]}{K_m + [S]}$$
 
 where $K_m = (k_{-1} + k_{cat}) / k_1$ and $V_{max} = k_{cat} \cdot [E]_{total}$.
 
-This is the **Michaelis-Menten equation**. We didn't derive it — the ODE solver produces the saturation curve directly from the Petri net. Running the simulation with increasing initial substrate concentrations traces out the classic hyperbolic curve: rate increases linearly at low [S], then levels off as enzyme becomes saturated.
+This is the **Michaelis-Menten equation**. The algebra above is only confirmation — the ODE solver produces the saturation curve directly from the Petri net without it. Running the simulation with increasing initial substrate concentrations traces out the classic hyperbolic curve: rate increases linearly at low [S], then levels off as enzyme becomes saturated.
 
 ### The Saturation Effect
 
@@ -147,7 +147,7 @@ $$[E] + [ES] = [E]_{total} = 10$$
 
 Free enzyme plus bound enzyme always equals the initial enzyme count. This isn't coded as a constraint — it's a structural property of the net. The enzyme token circulates through `enzyme → complex → enzyme` but never leaves the system.
 
-Check via P-invariant: the weight vector $w = [0, 1, 1, 0]$ (for places [substrate, enzyme, complex, product]) satisfies $w^T \cdot N = \vec{0}$:
+Check via P-invariant: the weight vector $w = [0, 1, 1, 0]$ (for places [substrate, enzyme, complex, product]) satisfies $w^T \cdot C = \vec{0}$:
 
 - `bind` column: $0(-1) + 1(-1) + 1(+1) + 0(0) = 0$
 - `unbind` column: $0(+1) + 1(+1) + 1(-1) + 0(0) = 0$

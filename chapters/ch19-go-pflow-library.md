@@ -294,7 +294,7 @@ for _, r := range results {
 }
 ```
 
-The analyzer perturbs each rate constant individually, re-simulates, and measures the change in the final state. High-impact parameters are bottlenecks — places where small changes in rate produce large changes in outcome. This connects to the bottleneck analysis from Chapter 5 (coffee shop) and the what-if scenarios from Chapter 11 (process mining).
+The analyzer perturbs each rate constant individually, re-simulates, and measures the change in the final state. High-impact parameters are bottlenecks — points where small changes in rate produce large changes in outcome. This connects to the bottleneck analysis from Chapter 5 (coffee shop) and the what-if scenarios from Chapter 11 (process mining).
 
 ## Process Mining Integration
 
@@ -325,7 +325,7 @@ The `visualization` package generates SVG diagrams from nets:
 svg := visualization.RenderSVG(net, visualization.ForceAtlas2Layout)
 ```
 
-Layout algorithms include force-directed (ForceAtlas2), hierarchical (top-to-bottom), and circular. The generated SVGs show places as circles, transitions as rectangles, arcs as arrows, and token counts as numbers or dots. These SVGs appear in the pflow.xyz editor (Chapter 15), the petri-pilot model viewer (Chapter 16), and throughout this book.
+Layout algorithms include force-directed (ForceAtlas2), hierarchical (top-to-bottom), and circular. The generated SVGs show places as circles, transitions as rectangles, arcs as arrows, and token counts as numbers or dots. These SVGs appear in the pflow.xyz editor (Chapter 17), the petri-pilot model viewer (Chapter 18), and throughout this book.
 
 ## Putting It Together
 

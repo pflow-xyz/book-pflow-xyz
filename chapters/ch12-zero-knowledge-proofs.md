@@ -35,7 +35,7 @@ The state roots are commitments. They bind the prover to a specific marking with
 
 ## State Commitment via MiMC Hashing
 
-The hash function matters. Inside a ZK circuit, every operation becomes arithmetic constraints on a finite field. SHA-256 needs thousands of boolean operations — roughly 25,000 constraints per hash. **MiMC** (Minimal Multiplicative Complexity) is designed for arithmetic circuits — it operates over the same finite field the circuit uses, costing roughly 300 constraints per hash.
+The hash function matters. Inside a ZK circuit, every operation becomes arithmetic constraints on a finite field. SHA-256 needs thousands of boolean operations — roughly 25,000 constraints per hash. **MiMC** (Minimum Multiplicative Complexity) is designed for arithmetic circuits — it operates over the same finite field the circuit uses, costing roughly 300 constraints per hash.
 
 ```go
 func petriMimcHash(api frontend.API, values []frontend.Variable) frontend.Variable {
@@ -49,7 +49,7 @@ func petriMimcHash(api frontend.API, values []frontend.Variable) frontend.Variab
 
 The state root is:
 
-$$\text{stateRoot} = \text{MiMC}(\text{marking}[0], \text{marking}[1], \ldots, \text{marking}[N])$$
+$$\text{stateRoot} = \text{MiMC}(\text{marking}[0], \text{marking}[1], \ldots, \text{marking}[N-1])$$
 
 To recover the actual token counts from a state root, an attacker would need to invert MiMC — computationally infeasible. The hash commits the prover to a specific marking without revealing it.
 
@@ -164,7 +164,7 @@ For applications with small circuits and many proofs — like games or token tra
 
 ## ZK Tic-Tac-Toe: A Complete Example
 
-The tic-tac-toe model from [Chapter 6](ch06-game-mechanics.md) has 33 places and 35 transitions. The ZK version uses two circuits, both encoding the full Petri net:
+The ZK build of tic-tac-toe uses a variant of the [Chapter 6](ch06-game-mechanics.md) model with 33 places and 35 transitions (Chapter 6's model has 30 and 34; the ZK variant uses separate `x_turn`/`o_turn` places and a `game_active` flag). It uses two circuits, both encoding the full Petri net:
 
 **PetriTransitionCircuit** proves a move is legal. It's the general circuit described above — works for any transition in the net. Used for every move.
 
@@ -228,7 +228,7 @@ The same circuit structure handles blockchain token transfers. An ERC-20 transfe
 - `balances[to]` is an output place (tokens produced)
 - The guard `balances[from] >= amount` is the enabledness check
 
-A note on what that guard is. In the net it is a *read* of `balances[from]` — a contextual arc, not a column of the incidence matrix — and contextual arcs are exactly the thing that stops a net from generating the free monoidal category of [Appendix E](appendix-e-categorical-foundations.md#where-the-free-structure-stops-two-boundaries). Inside the circuit that distinction disappears: a proof certifies one firing, one firing has only interleaving semantics, and under interleaving semantics a read arc and a consume-then-restore self-loop are the same thing. So encoding the guard as a range check on a witnessed balance is an exact encoding, not an approximation. The boundary the circuit *cannot* erase is the other one — a transition with more inputs than outputs still costs a non-uniform constraint block, because that is a fact about $C$ and the circuit is compiled from $C$.
+A note on what that guard is. In the net it is a *read* of `balances[from]` — a contextual arc, not a column of the incidence matrix — and contextual arcs are exactly the thing that stops a net from generating the free symmetric monoidal category of [Appendix E](appendix-e-categorical-foundations.md#where-the-free-structure-stops-two-boundaries). Inside the circuit that distinction disappears: a proof certifies one firing, one firing has only interleaving semantics, and under interleaving semantics a read arc and a consume-then-restore self-loop are the same thing. So encoding the guard as a range check on a witnessed balance is an exact encoding, not an approximation. The boundary the circuit *cannot* erase is the other one — a transition with more inputs than outputs still costs a non-uniform constraint block, because that is a fact about $C$ and the circuit is compiled from $C$.
 
 The arcnet project extends this with Merkle trees for account balances, enabling L1-to-L2 bridge verification:
 
@@ -264,7 +264,7 @@ Same circuit structure. Different topology.
 
 ## What ZK Doesn't Hide
 
-A common misconception: ZK doesn't make the transition ID private. The verifier sees *which* transition fired. What's hidden is the *state* — the full marking of every place.
+A common misconception is that ZK hides the transition ID. It doesn't: the verifier sees *which* transition fired. What's hidden is the *state* — the full marking of every place.
 
 In tic-tac-toe, the opponent knows a move was made (say, X plays center) but doesn't see the accumulated pattern of tokens across all 33 places. In a token transfer, the network knows a transfer happened but doesn't see individual balances.
 
@@ -282,5 +282,3 @@ A complete proof cycle for any Petri net application:
 6. **On-chain verification** possible via auto-generated Solidity verifier contract
 
 The circuit doesn't encode tic-tac-toe, or token transfers, or workflow rules. It encodes *Petri net semantics*: hash the marking, compute the delta from topology, assert the change, check enabledness. The application logic is in the net. The privacy is in the proof.
-
-One circuit structure. Any Petri net. Provably correct, privately verified.

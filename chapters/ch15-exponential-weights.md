@@ -79,7 +79,7 @@ The poker hand model detects pairs, straights, and flushes through **structural 
 
 Kicker scoring doesn't work this way. The `kicker_score` place just accumulates a number. Nothing in the net reads that number. No transition is enabled or disabled by it. No arc weight depends on it. The model needs a separate interpreter to extract meaning from the token count — you have to decompose the sum back into powers of 2 to recover which cards contributed.
 
-That's not modeling. That's bookkeeping bolted onto the side.
+That is bookkeeping bolted onto the side of the model, not modeling.
 
 A Petri net model should be self-describing: the structure of places, transitions, and arcs encodes the rules. If you need a decoder ring to read meaning out of a token count, you're not modeling the domain in the net — you're using the net as a storage medium for an external computation. The 52 extra transitions and 104 extra arcs added complexity without adding behavioral insight.
 

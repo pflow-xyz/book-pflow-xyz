@@ -45,19 +45,19 @@ The firing rate is the rate constant times the product of input markings, each r
 
 ### Why This Works
 
-Mass-action kinetics isn't just a convenient formula. It's the natural rate law when transitions fire at random with probability proportional to the availability of inputs. If a transition needs one token from $p_1$ and one from $p_2$, and tokens are selected at random, the probability of a successful firing scales as $M(p_1) \times M(p_2)$.
+Mass-action kinetics isn't just a convenient formula: it's the natural rate law when transitions fire at random with probability proportional to the availability of inputs. If a transition needs one token from $p_1$ and one from $p_2$, and tokens are selected at random, the probability of a successful firing scales as $M(p_1) \times M(p_2)$.
 
 Chemistry discovered this in the 19th century. The same logic applies to any system where events happen stochastically and depend on resource availability: customers joining queues, orders consuming inventory, players taking turns.
 
 ## The Continuous Relaxation
 
-With mass-action rates defined, we can write the ODE system for any Petri net. Recall the incidence matrix $N$ from Chapter 2, where $N[i,j]$ is the net change in place $p_i$ when transition $t_j$ fires. Collect all transition rates into a vector:
+With mass-action rates defined, we can write the ODE system for any Petri net. Recall the incidence matrix $C$ from Chapter 2, where $C[i,j]$ is the net change in place $p_i$ when transition $t_j$ fires. Collect all transition rates into a vector:
 
 $$v(M) = [v(t_1, M), v(t_2, M), \ldots, v(t_m, M)]^T$$
 
 The **continuous state equation** is:
 
-$$\frac{dM}{dt} = N \cdot v(M)$$
+$$\frac{dM}{dt} = C \cdot v(M)$$
 
 This says: the rate of change of the marking is the incidence matrix times the rate vector. Each place's token count changes by the weighted sum of all transition rates affecting it. Tokens flow in from transitions that produce, and flow out to transitions that consume.
 
@@ -71,7 +71,7 @@ The simplest non-trivial example:
 
 Incidence matrix and rate vector:
 
-$$N = \begin{bmatrix} -1 & 0 \\ 1 & -1 \\ 0 & 1 \end{bmatrix}, \quad v(M) = \begin{bmatrix} k_1 \cdot M(p_1) \\ k_2 \cdot M(p_2) \end{bmatrix}$$
+$$C = \begin{bmatrix} -1 & 0 \\ 1 & -1 \\ 0 & 1 \end{bmatrix}, \quad v(M) = \begin{bmatrix} k_1 \cdot M(p_1) \\ k_2 \cdot M(p_2) \end{bmatrix}$$
 
 The ODE system:
 
@@ -89,13 +89,13 @@ Starting from $M_0 = [10, 0, 0]^T$ with $k_1 = 0.2$ and $k_2 = 0.1$:
 - Tokens build up in $p_2$, then drain to $p_3$
 - Eventually all tokens accumulate in $p_3$
 
-The conservation law still holds — $M(p_1) + M(p_2) + M(p_3) = 10$ for all time — because $[1, 1, 1] \cdot N = [0, 0]$. Tokens aren't created or destroyed, just redistributed continuously.
+The conservation law still holds — $M(p_1) + M(p_2) + M(p_3) = 10$ for all time — because $[1, 1, 1] \cdot C = [0, 0]$. Tokens aren't created or destroyed, just redistributed continuously.
 
 ### What Changes, What Stays
 
 The continuous relaxation changes the execution model (real-valued tokens, rate-based firing) but preserves the structural properties:
 
-- **Conservation laws** still hold. If $w^T \cdot N = \vec{0}$ in the discrete case, the same identity holds in the continuous case, and the weighted token sum is constant for all time.
+- **Conservation laws** still hold. If $w^T \cdot C = \vec{0}$ in the discrete case, the same identity holds in the continuous case, and the weighted token sum is constant for all time.
 - **The incidence matrix** is identical. The structure of the net doesn't change.
 - **Boundedness** from P-invariants still applies.
 
@@ -115,7 +115,7 @@ The simplest numerical method is Euler's method:
 
 $$M_{n+1} = M_n + h \cdot f(t_n, M_n)$$
 
-Where $h$ is the timestep and $f(t, M) = N \cdot v(M)$ is the derivative function. Compute the slope, take a step in that direction.
+Where $h$ is the timestep and $f(t, M) = C \cdot v(M)$ is the derivative function. Compute the slope, take a step in that direction.
 
 Euler's method works but is inaccurate. The error grows as $O(h)$ — to halve the error, you must halve the timestep and double the work. For Petri net simulations with rates spanning several orders of magnitude, tiny timesteps are needed, making Euler impractically slow.
 
@@ -176,9 +176,9 @@ For most Petri net simulations, Tsit5 is the right choice. RK45 produces nearly 
 Rather than manually tuning tolerances, go-pflow provides presets for common scenarios:
 
 ```go
-solver.DefaultOptions()    // General purpose (Dt=0.1, Reltol=1e-6)
-solver.FastOptions()       // Game AI, interactive (Dt=0.5, Reltol=1e-3)
-solver.AccurateOptions()   // Research, publishing (Dt=0.001, Reltol=1e-9)
+solver.DefaultOptions()    // General purpose (Dt=0.01, Reltol=1e-3)
+solver.FastOptions()       // Game AI, interactive (Dt=0.1, Reltol=1e-2)
+solver.AccurateOptions()   // Research, publishing (Dt=0.001, Reltol=1e-6)
 solver.JSParityOptions()   // Match pflow.xyz JS solver exactly
 ```
 
@@ -190,7 +190,7 @@ Many systems settle into a steady state where nothing changes anymore. The ODE s
 
 **Equilibrium** means:
 
-$$\frac{dM}{dt} = N \cdot v(M^*) = \vec{0}$$
+$$\frac{dM}{dt} = C \cdot v(M^*) = \vec{0}$$
 
 All derivatives are zero. Tokens still exist, but the flow in equals the flow out at every place. The system has reached a balance.
 
@@ -258,4 +258,4 @@ The pattern for using continuous Petri nets is:
 
 The remaining chapters in this book use this pattern extensively. The coffee shop in Chapter 5 uses equilibrium analysis for capacity planning. The knapsack problem in Chapter 8 uses continuous relaxation to approximate discrete optimization. The enzyme kinetics in Chapter 9 recover classical biochemistry equations directly from the net's structure.
 
-Every time, the steps are the same: define the net, set the rates, solve, interpret. The mathematics is always $dM/dt = N \cdot v(M)$. The solver handles the numerics. You focus on the model.
+Every time, the steps are the same: define the net, set the rates, solve, interpret. The mathematics is always $dM/dt = C \cdot v(M)$. The solver handles the numerics. You focus on the model.

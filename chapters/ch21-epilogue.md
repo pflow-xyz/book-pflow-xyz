@@ -37,9 +37,9 @@ Each layer adds something the layer below cannot express:
 
 The book introduced these layers bottom-up in Parts I-III, but the reader encounters the stack's true shape only in Chapter 13, when the rate auto-derivation reveals that the bottom layer — pure graph connectivity — carries more information than expected. The classic tic-tac-toe heuristic (center > corner > edge) falls out of counting connections. No game theory. No training. Just topology.
 
-The Petri net is not the foundation. It is the modeling layer — the place where graph structure acquires semantics. That's valuable. It's just not the whole story.
+The Petri net is not the foundation but the modeling layer — the place where graph structure acquires semantics. That's valuable. It's just not the whole story.
 
-## Six Applications, Five Types
+## Six Applications, Four Types
 
 Chapter 4 introduced the categorical net taxonomy before the reader had examples to anchor it. Now, after six worked applications in Part II, the taxonomy earns its weight:
 
@@ -54,15 +54,15 @@ Chapter 4 introduced the categorical net taxonomy before the reader had examples
 
 The pattern: you never had to tell the Petri net what kind of system it was modeling. The net type emerged from how you wired the arcs. A ResourceNet conserves tokens because the topology conserves them — every arc into a transition has a matching arc out. A GameNet alternates turns because a turn-control place gates player transitions through mutual exclusion.
 
-The taxonomy isn't a labeling scheme imposed from outside. It's a description of structural invariants that the topology either has or doesn't. This is the same insight as "it's graph theory, not Petri net theory," seen from a different angle: the structure carries the meaning.
+The taxonomy is not a labeling scheme imposed from outside but a description of structural invariants that the topology either has or doesn't. This is the same insight as "it's graph theory, not Petri net theory," seen from a different angle: the structure carries the meaning.
 
 ## What the Book Proved
 
-Three claims survived from Chapter 1 to Chapter 18:
+Three claims survived from Chapter 1 to Chapter 20:
 
 **Small models beat black boxes.** Every application in this book is inspectable. You can look at the tic-tac-toe topology and count win lines. You can read the stoichiometry matrix and see the differential equations. You can audit the ZK circuit and verify what it proves. At no point did you need to trust a model you couldn't read. This is the opposite of the machine learning approach, where the knowledge is in the weights and the weights are opaque. The cost is that Petri net models require a human to design the topology. The benefit is that the topology is the explanation.
 
-**One formalism, multiple tools.** The JSON-LD model format (Chapter 14) is processed identically by the visual editor (Chapter 15), the code generator (Chapter 16), the Go library (Chapter 17), and the ZK compiler (Chapter 13). Dual implementation (Chapter 18) verifies that independent implementations agree. This isn't a theoretical property — it's tested, deployed, and running on-chain.
+**One formalism, multiple tools.** The JSON-LD model format (Chapter 16) is processed identically by the visual editor (Chapter 17), the code generator (Chapter 18), the Go library (Chapter 19), and the ZK compiler (Chapter 12). Dual implementation (Chapter 20) verifies that independent implementations agree. This isn't a theoretical property — it's tested, deployed, and running on-chain.
 
 **Topology is primary, rates are secondary.** Change the rate constants and the system's quantitative behavior shifts. Change the topology and the system becomes a different system. This inversion — structure over parameters — holds across all six applications and both modes (combinatorial and continuous). It's the book's most load-bearing claim, and Chapter 13 gave it a precise formulation.
 
@@ -88,7 +88,7 @@ The four-layer stack describes *what* the book built. This section names *what i
 
 ### The Round-Trip Matrix
 
-Chapter 2 introduced the incidence matrix $N$ with its input and output components. But there's a simpler object underneath. Let $B$ be the **input adjacency matrix** of the bipartite graph: $B[i,j] = 1$ if place $i$ is an input to transition $j$, and 0 otherwise. This is the "who feeds whom" structure at Layer 1 — pure graph connectivity, no Petri net semantics.
+Chapter 2 introduced the incidence matrix $C$ with its input and output components. But there's a simpler object underneath. Let $B$ be the **input adjacency matrix** of the bipartite graph: $B[i,j] = 1$ if place $i$ is an input to transition $j$, and 0 otherwise. This is the "who feeds whom" structure at Layer 1 — pure graph connectivity, no Petri net semantics.
 
 The matrix product $BB^T$ is a square matrix on places:
 
@@ -96,7 +96,7 @@ $$(BB^T)[i,j] = \sum_k B[i,k] \cdot B[j,k]$$
 
 This counts the number of transitions that places $i$ and $j$ both feed into — their co-occurrence through the transition layer. The diagonal entry $(BB^T)[i,i]$ counts how many transitions consume from place $i$: its outflow degree.
 
-$BB^T$ is a round-trip: start at places, pass through transitions, return to places. In categorical language, $B$ is a morphism from the place space to the transition space and $B^T$ is its adjoint going back. The composite $BB^T$ is an **endofunctor** — a mapping from the place space to itself. It encodes how the transition layer mediates relationships among places.
+$BB^T$ is a round-trip: start at places, pass through transitions, return to places. In linear-algebraic language, $B^T$ is a map from the place space to the transition space and $B$ is its adjoint bringing it back. The composite $BB^T$ is an **endofunctor** — a mapping from the place space to itself. It encodes how the transition layer mediates relationships among places.
 
 ### The Diagonal Is the Invariant
 
@@ -130,7 +130,7 @@ The construction — bipartite structure, round-trip endofunctor, diagonal reado
 
 **Governance.** Voters are places, decisions are transitions. The diagonal measures structural influence — how many decision points each voter participates in.
 
-In every case, the recipe is identical: encode the entity-constraint structure as a bipartite graph, form $BB^T$, and read the diagonal — either by counting (static analysis) or by ODE relaxation (dynamic computation). The equilibrium concentrations rank entities by structural importance within the constraint network. No training data. No domain heuristics. Just topology.
+In every case, the recipe is identical: encode the entity-constraint structure as a bipartite graph, form $BB^T$, and read the diagonal — either by counting (static analysis) or by ODE relaxation (dynamic computation). The equilibrium concentrations rank entities by structural importance within the constraint network, with no training data and no domain heuristics.
 
 ## The Structure Underneath
 
@@ -146,7 +146,7 @@ $$t : p_1 \otimes p_2 \to q_1 \otimes q_2 \otimes q_3$$
 
 The $\otimes$ is the monoidal product — it means "these things exist side by side." Two tokens in separate places aren't combined or merged; they coexist independently. This is how Petri nets express concurrency: $p_1 \otimes p_2$ means both places are marked, and both tokens are available simultaneously.
 
-Places are the objects. Transitions are the morphisms. The multiset of tokens across all places — the marking — is an object in the free commutative monoid generated by the places.
+The objects are multisets of places — markings, elements of the free commutative monoid $\mathbb{N}^P$ generated by the places — and the transitions are the generating morphisms. Every morphism is built from them by sequential and parallel composition.
 
 ### Two Kinds of Composition
 
@@ -178,11 +178,11 @@ This theorem has been silently at work in every chapter:
 
 The SMC encoding captures process structure — which compositions are valid, which transitions are independent. But it flattens something every computation in this book depends on: the privileged present.
 
-In the free SMC, tokens are objects, firing sequences are morphisms, and all markings are homogeneous. There is no distinguished "current state." The marking that a DDM simulation reads on every step — the thing that determines which transitions are enabled right now — has no special status. It's just another object, related to other objects by transition morphisms.
+In the free SMC, markings are objects, firing sequences are morphisms, and all markings are homogeneous. There is no distinguished "current state." The marking that a DDM simulation reads on every step — the thing that determines which transitions are enabled right now — has no special status. It's just another object, related to other objects by transition morphisms.
 
 But every engine we built tells a different story. Execution state has a three-part structure — a *zipper* in the sense of Huet (1997):
 
-- **Left context (past).** The tropical semiring accumulates firing history into a compressed summary. Past firings are irreversible; the tropical core is the proof. This is the accumulator layer from Chapters 15–16.
+- **Left context (past).** The tropical semiring accumulates firing history into a compressed summary. Past firings are irreversible; the tropical core is the proof. This is the left context of the execution zipper in Appendix E.
 - **Hole (present).** The current marking. It is simultaneously the output of tropical accumulation and the input to the predicate layer. Change the marking and you are in a different universe — different history is relevant, different transitions are enabled.
 - **Right context (future).** Guards and predicates constrain what fires next, computed fresh from the marking on every step. Win detection, turn enforcement, balance checks — all recomputed when the hole moves.
 
@@ -207,7 +207,7 @@ Each layer composes with the ones above and below. Models compose via typed link
 
 This isn't imposed structure. The book accumulated one chapter at a time, each solving a specific problem. But Petri nets carry symmetric monoidal structure inherently, and everything built on them inherits it. The coherence shows up as: techniques from one chapter transfer cleanly to another. The ODE analysis that works on tic-tac-toe works on poker. The ZK circuit that proves tic-tac-toe transitions proves any Petri net transition. The composition rules that wire order processing to inventory wire any two schemas together.
 
-The category theory isn't a framework the book adopted. It's the structure that was always there — the reason the abstraction turned out to be universal.
+The category theory is not a framework the book adopted but the structure that was always there — the reason the abstraction turned out to be universal.
 
 For readers who want the formal treatment — the free SMC construction, the precise functor definitions, and the lens product decomposition theorem — see Appendix E.
 

@@ -379,4 +379,4 @@ The smallest valid model:
 }
 ```
 
-This defines a one-shot toggle: a token starts in `off`, the `switch` transition fires, and the token moves to `on`. Three fields, two places, one transition, two arcs — the simplest possible Petri net application.
+This defines a one-shot toggle: a token starts in `off`, the `switch` transition fires, and the token moves to `on`. Four fields, two places, one transition, two arcs — the simplest possible Petri net application.

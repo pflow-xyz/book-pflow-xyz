@@ -13,7 +13,7 @@ We'll use a 4×4 mini-Sudoku to keep things comprehensible:
 ```
   Initial:            Solution:
 +---+---+---+---+    +---+---+---+---+
-| 1 |   | . | . |    | 1 | 2 | 4 | 3 |
+| 1 | . | . | . |    | 1 | 2 | 4 | 3 |
 +---+---+---+---+    +---+---+---+---+
 | . | . | 2 | . |    | 3 | 4 | 2 | 1 |
 +===+===+===+===+ -> +===+===+===+===+
@@ -161,7 +161,7 @@ The same pattern scales without structural changes:
 
 The 9×9 model has 729 transitions — one for each cell × digit combination. The constraint collectors expand from 12 to 27 (9 rows + 9 columns + 9 blocks). The structure is identical; only the dimensions change.
 
-The ODE simulation time grows with the number of transitions (729 vs. 64), but the tuned solver still handles it in seconds. The key insight: we're not solving Sudoku with the ODE. We're ranking candidate moves. The ranking guides a discrete solver (backtracking, constraint propagation) toward the solution faster.
+The ODE simulation time grows with the number of transitions (729 vs. 64), but the tuned solver still handles it in seconds. The ODE is not solving Sudoku here; it is ranking candidate moves, and the ranking guides a discrete solver (backtracking, constraint propagation) toward the solution faster.
 
 ## Constraint Satisfaction as Token Flow
 

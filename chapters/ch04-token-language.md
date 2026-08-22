@@ -19,7 +19,7 @@ The token language distills to four primitives:
 
 Every token model — from an ERC-20 token standard to a poker game to a hospital workflow — is expressed with these four terms. `cell` defines what exists. `func` defines what happens. `arrow` defines what flows where. `guard` defines what's allowed.
 
-This isn't minimalism for its own sake. Four terms is the smallest vocabulary that captures the essential structure of executable schemas. Fewer terms would lose expressiveness. More terms would add redundancy. The four-term primitive sits at the same sweet spot as Petri nets themselves: just enough structure to be useful, not so much that it obscures the model.
+This isn't minimalism for its own sake: four terms is the smallest vocabulary that captures the essential structure of executable schemas. Fewer terms would lose expressiveness. More terms would add redundancy. The four-term primitive sits at the same sweet spot as Petri nets themselves: just enough structure to be useful, not so much that it obscures the model.
 
 ## S-Expression Syntax
 
@@ -287,6 +287,7 @@ If the guard fails, the action is blocked — nothing changes. If an invariant f
 schema, err := dsl.ParseSchema(`
   (schema Counter
     (state count :kind token :initial 10)
+    (state done :kind token :initial 0)
     (action decrement :guard {tokens(count) > 0})
     (arc count -> decrement)
     (arc decrement -> done))
@@ -303,7 +304,7 @@ The token language adds three layers on top of the mathematical Petri net:
 2. **Typed state** — TokenState for discrete counts, DataState for structured values
 3. **Net types and composition** — categorical classification with typed links
 
-These layers don't replace the mathematics. They organize it. The incidence matrix, state equation, and P-invariants from Chapters 2 and 3 still apply. Guards add preconditions. Invariants add postconditions. Types add composition rules.
+These layers don't replace the mathematics; they organize it. The incidence matrix, state equation, and P-invariants from Chapters 2 and 3 still apply. Guards add preconditions. Invariants add postconditions. Types add composition rules.
 
 The four-term vocabulary — cell, func, arrow, guard — is the interface between human intent and the mathematical machinery. You describe the model in these terms. The machinery handles the rest.
 

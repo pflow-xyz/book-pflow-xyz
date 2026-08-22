@@ -59,7 +59,7 @@ Mass-action kinetics defines a monoidal functor from the discrete net category t
 
 $$\text{ODE} : \mathcal{F}(N) \to \textbf{Dyn}$$
 
-- Places (objects) map to real-valued concentrations
+- Objects (markings) map to concentration vectors; places, the generators, to their coordinates
 - Transitions (morphisms) map to rate equations: $v_t = k_t \prod_{p \in \text{pre}(t)} M(p)$
 - The monoidal product maps to independence: $\text{ODE}(A \otimes B) = \text{ODE}(A) \times \text{ODE}(B)$
 
@@ -71,7 +71,7 @@ The Groth16 compilation defines a monoidal functor from the net category to the 
 
 $$\text{ZK} : \mathcal{F}(N) \to \textbf{Circ}$$
 
-- Places map to witness variables (committed via MiMC)
+- Markings map to witness vectors (committed via MiMC), one variable per place
 - Transitions map to constraint systems (pre/post conditions as R1CS)
 - The monoidal product maps to independent constraint blocks
 
@@ -83,7 +83,7 @@ The incidence reduction (Chapter 13) defines a functor from the net category to 
 
 $$\text{Val} : \mathcal{F}(N) \to \textbf{Vect}$$
 
-- Places map to real-valued strategic scores
+- Markings map to vectors of strategic scores, one per place
 - The mapping reads the diagonal of $BB^T$ — the round-trip endofunctor
 - The monoidal product maps to independent evaluation: $\text{Val}(A \otimes B) = \text{Val}(A) \times \text{Val}(B)$
 
@@ -122,7 +122,7 @@ $$\text{Exec}(N) = \mathcal{L}(N) \times M \times \mathcal{R}(N, M)$$
 where:
 
 - **$M \in \mathbb{N}^P$** is the current marking — the hole. It is the object in $\mathcal{F}(N)$ at which execution is focused.
-- **$\mathcal{L}(N)$** is the left context — the accumulated history of past firings. This is a element of the tropical semiring $(\mathbb{R}_{\max}, \oplus, \otimes)$ where $a \oplus b = \max(a,b)$ and $a \otimes b = a + b$. The tropical core compresses firing history into longest-path summaries: $\mathcal{L}_{ij}$ records the longest causal chain from transition $i$ to transition $j$. Tropical matrix multiplication is fast-forward: $\mathcal{L}^{(n)} = \mathcal{L}^{(n-1)} \otimes \mathcal{L}^{(1)}$.
+- **$\mathcal{L}(N)$** is the left context — the accumulated history of past firings. This is an element of the tropical semiring $(\mathbb{R}_{\max}, \oplus, \otimes)$ where $a \oplus b = \max(a,b)$ and $a \otimes b = a + b$. The tropical core compresses firing history into longest-path summaries: $\mathcal{L}_{ij}$ records the longest causal chain from transition $i$ to transition $j$. Tropical matrix multiplication is fast-forward: $\mathcal{L}^{(n)} = \mathcal{L}^{(n-1)} \otimes \mathcal{L}^{(1)}$.
 - **$\mathcal{R}(N, M)$** is the right context — the set of transitions enabled at marking $M$. This is a predicate on $\mathcal{F}(N)$'s generators: $\mathcal{R}(N, M) = \{ t \in T \mid \text{pre}(t) \leq M \}$. It is computed fresh from the hole on every step.
 
 ### The Zipper Step
@@ -183,7 +183,7 @@ Every chapter that splits a net into a *core* and an *observer* (Chapters 6, 12,
 
 **The $\rho$ boundary is algebraic and lives inside $C$.** For a transition $t$ write $\rho(t) = |\text{pre}(t)| \,/\, |\text{post}(t)|$, the ratio of tokens consumed to tokens produced. A core transition has $\rho = 1$ and, in the nets of this book, one producer and one consumer per place — the *timed event graph* property. A transition with $\rho > 1$ (a win detector consuming three history tokens and a turn token to produce one verdict) breaks that property. Three consequences follow, all of them facts about $C$: the tropical eigenvalue $\lambda$ is undefined across it (Chapter 13), the R1CS encoding stops being uniform (Chapter 12), and the ODE treats it as a sink. What does *not* follow is any failure of composition. The Meseguer–Montanari theorem above has no hypothesis about fan-in; a $\rho > 1$ transition is an ordinary generating morphism of $\mathcal{F}(N)$.
 
-**The contextual boundary is categorical and lives outside $C$.** A *read arc* tests that a place holds a token without consuming it; an *inhibitor arc* tests that it holds none. Neither has an entry in the incidence matrix — $C$ records net change, and these arcs change nothing. Montanari and Rossi (1995) showed that nets with such arcs do not generate the free SMC: a transition's enablement depends on marking that its pre/post boundary does not express, so the morphism is no longer determined by its source and target. This breaks composition. It does not touch $\rho$: a guard has $\rho = 1$ because it neither consumes nor produces.
+**The contextual boundary is categorical and lives outside $C$.** A *read arc* tests that a place holds a token without consuming it; an *inhibitor arc* tests that it holds none. Neither has an entry in the incidence matrix — $C$ records net change, and these arcs change nothing. Montanari and Rossi (1995) showed that nets with such arcs do not generate the free SMC: a transition's enablement depends on marking that its pre/post boundary does not express, so the morphism is no longer determined by its source and target. This breaks composition. It does not touch $\rho$: a contextual arc adds nothing to either count, so the guarded transition keeps whatever $\rho$ it had — $\rho = 1$ for `send`.
 
 | | ordinary arcs only | has contextual arcs |
 |---|---|---|
@@ -194,7 +194,7 @@ The two worked examples in this book sit in the two off-diagonal cells, which is
 
 In zipper terms, the contextual boundary is exactly where $\mathcal{R}$ lives. A read arc *is* a predicate on the marking that $C$ cannot express, recomputed every step — which is why the right context of the execution zipper is a predicate rather than a morphism, and why it sits outside $\mathcal{F}(N)$ rather than inside it.
 
-**The circuit dissolves one boundary and not the other.** The standard encoding of a read arc as a self-loop (consume, then produce back) is inequivalent under partial-order semantics: it serialises firings the read arc allowed to be concurrent, so the unfolding changes (Vogler, Semenov & Yakovlev, 1998). Under interleaving semantics the reachability set is identical. A Groth16 proof certifies one firing, and one firing has only interleaving semantics; so inside the circuit the self-loop is exact, and a guard pulled into the proof as a range check on an auxiliary witness is a faithful encoding. The $\rho$ boundary survives compilation unchanged, because the circuit is a compilation of $C$.
+**The circuit dissolves one boundary and not the other.** The standard encoding of a read arc as a self-loop (consume, then produce back) is inequivalent under partial-order semantics: it serializes firings the read arc allowed to be concurrent, so the unfolding changes (Vogler, Semenov & Yakovlev, 1998). Under interleaving semantics the reachability set is identical. A Groth16 proof certifies one firing, and one firing has only interleaving semantics; so inside the circuit the self-loop is exact, and a guard pulled into the proof as a range check on an auxiliary witness is a faithful encoding. The $\rho$ boundary survives compilation unchanged, because the circuit is a compilation of $C$.
 
 **Throughput composes as a bound, not a value.** For open nets glued along a boundary place, $\lambda(A ;_p B) \geq \max(\lambda(A), \lambda(B))$, with equality only when no cycle through the glue has a larger mean weight than the best local cycle. Gluing creates cycles that belong to neither component, so throughput cannot be read off the parts. What can be: the lower bound for free, and Karp's algorithm (1978) run over the glue cycles only. Conservation and the circuit compose outright; $\lambda$ does not.
 

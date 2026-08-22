@@ -24,7 +24,7 @@ The root problem is the same in each case: the model doesn't capture the structu
 
 In 1962, Carl Adam Petri submitted his doctoral dissertation, *Kommunikation mit Automaten* (Communication with Automata), to the Technical University of Darmstadt. He was 36 years old, and he had been thinking about the problem for over a decade — his first sketches of what would become Petri nets date to 1939, when he was thirteen.
 
-Petri's insight was deceptively simple: concurrent systems need a model where multiple things can be true at the same time. State machines force you to enumerate every combination of conditions as a single global state. Petri's nets decompose the state into independent pieces — *places* — each holding their own local truth. The interactions between these pieces are explicit in the structure of the net.
+Petri's insight was deceptively simple: concurrent systems need a model where multiple things can be true at the same time. State machines force you to enumerate every combination of conditions as a single global state. Petri's nets decompose the state into independent pieces — *places* — each holding its own local truth. The interactions between these pieces are explicit in the structure of the net.
 
 The formalism found its first serious applications in hardware design, where concurrency is unavoidable. By the 1980s, Petri nets had become a standard tool in manufacturing, telecommunications, and workflow modeling. They remain the mathematical foundation for business process notations like BPMN, even though most practitioners never see the underlying net.
 
@@ -103,7 +103,7 @@ This pattern — a shared resource place controlling access — appears everywhe
 
 The word "model" has been colonized. Say it in a meeting and people hear "large language model" — billions of parameters, inscrutable weights, probabilistic outputs. There's another kind of model: small, executable, and inspectable all the way down.
 
-Petri nets are small models. A coffee shop with five ingredients and three recipes is about 15 places and 8 transitions. A complete poker game — Texas Hold'em with all betting rounds — is under 50 places. A Sudoku solver is larger but still finite and fully visible.
+Petri nets are small models. A coffee shop with five ingredients and five recipes is ten places and five transitions (Chapter 5). A complete poker game — Texas Hold'em with all betting rounds — is under 50 places. A Sudoku solver is larger but still finite and fully visible.
 
 Small models offer properties that large models cannot:
 
@@ -123,7 +123,7 @@ This matters practically, not just philosophically. A Petri net model lets you a
 
 **Liveness**: "Can the system deadlock?" This tells you whether every transition can eventually fire again, or whether some paths lead to permanent stuckness.
 
-These aren't abstract concerns. They're the bugs that take down production systems. The difference is that with a Petri net, you can check them statically — before the system runs, before you've written the implementation, before the 3am page.
+These aren't abstract concerns; they're the bugs that take down production systems. The difference is that with a Petri net, you can check them statically — before the system runs, before you've written the implementation, before the 3am page.
 
 ### Models as Specification
 

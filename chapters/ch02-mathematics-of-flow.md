@@ -104,9 +104,9 @@ In the traffic light, only one transition is ever enabled at a time, so there's 
 
 Computing markings by hand gets tedious. The **incidence matrix** makes it mechanical.
 
-The incidence matrix $N \in \mathbb{Z}^{n \times m}$ has one row per place and one column per transition. Each entry is the *net effect* of firing that transition on that place:
+The incidence matrix $C \in \mathbb{Z}^{n \times m}$ has one row per place and one column per transition. Each entry is the *net effect* of firing that transition on that place:
 
-$$N[i, j] = W(t_j, p_i) - W(p_i, t_j)$$
+$$C[i, j] = W(t_j, p_i) - W(p_i, t_j)$$
 
 Positive means the transition produces tokens in that place. Negative means it consumes. Zero means no effect.
 
@@ -126,7 +126,7 @@ Reading column $t_1$: firing $t_1$ removes one token from $p_1$ and adds one to 
 
 This is the payoff. With the incidence matrix, the firing rule becomes matrix multiplication:
 
-$$M' = M + N \cdot \vec{\sigma}$$
+$$M' = M + C \cdot \vec{\sigma}$$
 
 Where $\vec{\sigma} \in \mathbb{N}^m$ is the **firing count vector** — how many times each transition fires. For a single firing of $t_1$, $\vec{\sigma} = [1, 0]^T$:
 
@@ -161,9 +161,9 @@ With $M_0 = [1, 1, 0]^T$, firing $t_1$ gives $M_1 = [0, 0, 1]^T$. With $M_0 = [1
 
 The incidence matrix reveals something deeper than individual firings. It reveals what *cannot change*, no matter what sequence of transitions fires.
 
-A **P-invariant** (place invariant) is a row vector $w \in \mathbb{Z}^n$ such that:
+A **P-invariant** (place invariant) is a non-zero vector $w \in \mathbb{N}^n$ such that:
 
-$$w^T \cdot N = \vec{0}$$
+$$w^T \cdot C = \vec{0}$$
 
 The vector $w$ assigns a weight to each place such that the weighted sum of tokens is preserved by every transition. If $w$ is a P-invariant, then for any reachable marking $M$:
 
@@ -175,13 +175,13 @@ This is a **conservation law**. No matter what fires, no matter what order, the 
 
 For the three-place chain, try $w^T = [1, 1, 1]$:
 
-$$w^T \cdot N = [1, 1, 1] \cdot \begin{bmatrix} -1 & 0 \\ 1 & -1 \\ 0 & 1 \end{bmatrix} = [0, 0]$$
+$$w^T \cdot C = [1, 1, 1] \cdot \begin{bmatrix} -1 & 0 \\ 1 & -1 \\ 0 & 1 \end{bmatrix} = [0, 0]$$
 
 It works. The invariant says:
 
 $$M(p_1) + M(p_2) + M(p_3) = M_0(p_1) + M_0(p_2) + M_0(p_3) = 1$$
 
-The total number of tokens is always 1. We proved this for the traffic light informally in Chapter 1 — now we've proved it with linear algebra, and the proof works for any net where $[1, 1, \ldots, 1] \cdot N = \vec{0}$.
+The total number of tokens is always 1. We proved this for the traffic light informally in Chapter 1 — now we've proved it with linear algebra, and the proof works for any net where $[1, 1, \ldots, 1] \cdot C = \vec{0}$.
 
 ### What Conservation Laws Tell You
 
@@ -228,15 +228,15 @@ for _, inv := range invariants {
 isConservative := analyzer.CheckConservation(initialMarking)
 ```
 
-The `IncidenceMatrix` method builds the $N$ matrix from the net's arc structure. `FindPInvariants` solves $w^T \cdot N = \vec{0}$ to find conservation laws. `CheckConservation` tests whether the all-ones vector is an invariant — whether total token count is preserved.
+The `IncidenceMatrix` method builds the $C$ matrix from the net's arc structure. `FindPInvariants` solves $w^T \cdot C = \vec{0}$ to find conservation laws. `CheckConservation` tests whether the all-ones vector is an invariant — whether total token count is preserved.
 
 ## Putting It Together
 
-The mathematics of this chapter — the 5-tuple, the state equation, the incidence matrix, P-invariants — form a complete toolkit for structural analysis. Given a Petri net, you can:
+The mathematics of this chapter — the 5-tuple, the state equation, the incidence matrix, P-invariants — forms a complete toolkit for structural analysis. Given a Petri net, you can:
 
 1. **Write the incidence matrix** from the arc structure
-2. **Compute reachable markings** using the state equation $M' = M + N \cdot \vec{\sigma}$
-3. **Find conservation laws** by solving $w^T \cdot N = \vec{0}$
+2. **Compute reachable markings** using the state equation $M' = M + C \cdot \vec{\sigma}$
+3. **Find conservation laws** by solving $w^T \cdot C = \vec{0}$
 4. **Prove boundedness** from positive P-invariants
 5. **Check for deadlocks** by finding markings where no transition is enabled
 

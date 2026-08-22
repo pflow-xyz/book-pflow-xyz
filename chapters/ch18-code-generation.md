@@ -2,7 +2,7 @@
 
 **Learning objective**: Generate full-stack applications from a Petri net model.
 
-The visual editor (Chapter 15) produces a model. The Go library (Chapter 17) analyzes it. But at some point you need a running application — HTTP endpoints, event storage, a frontend, authentication. Petri-pilot bridges the gap: it takes a Petri net model and generates a complete, deployable application. The generation is deterministic. The same model always produces the same code.
+The visual editor (Chapter 17) produces a model. The Go library (Chapter 19) analyzes it. But at some point you need a running application — HTTP endpoints, event storage, a frontend, authentication. Petri-pilot bridges the gap: it takes a Petri net model and generates a complete, deployable application. The generation is deterministic. The same model always produces the same code.
 
 This chapter explains the architecture: how a JSON model becomes a Go backend and JavaScript frontend, why events are separated from bindings, and how customization survives regeneration.
 
@@ -237,7 +237,7 @@ All services implementing the `GraphQLService` interface are combined into a sin
 
 ### Model Viewer
 
-The serving layer includes a Petri net viewer at `/pflow` that renders any model using the pflow.xyz `<petri-view>` web component (Chapter 15). It converts the internal model format to JSON-LD and passes it to the web component for interactive visualization and simulation.
+The serving layer includes a Petri net viewer at `/pflow` that renders any model using the pflow.xyz `<petri-view>` web component (Chapter 17). It converts the internal model format to JSON-LD and passes it to the web component for interactive visualization and simulation.
 
 ### GraphQL Playground
 

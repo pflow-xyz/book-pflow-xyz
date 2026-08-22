@@ -84,7 +84,7 @@ And a conservation constraint ties them together:
 
 $$\sum_{i,j} M(P_{ij}) + \sum_{i,j} M(X_{ij}) + \sum_{i,j} M(O_{ij}) = 9$$
 
-Every cell is in exactly one state: available ($P_{ij} = 1$), claimed by X ($X_{ij} = 1$), or claimed by O ($O_{ij} = 1$). The total is always 9 — the board size. This is a P-invariant verified by the incidence matrix.
+Every cell is in exactly one state: available ($P_{ij} = 1$), claimed by X ($X_{ij} = 1$), or claimed by O ($O_{ij} = 1$). The total is always 9 — the board size. This is a P-invariant of the move layer, verified by the incidence matrix; the pattern collectors of the next section deliberately break it, since a collector consumes history tokens without returning them. That breakage is the point made there.
 
 ### In the DSL
 
@@ -174,7 +174,7 @@ The 16 pattern collectors (8 for X, 8 for O) are the complete game-over detectio
 
 Each pattern collector is independent. Adding a new win condition (say, for a variant game) means adding a new transition with three input arcs and one output arc. Removing a condition means removing a transition. The rest of the model is untouched.
 
-The collectors are also the first place this book's core–observer split shows up. Every move transition consumes two tokens and produces two; every collector consumes four (three history tokens and the turn token) and produces one. That ratio — $\rho = 1$ for the core, $\rho > 1$ for the collectors — is what the tropical and zero-knowledge chapters detect as "observer". It is worth saying now that the collectors break nothing categorical: they are ordinary transitions with ordinary arcs, and they compose exactly as this section says. What they break is the one-producer-one-consumer property that the throughput analysis of Chapter 13 needs, and the uniformity of the circuit in Chapter 12. [Appendix E](appendix-e-categorical-foundations.md#where-the-free-structure-stops-two-boundaries) separates that boundary from the other one — guards — which is categorical and which tic-tac-toe does not have.
+The collectors are also the first place this book's core–observer split shows up. Every collector consumes three history tokens (four, once the halting fix below adds the turn token) and produces one, so its compression ratio $\rho$ — tokens consumed over tokens produced — is at least 3. The move transitions sit near $\rho = 1$: in this chapter's `Next`-as-a-bit encoding an X move consumes one token and produces two, an O move the reverse, and the pair of them is balanced; the symmetric two-turn-place encoding used on the blog makes each move exactly $\rho = 1$. That gap — balanced moves, compressing collectors — is what the tropical and zero-knowledge chapters detect as "observer". The collectors break nothing categorical: they are ordinary transitions with ordinary arcs, and they compose exactly as this section says. What they break is the one-producer-one-consumer property that the throughput analysis of Chapter 13 needs, and the uniformity of the circuit in Chapter 12. [Appendix E](appendix-e-categorical-foundations.md#where-the-free-structure-stops-two-boundaries) separates that boundary from the other one — guards — which is categorical and which tic-tac-toe does not have.
 
 This is the compositional advantage of Petri nets over procedural game logic. In code, win detection is typically a function that iterates over patterns:
 
@@ -361,7 +361,7 @@ This is the general "next step" evaluator. Given any board state:
 2. For each empty position, count the number of reachable win transitions it connects to
 3. The highest count is the best move
 
-No search tree. No minimax. No alpha-beta pruning. Just count the edges to live terminals.
+No search tree, no minimax, no alpha-beta pruning — just count the edges to live terminals.
 
 ### The Boundary Between Counting and Simulation
 

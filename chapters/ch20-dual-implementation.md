@@ -35,7 +35,7 @@ Go Solver    ->  State trajectory  ->  Hash  --+
 JS Solver    ->  State trajectory  ->  Hash  --+
 ```
 
-This is the same principle as content addressing (Chapter 14), applied to simulation results. The hash doesn't prove the simulation is correct in some absolute sense — it proves the two implementations agree. And agreement between independent implementations, written in different languages by different code paths, is strong evidence of correctness.
+This is the same principle as content addressing (Chapter 16), applied to simulation results. The hash doesn't prove the simulation is correct in some absolute sense — it proves the two implementations agree. And agreement between independent implementations, written in different languages by different code paths, is strong evidence of correctness.
 
 ### What Gets Compared
 
@@ -218,6 +218,6 @@ JSON-LD Model (source of truth)
     +-- ZK circuits (gnark)  --  Cryptographic proofs
 ```
 
-The JSON-LD model is the shared contract. Each tool processes it independently. Each tool can verify its results against any other tool processing the same model. The model format is declarative (Chapter 14), so there's no ambiguity about what it means — only about how each tool computes from it. And dual implementation resolves that ambiguity.
+The JSON-LD model is the shared contract. Each tool processes it independently. Each tool can verify its results against any other tool processing the same model. The model format is declarative (Chapter 16), so there's no ambiguity about what it means — only about how each tool computes from it. And dual implementation resolves that ambiguity.
 
 This is the practical payoff of the universal abstraction. One formalism — Petri nets. One format — JSON-LD. Multiple implementations — Go, JavaScript, gnark circuits. Verification — by agreement. The mathematics provides the theory. Dual implementation provides the confidence that the code matches the mathematics.

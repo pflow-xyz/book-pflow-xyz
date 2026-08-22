@@ -126,15 +126,15 @@ The arc weight from `milk` to `make_latte` is 180. This means `make_latte` is en
 
 The incidence matrix for the full model captures every recipe in a single data structure. Each column is a drink type. Each row is an ingredient (or tracking place). Reading column `make_latte`:
 
-$$N[\text{coffee\_beans}, \text{make\_latte}] = -18$$
-$$N[\text{milk}, \text{make\_latte}] = -180$$
-$$N[\text{water}, \text{make\_latte}] = -30$$
-$$N[\text{cups}, \text{make\_latte}] = -1$$
+$$C[\text{coffee\_beans}, \text{make\_latte}] = -18$$
+$$C[\text{milk}, \text{make\_latte}] = -180$$
+$$C[\text{water}, \text{make\_latte}] = -30$$
+$$C[\text{cups}, \text{make\_latte}] = -1$$
 
 Negative entries are consumption. Positive entries in the tracking rows mirror them:
 
-$$N[\text{beans\_used}, \text{make\_latte}] = +18$$
-$$N[\text{milk\_used}, \text{make\_latte}] = +180$$
+$$C[\text{beans\_used}, \text{make\_latte}] = +18$$
+$$C[\text{milk\_used}, \text{make\_latte}] = +180$$
 
 ### Conservation Laws
 
@@ -318,7 +318,7 @@ The supply places start at zero — no restocking scheduled. When external event
 
 This creates a two-level conservation structure:
 
-- **Inner loop**: $M(\text{beans}) + M(\text{beans\_used}) = c_1$ (within one restocking cycle)
+- **Inner loop**: $M(\text{coffee\_beans}) + M(\text{beans\_used}) = c_1$ (within one restocking cycle)
 - **Outer loop**: Deliveries increase $c_1$ as supply tokens arrive
 
 The inner conservation law tells you whether beans leak. The outer structure tells you whether deliveries keep up with consumption.
@@ -405,7 +405,7 @@ The coffee shop model demonstrates a development pattern that recurs throughout 
 4. **Analyze bottlenecks** — read equilibrium values and sensitivity rankings
 5. **Build the application** — use the verified model as the backend for operational decisions
 
-The Petri net isn't a simulation that approximates the real system. It *is* the system specification. The arc weights are the recipes. The conservation laws are the accounting rules. The equilibrium values are the capacity limits. When you change the model, you change the system.
+The Petri net isn't a simulation that approximates the real system; it is the system specification. The arc weights are the recipes. The conservation laws are the accounting rules. The equilibrium values are the capacity limits. When you change the model, you change the system.
 
 This is the ResourceNet pattern: tokens count fungible things, arc weights specify recipes, conservation laws guarantee integrity, and ODE simulation answers capacity questions. The same pattern appears wherever you count things — inventory management, budget allocation, resource scheduling, supply chain modeling.
 

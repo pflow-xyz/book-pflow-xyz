@@ -159,7 +159,7 @@ err := groth16.Verify(proof, vk, publicWitness)
 
 The verifier sees three public inputs — `PreStateRoot`, `PostStateRoot`, and `Transition` — and confirms the state changed correctly. The actual marking (which places have tokens) stays private.
 
-For the order workflow, this circuit has roughly 1,800 R1CS constraints. Proof generation takes ~100ms. Verification takes ~2ms. The proof is 192 bytes.
+For the order workflow, this circuit has roughly 1,800 R1CS constraints. Proof generation takes ~100ms. Verification takes ~2ms. The proof is ~128 bytes.
 
 ### Invalid Transitions Are Unprovable
 
@@ -190,7 +190,7 @@ The rate auto-derivation algorithm operates on the bipartite directed graph of t
 
 ### Tic-Tac-Toe: Strategy from Topology
 
-The TTT Petri net from [Chapter 6](ch06-game-mechanics.md) has 33 places and 35 transitions. Each play transition (like `x_play_11`) produces a piece at a position (like `x11`). Each win transition (like `x_win_diag`) requires three specific pieces as inputs.
+The ZK variant of the TTT Petri net from [Chapter 6](ch06-game-mechanics.md) (the one Chapter 12 compiles; 33 places and 35 transitions, against Chapter 6's 30 and 34) is the model used here. Each play transition (like `x_play_11`) produces a piece at a position (like `x11`). Each win transition (like `x_win_diag`) requires three specific pieces as inputs.
 
 Apply the algorithm to the center position:
 
@@ -250,7 +250,7 @@ The problem: `o_turn` is an input to every `x_win_*` transition (win detection h
 
 The fix: exclude any output place produced by more than one candidate. A shared place carries no discriminative signal — it's the DC component that shifts every candidate equally. Only places unique to a single candidate can distinguish one candidate from another. This is analogous to mean-centering features before computing distances: the shared component must be subtracted before differences become meaningful.
 
-### It's Graph Theory, Not Petri Net Theory
+### Graph Theory First
 
 The rate auto-derivation is pure graph theory. It operates on a bipartite directed graph — nodes are candidates and targets, edges pass through output places — and computes degree centrality of candidates with respect to targets through unique edges. Nothing about the algorithm requires Petri net firing semantics, token counts, or conservation laws.
 
@@ -305,7 +305,7 @@ Since `src_H` is catalytic (always 1) and rates are uniform:
 
 $$val_H = \frac{1}{\text{num\_drains}}$$
 
-Rare hands have fewer drains, accumulate more tokens, and produce higher equilibrium values. Common hands drain fast, accumulate little, and score low. Running the ODE with uniform rates to equilibrium yields:
+Rare hands have fewer drains, accumulate more tokens, and produce higher equilibrium values. Common hands drain fast, accumulate little, and score low. Running the ODE with uniform rates to equilibrium, and scaling so that High Card = 1 (i.e. $32 / \text{num\_drains}$), yields:
 
 ```
 Straight Flush:  32.0  (1 drain)
