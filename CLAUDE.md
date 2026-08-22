@@ -17,7 +17,7 @@ book-pflow-xyz/
 - **Figures**: SVG preferred, referenced as `![caption](../figures/filename.svg)`
 - **Code examples**: Inline for short snippets, separate files in `examples/` for anything >20 lines
 - **Cross-references**: Use `[Chapter N: Title](chNN-slug.md)` format
-- **Voice**: Technical but accessible — assume the reader knows programming but not Petri nets. Before publishing a chapter, run the `voice-audit` and `math-audit` skills (`../blog-stackdump-com/.claude/skills/*/SKILL.md`) — it lists the LLM-draft tells and the argument defects (B-checks) this material is prone to.
+- **Voice**: Technical but accessible — assume the reader knows programming but not Petri nets. Before publishing a chapter, run the `voice-audit`, `math-audit` and `model-audit` skills (`../blog-stackdump-com/.claude/skills/*/SKILL.md`) — it lists the LLM-draft tells and the argument defects (B-checks) this material is prone to.
 - **The core–observer boundary is two boundaries** (ρ, inside C; contextual arcs, outside C). The canonical statement is Appendix E, "Where the Free Structure Stops". Chapters cite it; they do not restate the table. See `../blog-stackdump-com/REVISION-ROADMAP.md` for the audit that produced it.
 
 ## Source Material

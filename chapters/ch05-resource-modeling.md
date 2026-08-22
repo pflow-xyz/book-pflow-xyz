@@ -168,11 +168,11 @@ The firing rate for each transition follows mass-action kinetics:
 
 <div>$$v(\text{make\_latte}) = k_{\text{latte}} \cdot M(\text{beans})^{18} \cdot M(\text{water})^{30} \cdot M(\text{milk})^{180} \cdot M(\text{cups})^{1}$$</div>
 
-Wait — that looks wrong. With arc weight 18, the rate would depend on the 18th power of the bean count? That's the literal mass-action formula, but with large token counts (1,000 beans) and large exponents (18), the numbers explode to astronomical values.
+Wait — that looks wrong. With arc weight 18, would the rate depend on the 18th power of the bean count? That is the literal chemical mass-action formula, and go-pflow deliberately does not use it. Its rate law is $v(t) = k \cdot \prod_i M(p_i)$ — the *first* power of each input place — and the arc weight scales only how much each firing consumes. Even so, the product of four large stocks (1,000 × 5,000 × 10,000 × 100) is astronomical.
 
 ### Scaling for Stability
 
-This is a real issue in practice. The mass-action rate law $v(t) = k \cdot \prod M(p_i)^{w_i}$ was designed for chemical reactions where concentrations are small numbers (moles per liter, typically between 0 and 10). Coffee shop inventory has large integer token counts and large arc weights.
+This is a real issue in practice. Mass-action kinetics was designed for chemical reactions where concentrations are small numbers (moles per liter, typically between 0 and 10). Coffee shop inventory has large integer token counts, and the product of them is what has to be tamed.
 
 The solution is scaling. Divide the rate constants by a factor that brings the dynamics into a numerically stable range:
 
@@ -197,10 +197,12 @@ The scaling doesn't change the qualitative behavior — ratios between transitio
 
 Running the simulation from the initial inventory reveals depletion trajectories:
 
-- **Cups** deplete first — only 100 available, consumed one per drink regardless of type
-- **Coffee beans** deplete next — every drink uses 18g, so 1,000g supports about 55 drinks total
-- **Milk** depletes on a schedule driven by latte popularity — at 180ml per latte and 48 lattes/hour, 5,000ml lasts roughly 58 minutes of pure latte production
+- **Milk** depletes first — three of the five drinks draw on it, at 120–180ml each, so 5,000ml is going at about 222ml per minute: half gone in roughly 21 minutes, and the milk drinks stall soon after
+- **Coffee beans** deplete next — every drink uses 18g, so 1,000g supports about 55 drinks total; half gone around the 100-minute mark in the simulation, because the stalled milk drinks stop drawing on it
+- **Cups** never come close — 100 cups at 2.2 drinks per minute would last 45 minutes if nothing else ran out first, but milk does, and the two milk-free drinks alone draw cups slowly
 - **Water** depletes slowest — 10,000ml with most drinks using only 30ml
+
+This is the reverse of what intuition (and an earlier version of this chapter) said: cups are the smallest number, so surely they go first. They do not, because the weights matter — a latte takes 180 tokens of milk and one token of cups — and the linear estimate two sections down already shows it.
 
 The conservation laws hold throughout the simulation. At any point in time:
 
@@ -243,9 +245,9 @@ The real power of the continuous model appears at equilibrium. When the ODE reac
 
 In the coffee shop, equilibrium means all ingredients have depleted and all tracking places have filled. But the *path* to equilibrium reveals the bottleneck sequence:
 
-1. **First bottleneck**: Cups run out (100 cups, all drinks need exactly 1)
-2. **Second bottleneck**: Beans deplete (all drinks need 18g, no differentiation)
-3. **Third bottleneck**: Milk depletes (only milk-based drinks affected)
+1. **First bottleneck**: Milk (three drinks, heavy weights — 222ml/min at baseline)
+2. **Second bottleneck**: Beans (all drinks need 18g, no differentiation)
+3. **Third bottleneck**: Cups (one per drink, but by now only the milk-free drinks are still firing)
 
 ### Scenario Analysis
 
@@ -261,13 +263,13 @@ Nothing depletes during a normal shift. The equilibrium is far in the future.
 ```go
 rates["make_latte"] = 1.6  // 96/hr
 ```
-Cups deplete in half the time. Beans follow quickly. The queue builds up before production can handle it.
+Milk depletes in half the time — about 11 minutes on the linear estimate. Beans follow.
 
 **Latte promotion** — triple latte rate, keep others constant:
 ```go
 rates["make_latte"] = 2.4  // 144/hr
 ```
-Milk becomes the first bottleneck. With 5,000ml at 180ml/latte, the milk lasts about 35 minutes at this rate. Beans actually last longer because the increased latte volume comes at the expense of other drinks, which are rate-limited by their own (unchanged) constants.
+Milk was already the first bottleneck; now it is a sharper one. Consumption rises to about 510ml per minute, so 5,000ml lasts roughly 10 minutes on the linear estimate. Beans deplete sooner too — every extra latte costs 18g, and the other drinks keep their own (unchanged) rates — down from about 25 minutes to about 15.
 
 Each scenario is the same net with different rate constants. The structure — places, arcs, weights — stays the same. Only the dynamics change.
 
