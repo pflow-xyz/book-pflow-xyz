@@ -10,15 +10,15 @@ The coffee shop is a **ResourceNet** in the categorical vocabulary from Chapter 
 
 A coffee shop has limited inventory. Different drinks consume ingredients at different rates:
 
-| Drink | Beans | Water | Milk | Cups |
-|-------|-------|-------|------|------|
-| Espresso | 18g | 30ml | — | 1 |
-| Americano | 18g | 200ml | — | 1 |
-| Latte | 18g | 30ml | 180ml | 1 |
-| Cappuccino | 18g | 30ml | 120ml | 1 |
-| Mocha | 18g | 30ml | 150ml | 1 |
+| Drink | Beans | Water | Milk | Syrup | Cups |
+|-------|-------|-------|------|-------|------|
+| Espresso | 18g | 30ml | — | — | 1 |
+| Americano | 18g | 200ml | — | — | 1 |
+| Latte | 18g | 30ml | 180ml | — | 1 |
+| Cappuccino | 18g | 30ml | 120ml | — | 1 |
+| Mocha | 18g | 30ml | 150ml | 2 pumps | 1 |
 
-Starting inventory: 1,000g beans, 5,000ml milk, 10,000ml water, 100 cups.
+Starting inventory: 1,000g beans, 5,000ml milk, 10,000ml water, 500 pumps of syrup, 100 cups.
 
 The questions are straightforward. Which ingredient runs out first? How many drinks can we serve before something depletes? If we increase latte production, what's the knock-on effect on bean consumption?
 
@@ -229,6 +229,7 @@ consumptionRates := map[string]float64{
             rates["make_latte"] +
             rates["make_cappuccino"] +
             rates["make_mocha"],
+    "syrup": 2 * rates["make_mocha"],
 }
 
 for ingredient, rate := range consumptionRates {
