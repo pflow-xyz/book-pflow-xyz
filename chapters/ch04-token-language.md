@@ -256,7 +256,13 @@ EventLinks:
 
 Each schema carries its own verified properties. The Orders WorkflowNet guarantees mutual exclusion (the order is in exactly one state). The Inventory ResourceNet guarantees conservation (total stock is constant). These properties hold independently — adding links doesn't invalidate either guarantee.
 
-This is **assume-guarantee reasoning**: each component is verified in isolation, and composition only needs to check the boundaries. The algebraic properties of composition — associativity, commutativity, monotonicity — ensure that building systems incrementally is safe. Adding a new schema or link can only extend behavior, never break what's already working.
+This is **assume-guarantee reasoning**: each component is verified in isolation, and composition only needs to check the boundaries. Flattening the composed net and recomputing its P-invariants recovers both component laws — `pending + confirmed + shipped == 1` and `available + reserved + consumed == N` — from the incidence matrix of the whole, so neither guarantee was lost.
+
+Composition is associative and commutative: the result depends on which nets and links you declared, never on the order you declared them in.
+
+It is **not** monotonic, and it is worth being precise about why. Adding an *unlinked* schema is the monoidal product — the two nets share nothing, so each behaves exactly as it did alone. But adding a *link* restricts. An EventLink is a rendezvous: the fused transition fires only when every participant is enabled, so `inventory.reserve` can no longer fire whenever stock exists — it must wait for an order to confirm. A GuardLink gates by construction. A TokenLink introduces a shared place that constrains its consumers. Each of these removes behavior rather than adding it. In the example above, Inventory alone reaches 66 states; composed with Orders it reaches 3.
+
+What survives is **refinement**: every firing sequence of the composite, projected onto a component's alphabet, is a firing sequence of that component alone. That is the property assume-guarantee actually needs, and it is what preserves *safety* — invariants, mutual exclusion, conservation. It does not preserve *liveness*: a component that could always eventually fire may, once linked, wait forever on a partner. Adding a link cannot make a composed system reach a state its components forbid, but it can certainly stop it reaching one they allow.
 
 ## The Execution Pipeline
 

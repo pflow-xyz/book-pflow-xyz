@@ -173,7 +173,30 @@ The five net types from Chapter 4 are sub-SMCs of the free category $\mathcal{F}
 
 The typed links (EventLink, DataLink, TokenLink, GuardLink) are **functors between sub-SMCs**. An EventLink from a WorkflowNet to a ResourceNet is a functor that maps transition firings in the workflow to transition firings in the resource net — preserving the monoidal structure each type demands.
 
-The CompositeNet is the **coproduct** in the category of typed nets — the "sum" of its components with explicit boundary morphisms (the links).
+The CompositeNet is a **pushout**, not a coproduct. The coproduct is the disjoint sum of the components — every net side by side, nothing shared, which is what you get from a bundle with no links. Each link then glues along a boundary: a TokenLink or DataLink identifies two places, an EventLink identifies two transitions. Gluing a coproduct along a shared boundary is exactly a pushout, and the implementation computes it the way the universal property suggests — as a quotient by the equivalence relation the links generate, rather than pairwise. Taking the equivalence closure is what makes the construction associative: linking $A \to B$ and $B \to C$ yields one three-element class regardless of the order the links are given.
+
+The distinction matters for behavior, not just bookkeeping. A coproduct is a product-like construction and preserves each component's behavior; a quotient identifies morphisms and therefore *removes* behavior. That is the formal reason composition refines rather than extends (Chapter 4): a rendezvous is a coequalizer, and coequalizers are not conservative.
+
+## Where the Free Structure Stops: Two Boundaries
+
+Every chapter that splits a net into a *core* and an *observer* (Chapters 6, 12, 13) is using one of two different boundaries, and they do not coincide. This section is the canonical statement; the chapters cite it rather than restate it.
+
+**The $\rho$ boundary is algebraic and lives inside $C$.** For a transition $t$ write $\rho(t) = |\text{pre}(t)| \,/\, |\text{post}(t)|$, the ratio of tokens consumed to tokens produced. A core transition has $\rho = 1$ and, in the nets of this book, one producer and one consumer per place — the *timed event graph* property. A transition with $\rho > 1$ (a win detector consuming three history tokens and a turn token to produce one verdict) breaks that property. Three consequences follow, all of them facts about $C$: the tropical eigenvalue $\lambda$ is undefined across it (Chapter 13), the R1CS encoding stops being uniform (Chapter 12), and the ODE treats it as a sink. What does *not* follow is any failure of composition. The Meseguer–Montanari theorem above has no hypothesis about fan-in; a $\rho > 1$ transition is an ordinary generating morphism of $\mathcal{F}(N)$.
+
+**The contextual boundary is categorical and lives outside $C$.** A *read arc* tests that a place holds a token without consuming it; an *inhibitor arc* tests that it holds none. Neither has an entry in the incidence matrix — $C$ records net change, and these arcs change nothing. Montanari and Rossi (1995) showed that nets with such arcs do not generate the free SMC: a transition's enablement depends on marking that its pre/post boundary does not express, so the morphism is no longer determined by its source and target. This breaks composition. It does not touch $\rho$: a guard has $\rho = 1$ because it neither consumes nor produces.
+
+| | ordinary arcs only | has contextual arcs |
+|---|---|---|
+| $\rho = 1$ | core | guard — outside $\mathcal{F}(N)$, algebraically invisible |
+| $\rho > 1$ | verdict transitions — composes freely, breaks $\lambda$ and uniform R1CS | crosses both |
+
+The two worked examples in this book sit in the two off-diagonal cells, which is how the boundaries were conflated for some time: each example breaks exactly one thing. The overdraft guard of Chapter 12 is categorically an observer and algebraically core; the tic-tac-toe pattern collectors of Chapter 6 are algebraically observers and categorically core.
+
+In zipper terms, the contextual boundary is exactly where $\mathcal{R}$ lives. A read arc *is* a predicate on the marking that $C$ cannot express, recomputed every step — which is why the right context of the execution zipper is a predicate rather than a morphism, and why it sits outside $\mathcal{F}(N)$ rather than inside it.
+
+**The circuit dissolves one boundary and not the other.** The standard encoding of a read arc as a self-loop (consume, then produce back) is inequivalent under partial-order semantics: it serialises firings the read arc allowed to be concurrent, so the unfolding changes (Vogler, Semenov & Yakovlev, 1998). Under interleaving semantics the reachability set is identical. A Groth16 proof certifies one firing, and one firing has only interleaving semantics; so inside the circuit the self-loop is exact, and a guard pulled into the proof as a range check on an auxiliary witness is a faithful encoding. The $\rho$ boundary survives compilation unchanged, because the circuit is a compilation of $C$.
+
+**Throughput composes as a bound, not a value.** For open nets glued along a boundary place, $\lambda(A ;_p B) \geq \max(\lambda(A), \lambda(B))$, with equality only when no cycle through the glue has a larger mean weight than the best local cycle. Gluing creates cycles that belong to neither component, so throughput cannot be read off the parts. What can be: the lower bound for free, and Karp's algorithm (1978) run over the glue cycles only. Conservation and the circuit compose outright; $\lambda$ does not.
 
 ## The 2-Categorical View
 
@@ -185,7 +208,9 @@ The full ecosystem forms a 2-category:
 
 Composition of 1-cells is the CompositeNet construction. Composition of 2-cells is how proofs compose: proving component A correct, proving component B correct, and proving the link between them preserves both properties.
 
-This is the assume-guarantee reasoning from Chapter 4 in categorical language. Each component's seal is a 2-cell witnessing its properties. Composition verification checks that the 1-cells (links) are compatible with the 2-cells (seals). The 2-categorical structure guarantees that verified components remain verified under composition.
+This is the assume-guarantee reasoning from Chapter 4 in categorical language. Each component's seal is a 2-cell witnessing its properties. Composition verification checks that the 1-cells (links) are compatible with the 2-cells (seals).
+
+The 2-categorical structure guarantees this for *safety* properties, and the guarantee is one-directional. Because the pushout only identifies morphisms, every composite computation restricts to a computation of each component — so a property of the form "no reachable marking looks like this" survives, and P-invariants of a component are still derivable from the composite's incidence matrix. Liveness does not survive: "this transition can always eventually fire" is a statement about what the component *can* do, and a quotient can take that away.
 
 ## References
 
@@ -195,6 +220,9 @@ This is the assume-guarantee reasoning from Chapter 4 in categorical language. E
 - **Fong, B.** (2015). *The Algebra of Open and Interconnected Systems.* PhD thesis, Oxford. Formalizes composition of open systems (including Petri nets) via decorated cospans in a symmetric monoidal category.
 - **Master, J.** (2020). *Generalized Petri Nets.* The Topos Institute. Extends Petri net semantics to broader categorical frameworks.
 - **Riley, M.** (2018). *Categories of Optics.* MSc thesis, Cambridge. The formal theory of lenses and optics in monoidal categories.
+- **Montanari, U. & Rossi, F.** (1995). *Contextual Nets.* Acta Informatica, 32(6). Read arcs as contextual dependencies; nets with them do not generate the free SMC.
+- **Vogler, W., Semenov, A. & Yakovlev, A.** (1998). *Unfolding and Finite Prefix for Nets with Read Arcs.* CONCUR 1998. The self-loop encoding of a read arc is inequivalent under unfolding semantics — and only there.
+- **Karp, R.M.** (1978). *A characterization of the minimum cycle mean in a digraph.* Discrete Mathematics, 23(3). Computes the tropical eigenvalue; restricted to glue cycles, it is the compositional throughput step.
 - **Huet, G.** (1997). *The Zipper.* Journal of Functional Programming, 7(5), 549–554. The original zipper data structure — a purely functional way to represent a focused position within a tree. The execution-state decomposition in Chapter 21 generalizes this to Petri net markings.
 - **Schultz, P. & Spivak, D.I.** (2019). *Temporal Type Theory: A Topos-Theoretic Approach to Systems and Behavior.* Birkhäuser. Treats time as a parameter over interval domains — a complementary perspective to the zipper's treatment of the present as a universe.
 - **Genovese, F., Gryzlov, A., Herold, J., Perone, M., Post, E. & Videla, A.** (2019). *Computational Petri Nets: Adjunctions Considered Harmful.* arXiv:1904.12974. Shows that forcing a functorial adjunction between nets and free SMCs breaks practical computational requirements — formal evidence for the scope boundary discussed in Chapter 21.

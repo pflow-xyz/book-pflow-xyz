@@ -174,6 +174,8 @@ The 16 pattern collectors (8 for X, 8 for O) are the complete game-over detectio
 
 Each pattern collector is independent. Adding a new win condition (say, for a variant game) means adding a new transition with three input arcs and one output arc. Removing a condition means removing a transition. The rest of the model is untouched.
 
+The collectors are also the first place this book's core–observer split shows up. Every move transition consumes two tokens and produces two; every collector consumes four (three history tokens and the turn token) and produces one. That ratio — $\rho = 1$ for the core, $\rho > 1$ for the collectors — is what the tropical and zero-knowledge chapters detect as "observer". It is worth saying now that the collectors break nothing categorical: they are ordinary transitions with ordinary arcs, and they compose exactly as this section says. What they break is the one-producer-one-consumer property that the throughput analysis of Chapter 13 needs, and the uniformity of the circuit in Chapter 12. [Appendix E](appendix-e-categorical-foundations.md#where-the-free-structure-stops-two-boundaries) separates that boundary from the other one — guards — which is categorical and which tic-tac-toe does not have.
+
 This is the compositional advantage of Petri nets over procedural game logic. In code, win detection is typically a function that iterates over patterns:
 
 ```go

@@ -78,7 +78,9 @@ The limitations section of Chapter 13 was honest, but it was framed as caveats. 
 
 **Circuit scaling.** The selector-based encoding grows as O(|P| × |T|). The tic-tac-toe circuit has ~24,500 constraints. A net with 1,000 places and 500 transitions would have ~12.5 million constraints — feasible with current hardware but pushing limits. Recursive proof composition (proving batches of transitions, then proving the batch proofs) is the likely path forward. The Petri net structure may help here: independent subnets can be proved in parallel and composed.
 
-**Composition verification.** Chapter 4 described cross-schema composition with EventLinks, DataLinks, TokenLinks, and GuardLinks. Chapter 13 described single-net ZK verification. The gap: proving that a composed system of multiple nets preserves the invariants of each component. Assume-guarantee reasoning suggests this is tractable — each component's proof is independent, and composition only needs to verify the boundaries. But the ZK pipeline doesn't implement this yet.
+**Composition verification — structurally solved, not yet in ZK.** Chapter 4 described cross-schema composition with EventLinks, DataLinks, TokenLinks, and GuardLinks; Chapter 13 described single-net ZK verification. The structural half has since closed: composition is implemented, and flattening a composed bundle recovers each component's P-invariants from the incidence matrix of the whole, so "the composed system preserves the invariants of each component" is now a computation rather than a conjecture. Working through it also corrected the claim it rested on — composition refines rather than extends, which preserves safety and not liveness.
+
+What remains open is the ZK half: proving *in circuit* that a composed system preserves those invariants. Assume-guarantee still suggests it is tractable — each component's proof is independent, and composition only needs to verify the boundaries — but the prover consumes a single flattened net, so today a composed system is proved as one large circuit rather than as a composition of small ones. Independent subnets proved in parallel and composed is the same problem as recursive proof composition above, and likely has the same solution.
 
 ## What the ODE Was Actually Computing
 
@@ -168,7 +170,7 @@ This theorem has been silently at work in every chapter:
 
 - **ZK proofs are generic** (Chapter 12) because the circuit encodes the incidence matrix — the SMC's morphism structure — as arithmetic constraints. Swapping topology constants gives proofs for a different game, a different workflow, a different token standard.
 
-- **Typed composition is monotonic** (Chapter 4) because adding a new schema to a CompositeNet is adding a new object to the category. The monoidal product guarantees it can't break existing schemas.
+- **Typed composition refines** (Chapter 4). Adding an unlinked schema to a CompositeNet is adding a new object to the category, and the monoidal product guarantees it can't affect existing schemas — that much is monotonic. Adding a *link* is not: it identifies transitions or places, which is a quotient rather than a product, and quotients remove behavior. What the structure buys is refinement — every composite trace projects to a valid component trace — which preserves safety properties and not liveness.
 
 - **Mass-action kinetics is well-behaved** (Chapter 3) because it's a monoidal functor from the discrete SMC to continuous dynamics. It preserves the product structure: independent components stay independent.
 

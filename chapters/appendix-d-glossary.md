@@ -12,14 +12,23 @@
 **CID (Content Identifier)**
 : A hash-based identifier for content-addressed data. In the pflow ecosystem, CIDs identify JSON-LD models deterministically — the same model always produces the same CID regardless of where or when it's computed (Chapter 14).
 
+**Compression ratio ($\rho$)**
+: For a transition, tokens consumed divided by tokens produced. $\rho = 1$ is the reversible core; $\rho > 1$ is an observer that destroys state to produce a verdict. A property of the incidence matrix column, so every analysis of $C$ can see it. See *Core–observer boundary*.
+
 **Conservation law**
 : An equation $\mathbf{y}^T \mathbf{C} = \mathbf{0}$ where $\mathbf{y}$ is a vector of weights and $\mathbf{C}$ is the incidence matrix. Conservation laws prove that weighted sums of token counts remain constant across all firings. Example: in an SIR model, $S + I + R = N$ for all time.
 
 **Context (code generation)**
 : The universal intermediate representation in petri-pilot's code generation pipeline. The Context computes everything templates need from the raw model — derived structures, feature flags, helper methods. Templates are pure functions from Context to source code (Chapter 16).
 
+**Contextual arc**
+: A read arc (fires only if a place holds a token, without consuming it) or an inhibitor arc (fires only if it holds none). Neither appears in the incidence matrix, since neither changes the marking. Nets with contextual arcs do not generate the free symmetric monoidal category of ordinary nets (Montanari & Rossi, 1995); they are the categorical half of the core–observer boundary, and the natural home of guards.
+
 **Continuous relaxation**
 : Replacing discrete token counts with continuous concentrations and firing rules with differential equations. The Petri net becomes a system of ODEs via mass-action kinetics, enabling simulation with numerical solvers (Chapter 3).
+
+**Core–observer boundary**
+: Two distinct boundaries that older material treated as one. The *algebraic* boundary ($\rho$) lies inside $C$ and separates transitions the tropical eigenvalue and uniform R1CS can handle from those they cannot; it does not affect composition. The *contextual* boundary (read/inhibitor arcs) lies outside $C$ and breaks free composition; it does not affect $\rho$. Canonical statement in Appendix E.
 
 **Deadlock**
 : A marking where no transition is enabled. The system is stuck — no further computation is possible. Deadlock detection is a key analysis performed by the reachability package.
@@ -44,6 +53,9 @@
 
 **Incidence matrix**
 : The matrix $\mathbf{C} = \mathbf{C}^+ - \mathbf{C}^-$ where $\mathbf{C}^+$ is the output matrix (tokens produced) and $\mathbf{C}^-$ is the input matrix (tokens consumed). Each column represents a transition; each row represents a place. The entry $\mathbf{C}_{ij}$ is the net change in place $i$ when transition $j$ fires (Chapter 2).
+
+**Interleaving vs. partial-order semantics**
+: Two readings of concurrent behaviour. Interleaving semantics considers one firing at a time and asks which markings are reachable; partial-order (unfolding) semantics additionally records which firings were independent. Encoding a read arc as a consume-then-restore self-loop is exact under the first and inequivalent under the second (Vogler, Semenov & Yakovlev, 1998). A single-transition ZK proof has only interleaving semantics.
 
 **JSON-LD**
 : JSON for Linked Data. The pflow ecosystem uses JSON-LD as its model interchange format, with `@context: "https://pflow.xyz/schema"`. JSON-LD makes models self-describing and content-addressable (Chapter 14).

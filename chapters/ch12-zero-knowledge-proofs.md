@@ -228,6 +228,8 @@ The same circuit structure handles blockchain token transfers. An ERC-20 transfe
 - `balances[to]` is an output place (tokens produced)
 - The guard `balances[from] >= amount` is the enabledness check
 
+A note on what that guard is. In the net it is a *read* of `balances[from]` — a contextual arc, not a column of the incidence matrix — and contextual arcs are exactly the thing that stops a net from generating the free monoidal category of [Appendix E](appendix-e-categorical-foundations.md#where-the-free-structure-stops-two-boundaries). Inside the circuit that distinction disappears: a proof certifies one firing, one firing has only interleaving semantics, and under interleaving semantics a read arc and a consume-then-restore self-loop are the same thing. So encoding the guard as a range check on a witnessed balance is an exact encoding, not an approximation. The boundary the circuit *cannot* erase is the other one — a transition with more inputs than outputs still costs a non-uniform constraint block, because that is a fact about $C$ and the circuit is compiled from $C$.
+
 The arcnet project extends this with Merkle trees for account balances, enabling L1-to-L2 bridge verification:
 
 ```go

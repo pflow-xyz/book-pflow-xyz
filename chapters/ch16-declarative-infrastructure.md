@@ -141,7 +141,9 @@ The declarative and monotonic properties of JSON-LD mirror properties of Petri n
 
 **Declarative.** A Petri net model is a declaration of structure — places, transitions, arcs. It doesn't prescribe an execution order or processing sequence. The firing rule determines what happens at runtime, but the model itself is static assertions about what's possible. JSON-LD serializes these assertions without adding procedural content.
 
-**Monotonic.** Adding a place or transition to a Petri net doesn't invalidate existing structure. New arcs can reference existing elements. Composition (Chapter 4) adds links between independently valid subnets. This mirrors monotonic schema expansion — new terms never break existing ones.
+**Monotonic — at the level of the document.** Adding a place or transition to a Petri net doesn't invalidate existing structure. New arcs can reference existing elements. A model that gains a field stays readable by tools that ignore it. This mirrors monotonic schema expansion: new terms never break existing ones.
+
+The mirror stops at *behavior*. A document can only grow, but a composed net can shrink: linking two subnets (Chapter 4) restricts what each can do, because a link is a rendezvous or a gate rather than an addition. Monotonic serialization and monotonic semantics are different claims, and only the first one holds here.
 
 **Content-addressable.** The canonicalized form of a Petri net model — sorted N-Quads — produces a unique identifier. Two models with the same structure, regardless of how they were authored or serialized, get the same CID. This enables reproducible builds: given a CID, you can verify that a model hasn't changed.
 
@@ -160,7 +162,7 @@ No format conversion between steps. The same file, the same assertions, consumed
 
 ### Schema Evolution
 
-When the pflow schema adds `Guard` expressions (2025), existing models without guards continue to work. When `CompositeNet` is added (2026), simple models remain valid — they're just nets that don't compose with anything. The consuming tools handle the absence of new terms gracefully because JSON-LD's open-world assumption means missing fields are simply unknown, not invalid.
+When the pflow schema adds `Guard` expressions (2025), existing models without guards continue to work. When `CompositeNet` arrived (2026), simple models remained valid — they're just nets that don't compose with anything, and a bundle holding one subnet and no links flattens back to exactly that net. The consuming tools handle the absence of new terms gracefully because JSON-LD's open-world assumption means missing fields are simply unknown, not invalid.
 
 ### Cross-Vocabulary References
 
