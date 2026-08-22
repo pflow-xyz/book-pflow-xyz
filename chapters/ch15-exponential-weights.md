@@ -29,7 +29,7 @@ $$\text{weight} = \text{rank\_power} \times 4 + \text{suit\_value}$$
 
 Every card maps to a unique integer: A-spade = 16387, A-heart = 16386, down to 2-club = 4.
 
-The key property: **binary dominance**. A single King ($2048 \times 4 = 8192$) outscores all cards Queen and below combined. This means you can sum the weights for any set of cards and the result preserves lexicographic comparison. No sorting needed — just a number.
+The key property: **binary dominance**. A single King ($2048 \times 4 = 8192$) outscores any set of distinct lower ranks combined. This means you can sum the weights for any set of cards and the result preserves lexicographic comparison. No sorting needed — just a number.
 
 ### Why Linear Weights Fail
 
