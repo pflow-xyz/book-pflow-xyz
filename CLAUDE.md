@@ -18,6 +18,7 @@ book-pflow-xyz/
 - **Code examples**: Inline for short snippets, separate files in `examples/` for anything >20 lines
 - **Cross-references**: Use `[Chapter N: Title](chNN-slug.md)` format
 - **Voice**: Technical but accessible — assume the reader knows programming but not Petri nets. Before publishing a chapter, run the `voice-audit`, `math-audit` and `model-audit` skills (`../blog-stackdump-com/.claude/skills/*/SKILL.md`) — it lists the LLM-draft tells and the argument defects (B-checks) this material is prone to.
+- **Proof status of the categorical claims** lives in `PROOF-ROADMAP.md` (what is computed vs. kernel-checked vs. asserted; items P1–P4).
 - **The core–observer boundary is two boundaries** (ρ, inside C; contextual arcs, outside C). The canonical statement is Appendix E, "Where the Free Structure Stops". Chapters cite it; they do not restate the table. See `../blog-stackdump-com/REVISION-ROADMAP.md` for the audit that produced it.
 
 ## Source Material
