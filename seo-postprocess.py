@@ -15,6 +15,10 @@ import sys
 
 BASE = "https://book.pflow.xyz/"
 BOOK = "Petri Nets as a Universal Abstraction"
+# GA4 measurement ID (G-…). Empty = no analytics injected. Set once the
+# book.pflow.xyz property (or a second web stream on the pflow.xyz property)
+# exists; measurement IDs are public, they ship in the HTML either way.
+GA_MEASUREMENT_ID = ""
 MARK = "<!-- seo-postprocess -->"
 SKIP = {"404.html", "print.html"}
 
@@ -53,6 +57,11 @@ def stamp(path: pathlib.Path) -> bool:
         f'<meta name="twitter:title" content="{html.escape(title)}">',
         f'<meta name="twitter:description" content="{html.escape(desc)}">',
         f'<script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script>',
+    ] + ([
+        f'<script async src="https://www.googletagmanager.com/gtag/js?id={GA_MEASUREMENT_ID}"></script>',
+        '<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}'
+        f"gtag('js',new Date());gtag('config','{GA_MEASUREMENT_ID}');</script>",
+    ] if GA_MEASUREMENT_ID else []) + [
         "",
     ])
     path.write_text(doc.replace("</head>", block + "</head>", 1), encoding="utf-8")
