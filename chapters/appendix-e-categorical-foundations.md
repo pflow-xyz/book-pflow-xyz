@@ -51,7 +51,7 @@ The free construction means:
 
 A **monoidal functor** $F : \mathcal{C} \to \mathcal{D}$ maps objects to objects and morphisms to morphisms while preserving the monoidal structure: $F(A \otimes B) \cong F(A) \otimes F(B)$.
 
-Three functors appear throughout this book:
+Three kinds of functor appear throughout this book, and every derived artifact in Part IV is one of them:
 
 ### The ODE Functor
 
@@ -65,17 +65,9 @@ $$\text{ODE} : \mathcal{F}(N) \to \textbf{Dyn}$$
 
 The last property is why the ODE decouples (Chapter 13). Independent components in the net produce independent differential equations. The decoupling lemma — each accumulator's equation $\dot{x}_i = 1 - n_i x_i$ depends only on its own state — is a consequence of the functor preserving $\otimes$.
 
-### The ZK Functor
+### The Proof Functors
 
-The Groth16 compilation defines a monoidal functor from the net category to the category of arithmetic circuits:
-
-$$\text{ZK} : \mathcal{F}(N) \to \textbf{Circ}$$
-
-- Markings map to witness vectors (committed via MiMC), one variable per place
-- Transitions map to constraint systems (pre/post conditions as R1CS)
-- The monoidal product maps to independent constraint blocks
-
-This is why the ZK circuit is generic (Chapters 12–14). Changing the topology constants changes the functor's image — a different circuit for a different net — but the functor itself is the same construction. The proof system doesn't know whether it's proving tic-tac-toe or poker.
+Each proof form is a monoidal functor out of the same category: the Lean generator maps transitions to theorems about the step function, and the Groth16 compilation maps markings to witness vectors and transitions to R1CS constraint blocks. In both, the monoidal product maps to independent blocks. This is why neither proof form knows or cares which net it is proving — the construction is fixed and only the incidence matrix changes. Proof is a derived artifact of the document, not a separate encoding of it.
 
 ### The Analysis Functor
 
@@ -84,7 +76,7 @@ The incidence reduction (Chapter 13) defines a functor from the net category to 
 $$\text{Val} : \mathcal{F}(N) \to \textbf{Vect}$$
 
 - Markings map to vectors of strategic scores, one per place
-- The mapping reads the diagonal of $BB^T$ — the round-trip endofunctor
+- The mapping reads the diagonal of $BB^T$ — each place's outflow degree
 - The monoidal product maps to independent evaluation: $\text{Val}(A \otimes B) = \text{Val}(A) \times \text{Val}(B)$
 
 The independence of strategic evaluation per place — the product decomposition of the lens — is this functor preserving the monoidal structure.
@@ -111,53 +103,25 @@ $$\text{Lens}(A \otimes B) \cong \text{Lens}(A) \otimes \text{Lens}(B)$$
 
 Each place gets its own lens, composed in parallel. Updating one place's view doesn't touch the others. This is why dynamic evaluation (Chapter 13) works — inject a new board state, and each position's lens independently resolves its new value from its remaining drain connections.
 
-## The Execution Zipper
+## Tropical Past, Predicate Future
 
-The free SMC $\mathcal{F}(N)$ captures the morphism structure of a net — which compositions are valid, which transitions are independent. But it has no privileged present. Every marking is just another object, related to others by transition morphisms. Computation requires something more: a *focus*.
+The free SMC $\mathcal{F}(N)$ says which compositions are valid. It has no privileged present: every marking is just another object. Execution needs one — the marking a simulation reads on every step — and the honest way to add it is not a second structure bolted on beside the net, but a reading of what the net's own document already contains.
 
-A **zipper** (Huet, 1997) decomposes a structure into a focused element and its surrounding context. For a Petri net execution, the decomposition is:
+Every executing model in this book carries three kinds of data, and each has a tense:
 
-$$\text{Exec}(N) = \mathcal{L}(N) \times M \times \mathcal{R}(N, M)$$
+| Data | Tense | Algebra | Property |
+|------|-------|---------|----------|
+| Write-once places and the event log | Past | Boolean semiring; in timed nets, $(\max, +)$ | Monotone: tokens arrive and never leave |
+| The marking $M \in \mathbb{N}^P$ | Present | Free commutative monoid | The state the step is *about* |
+| Guards and enabledness | Future | Predicates on $M$ | Recomputed on every step, never stored |
 
-where:
+**The past is tropical.** History places (Chapter 6) are write-once: a token arrives and never leaves. A set of write-once places under firing is the boolean semiring — OR to accumulate, AND to detect a pattern — which is the degenerate case of the tropical semiring $(\max,+)$ that timed nets use to accumulate longest paths (Chapter 13). The same monotonicity is what makes the event log replayable (Chapter 20) and the schema safe to grow (Chapter 16): a fact, once absorbed, never changes. Irreversibility is not a policy; it is what the algebra does.
 
-- **$M \in \mathbb{N}^P$** is the current marking — the hole. It is the object in $\mathcal{F}(N)$ at which execution is focused.
-- **$\mathcal{L}(N)$** is the left context — the accumulated history of past firings. This is an element of the tropical semiring $(\mathbb{R}_{\max}, \oplus, \otimes)$ where $a \oplus b = \max(a,b)$ and $a \otimes b = a + b$. The tropical core compresses firing history into longest-path summaries: $\mathcal{L}_{ij}$ records the longest causal chain from transition $i$ to transition $j$. Tropical matrix multiplication is fast-forward: $\mathcal{L}^{(n)} = \mathcal{L}^{(n-1)} \otimes \mathcal{L}^{(1)}$.
-- **$\mathcal{R}(N, M)$** is the right context — the set of transitions enabled at marking $M$. This is a predicate on $\mathcal{F}(N)$'s generators: $\mathcal{R}(N, M) = \{ t \in T \mid \text{pre}(t) \leq M \}$. It is computed fresh from the hole on every step.
+**The future is predicate.** A guard is not a value held in the model. It is a question — *am I enabled?* — answered from the current marking and discarded. Nothing about the future is stored, which is why nothing about it can drift: the only way two implementations disagree about what fires next is to disagree about $M$.
 
-### The Zipper Step
+**The present is the boundary.** The marking is simultaneously the output of accumulation and the argument to every guard. Change it and a different past is relevant and a different future is enabled. Chapter 6 shows the split on a net small enough to see whole: history places past, board and turn places present, the eighteen move transitions and their guards future.
 
-A single execution step is a zipper movement. When transition $t$ fires at marking $M$:
-
-1. The hole updates: $M' = M - \text{pre}(t) + \text{post}(t)$
-2. The left context grows: $\mathcal{L}' = \mathcal{L} \otimes_{\text{trop}} e_t$ where $e_t$ is the one-step matrix for $t$
-3. The right context recomputes: $\mathcal{R}(N, M')$ — a new set of enabled transitions
-
-The left context is closed and irreversible — tropical accumulation is lossy. The right context is open and ephemeral — it exists only relative to the current hole. The hole is the tense boundary between them.
-
-### Relationship to the SMC
-
-The zipper is not an alternative to the free SMC — it is a *refinement*. The SMC $\mathcal{F}(N)$ is the space of all valid compositions. The zipper is a pointed structure *within* that space: a position (the marking), a summary of the path taken to reach it (the tropical core), and the set of available next steps (enabled transitions).
-
-Formally, the zipper arises from a **comonad** on the category of markings. The comonad $W : \mathbb{N}^P \to \mathbb{N}^P$ sends each marking to its context — the pair of left and right contexts surrounding it. The counit $\varepsilon : W(M) \to M$ extracts the current marking (the focus). The comultiplication $\delta : W(M) \to W(W(M))$ re-contextualizes — it says that the context itself has a context, which is how nested simulation (a DDM step within a DDM step) becomes well-defined.
-
-The coKleisli category of this comonad — the category whose morphisms are $W(A) \to B$ — is the category of *context-dependent computations*. Every DDM engine in this book is a coKleisli morphism: it reads the full execution context (accumulated history, current marking, enabled transitions) and produces the next state.
-
-### Tense Structure
-
-The three components of the zipper correspond to three treatments of time:
-
-| Component | Tense | Algebraic Structure | Property |
-|-----------|-------|-------------------|----------|
-| $\mathcal{L}(N)$ | Past | Tropical semiring | Closed, irreversible, lossy |
-| $M$ | Present | Free commutative monoid $\mathbb{N}^P$ | The universe — defines what "past" and "future" mean |
-| $\mathcal{R}(N, M)$ | Future | Predicate on generators | Open, recomputed, ephemeral |
-
-This contrasts with two established frameworks. Schultz and Spivak's temporal type theory (2019) treats time as a parameter — an interval domain indexing a presheaf. The current moment is a point on the index, with no special status. Prior's tense logic treats time as a modality — operators $\square$ (always in the past) and $\diamond$ (sometime in the future) shift perspective relative to an implicit now. Both frameworks derive the present from something else.
-
-The zipper inverts this: the present is foundational. The marking $M$ is not a point on a timeline or an implicit reference — it is the universe relative to which past ($\mathcal{L}$) and future ($\mathcal{R}$) are both defined. Move the hole and you are in a different universe.
-
-This is the formal content behind the "scope boundary" noted in Chapter 21. The SMC sees morphism structure. The zipper sees execution state. Genovese et al. (2019) gave independent evidence for this boundary: forcing a functorial adjunction between nets and free SMCs breaks practical computational requirements — precisely because the adjunction cannot accommodate the mutable focus that computation demands.
+This is where the categorical reading stops and the Metamodel reading (Chapter 21) begins. The SMC is structure without execution. Execution is the same document read with tenses — and because all three tenses are data in that one document, an implementation that gets any of them wrong fails a byte-for-byte trace comparison rather than an argument.
 
 ## Net Types as Sub-SMCs
 
@@ -192,25 +156,17 @@ Every chapter that splits a net into a *core* and an *observer* (Chapters 6, 12,
 
 The two worked examples in this book sit in the two off-diagonal cells, which is how the boundaries were conflated for some time: each example breaks exactly one thing. The overdraft guard of Chapter 12 is categorically an observer and algebraically core; the tic-tac-toe pattern collectors of Chapter 6 are algebraically observers and categorically core.
 
-In zipper terms, the contextual boundary is exactly where $\mathcal{R}$ lives. A read arc *is* a predicate on the marking that $C$ cannot express, recomputed every step — which is why the right context of the execution zipper is a predicate rather than a morphism, and why it sits outside $\mathcal{F}(N)$ rather than inside it.
+In tense terms, the contextual boundary is where the predicate future lives. A read arc *is* a predicate on the marking that $C$ cannot express, recomputed every step — which is why guards sit outside $\mathcal{F}(N)$ rather than inside it.
 
 **The circuit dissolves one boundary and not the other.** The standard encoding of a read arc as a self-loop (consume, then produce back) is inequivalent under partial-order semantics: it serializes firings the read arc allowed to be concurrent, so the unfolding changes (Vogler, Semenov & Yakovlev, 1998). Under interleaving semantics the reachability set is identical. A Groth16 proof certifies one firing, and one firing has only interleaving semantics; so inside the circuit the self-loop is exact, and a guard pulled into the proof as a range check on an auxiliary witness is a faithful encoding. The $\rho$ boundary survives compilation unchanged, because the circuit is a compilation of $C$.
 
 **Throughput composes as a bound, not a value.** For open nets glued along a boundary place, $\lambda(A ;_p B) \geq \max(\lambda(A), \lambda(B))$, with equality only when no cycle through the glue has a larger mean weight than the best local cycle. Gluing creates cycles that belong to neither component, so throughput cannot be read off the parts. What can be: the lower bound for free, and Karp's algorithm (1978) run over the glue cycles only. Conservation and the circuit compose outright; $\lambda$ does not.
 
-## The 2-Categorical View
+## Composition Preserves Safety, Not Liveness
 
-The full ecosystem forms a 2-category:
+Composing two typed nets along a link is a pushout: it identifies places or transitions, and identifies nothing else. Because the pushout only identifies, every computation of the composite restricts to a computation of each component. So a *safety* property — "no reachable marking looks like this" — survives composition, and P-invariants of a component are still derivable from the composite's incidence matrix. This is the assume-guarantee reasoning of Chapter 4: each component's seal witnesses its own properties, and composition verification checks only the boundary.
 
-- **0-cells** (objects): typed nets (WorkflowNet, ResourceNet, etc.)
-- **1-cells** (morphisms): typed links between nets
-- **2-cells** (morphisms between morphisms): natural transformations — the ZK proofs, sealed invariants, and analysis results that witness properties of the links
-
-Composition of 1-cells is the CompositeNet construction. Composition of 2-cells is how proofs compose: proving component A correct, proving component B correct, and proving the link between them preserves both properties.
-
-This is the assume-guarantee reasoning from Chapter 4 in categorical language. Each component's seal is a 2-cell witnessing its properties. Composition verification checks that the 1-cells (links) are compatible with the 2-cells (seals).
-
-The 2-categorical structure guarantees this for *safety* properties, and the guarantee is one-directional. Because the pushout only identifies morphisms, every composite computation restricts to a computation of each component — so a property of the form "no reachable marking looks like this" survives, and P-invariants of a component are still derivable from the composite's incidence matrix. Liveness does not survive: "this transition can always eventually fire" is a statement about what the component *can* do, and a quotient can take that away.
+The guarantee is one-directional. *Liveness* — "this transition can always eventually fire" — is a statement about what the component *can* do, and a quotient can take that away. Composition refines; it does not extend.
 
 ## References
 
@@ -223,6 +179,3 @@ The 2-categorical structure guarantees this for *safety* properties, and the gua
 - **Montanari, U. & Rossi, F.** (1995). *Contextual Nets.* Acta Informatica, 32(6). Read arcs as contextual dependencies; nets with them do not generate the free SMC.
 - **Vogler, W., Semenov, A. & Yakovlev, A.** (1998). *Unfolding and Finite Prefix for Nets with Read Arcs.* CONCUR 1998. The self-loop encoding of a read arc is inequivalent under unfolding semantics — and only there.
 - **Karp, R.M.** (1978). *A characterization of the minimum cycle mean in a digraph.* Discrete Mathematics, 23(3). Computes the tropical eigenvalue; restricted to glue cycles, it is the compositional throughput step.
-- **Huet, G.** (1997). *The Zipper.* Journal of Functional Programming, 7(5), 549–554. The original zipper data structure — a purely functional way to represent a focused position within a tree. The execution-state decomposition in Chapter 21 generalizes this to Petri net markings.
-- **Schultz, P. & Spivak, D.I.** (2019). *Temporal Type Theory: A Topos-Theoretic Approach to Systems and Behavior.* Birkhäuser. Treats time as a parameter over interval domains — a complementary perspective to the zipper's treatment of the present as a universe.
-- **Genovese, F., Gryzlov, A., Herold, J., Perone, M., Post, E. & Videla, A.** (2019). *Computational Petri Nets: Adjunctions Considered Harmful.* arXiv:1904.12974. Shows that forcing a functorial adjunction between nets and free SMCs breaks practical computational requirements — formal evidence for the scope boundary discussed in Chapter 21.

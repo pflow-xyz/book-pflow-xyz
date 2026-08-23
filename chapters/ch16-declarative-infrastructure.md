@@ -83,7 +83,7 @@ The pflow.xyz schema has grown three times since its introduction:
 
 Each expansion introduced new terms. No existing term was removed or redefined. A model authored in 2024 using only `PetriNet`, `Place`, `Transition`, and `Arrow` remains valid under the 2026 schema — not because we tested backwards compatibility, but because the schema only grows.
 
-This is **monotonic expansion**: new facts can be added, but existing facts are never retracted. It's the same discipline that makes append-only logs reliable and RDF graphs composable. In a monotonic system, learning more never invalidates what we already know.
+This is **monotonic expansion**: new facts can be added, but existing facts are never retracted. It's the same discipline that makes append-only logs reliable and RDF graphs composable — and the same property the history places of Chapter 6 have. A schema that only grows is a past-tense object, like an event log or a write-once place: once absorbed, a fact never changes. In a monotonic system, learning more never invalidates what we already know.
 
 Practically, this means old models never break. A Petri net saved before `Seal` existed still loads in an editor that understands seals. The editor sees a net without seal metadata — a valid state. No migration scripts, no version negotiation, no "this file was created with an older version" warnings. Backwards compatibility emerges from structure, not policy.
 

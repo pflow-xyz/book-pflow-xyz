@@ -11,9 +11,10 @@ That deserves to be said plainly, not buried in a subsection.
 The book built a stack, one layer at a time, without naming it as such until now:
 
 ```
-Layer 4: ZK Verification     (Chapters 12-13)
-         Cryptographic proof that a transition was valid.
-         The stoichiometry matrix becomes circuit constraints.
+Layer 4: Derived Artifacts    (Chapters 12, 14, 17-20)
+         Editor, generated app, Go and JS runtimes, Lean
+         theorems, ZK circuit — each computed from the model,
+         none hand-written to agree with it.
 
 Layer 3: ODE Dynamics         (Chapters 3, 5-10)
          Mass-action kinetics couples topology to state.
@@ -33,7 +34,7 @@ Each layer adds something the layer below cannot express:
 - **Graph theory** tells you what connects to what. It cannot tell you what happens when you act — there are no tokens, no state, no dynamics.
 - **Petri net semantics** add state and atomicity. Transitions consume and produce. Conservation laws constrain the state space. But the formalism alone doesn't tell you what happens *first*, or how fast.
 - **ODE dynamics** add time. Mass-action kinetics couple topology-derived rates to the current marking. You get trajectories, equilibria, predictions. But the trajectories are only as trustworthy as the implementation that computed them.
-- **ZK verification** adds proof. The stoichiometry matrix defines circuit constraints. A state transition is either provably valid or unprovable. Trust moves from "I ran the code" to "here is a cryptographic attestation."
+- **Derived artifacts** add everything a user actually touches — and nothing a user could get wrong, because none of it is authored. The generated application, the two runtimes, the kernel-checked theorem and the arithmetic circuit are all functions of the model document. The ZK circuit is the clearest illustration of the point rather than the point itself: the incidence matrix *is* the constraint system, so proof comes for free once the model is data. It is one derived artifact among several, and the book treats it that way.
 
 The book introduced these layers bottom-up in Parts I-III, but the reader encounters the stack's true shape only in Chapter 13, when the rate auto-derivation reveals that the bottom layer — pure graph connectivity — carries more information than expected. The classic tic-tac-toe heuristic (center > corner > edge) falls out of counting connections. No game theory. No training. Just topology.
 
@@ -60,9 +61,9 @@ The taxonomy is not a labeling scheme imposed from outside but a description of 
 
 Three claims survived from Chapter 1 to Chapter 20:
 
-**Small models beat black boxes.** Every application in this book is inspectable. You can look at the tic-tac-toe topology and count win lines. You can read the stoichiometry matrix and see the differential equations. You can audit the ZK circuit and verify what it proves. At no point did you need to trust a model you couldn't read. This is the opposite of the machine learning approach, where the knowledge is in the weights and the weights are opaque. The cost is that Petri net models require a human to design the topology. The benefit is that the topology is the explanation.
+**Small models beat black boxes.** Every application in this book is inspectable. You can look at the tic-tac-toe topology and count win lines. You can read the stoichiometry matrix and see the differential equations. You can read the generated code and the constraint system it compiles to. At no point did you need to trust a model you couldn't read. This is the opposite of the machine learning approach, where the knowledge is in the weights and the weights are opaque. The cost is that Petri net models require a human to design the topology. The benefit is that the topology is the explanation.
 
-**One formalism, multiple tools.** The JSON-LD model format (Chapter 16) is processed identically by the visual editor (Chapter 17), the code generator (Chapter 18), the Go library (Chapter 19), and the ZK compiler (Chapter 12). Dual implementation (Chapter 20) verifies that independent implementations agree. This isn't a theoretical property — it's tested, deployed, and running on-chain.
+**One formalism, multiple tools.** The JSON-LD model format (Chapter 16) is processed identically by the visual editor (Chapter 17), the code generator (Chapter 18), the Go library (Chapter 19), and the ZK compiler (Chapter 12). Dual implementation (Chapter 20) verifies that independent implementations agree — and `pflow-polyglot` extends the check from two implementations to twenty-plus, across four languages, all held to one golden trace that fails the build on divergence. This isn't a theoretical property; it is a test that runs.
 
 **Topology is primary, rates are secondary.** Change the rate constants and the system's quantitative behavior shifts. Change the topology and the system becomes a different system. This inversion — structure over parameters — holds across all six applications and both modes (combinatorial and continuous). It's the book's most load-bearing claim, and Chapter 13 gave it a precise formulation.
 
@@ -76,65 +77,27 @@ The limitations section of Chapter 13 was honest, but it was framed as caveats. 
 
 **Dynamic rates.** Topology-derived rates are static. A corner's strategic value changes mid-game when it completes a fork threat. The tactical scoring layer in Chapter 6 handles this for tic-tac-toe, but it's an add-on, not part of the rate derivation. Can the rate formula incorporate state-dependent topology — recomputing connectivity over the *reachable* subgraph rather than the full graph? This would unify the strategic (topology) and tactical (state) layers.
 
-**Circuit scaling.** The selector-based encoding grows as O(|P| × |T|). The tic-tac-toe circuit has ~24,500 constraints. A net with 1,000 places and 500 transitions would have ~12.5 million constraints — feasible with current hardware but pushing limits. Recursive proof composition (proving batches of transitions, then proving the batch proofs) is the likely path forward. The Petri net structure may help here: independent subnets can be proved in parallel and composed.
-
-**Composition verification — structurally solved, not yet in ZK.** Chapter 4 described cross-schema composition with EventLinks, DataLinks, TokenLinks, and GuardLinks; Chapter 13 described single-net ZK verification. The structural half has since closed: composition is implemented, and flattening a composed bundle recovers each component's P-invariants from the incidence matrix of the whole, so "the composed system preserves the invariants of each component" is now a computation rather than a conjecture. Working through it also corrected the claim it rested on — composition refines rather than extends, which preserves safety and not liveness.
-
-What remains open is the ZK half: proving *in circuit* that a composed system preserves those invariants. Assume-guarantee still suggests it is tractable — each component's proof is independent, and composition only needs to verify the boundaries — but the prover consumes a single flattened net, so today a composed system is proved as one large circuit rather than as a composition of small ones. Independent subnets proved in parallel and composed is the same problem as recursive proof composition above, and likely has the same solution.
+**Composition is structurally solved; proof composition is not.** Composition is implemented, and flattening a composed bundle recovers each component's P-invariants from the incidence matrix of the whole — so "the composed system preserves the invariants of each component" is a computation rather than a conjecture. Working through it corrected the claim it rested on: composition *refines* rather than extends, which preserves safety and not liveness. What remains open is doing the same in the proof forms. Today a composed system is proved — in Lean or in circuit — as one flattened net rather than as a composition of component proofs, and the circuit form additionally grows as $O(|P| \times |T|)$. Assume-guarantee suggests both are tractable, since composition only needs to verify the boundaries; this is a derived-artifact problem, not a modeling one.
 
 ## What the ODE Was Actually Computing
 
-The four-layer stack describes *what* the book built. This section names *what it computes* — and the answer is more precise than "equilibrium concentrations."
+Chapter 13's rate auto-derivation counted, for each place, how many transitions consume from it — the diagonal of $BB^T$, where $B$ is the input adjacency matrix of the bipartite graph. The ODE, run to equilibrium on the same net, relaxed to $1/(BB^T)_{ii}$ per place. Counting and simulating gave the same answer — center > corner > edge in tic-tac-toe, straight flush > … > high card in poker — because both were reading the same document. That is the whole result, and it is worth stating without ornament: two independent analyses agree when, and because, there is one model for them to read.
 
-### The Round-Trip Matrix
+## Where the Alphabet Has Travelled
 
-Chapter 2 introduced the incidence matrix $C$ with its input and output components. But there's a simpler object underneath. Let $B$ be the **input adjacency matrix** of the bipartite graph: $B[i,j] = 1$ if place $i$ is an input to transition $j$, and 0 otherwise. This is the "who feeds whom" structure at Layer 1 — pure graph connectivity, no Petri net semantics.
+Games are where the book validated its techniques. The honest test of portability is not a list of domains they *could* apply to but the list of domains where the same four primitives have already been tiled and shipped, sharing no code at the domain level:
 
-The matrix product $BB^T$ is a square matrix on places:
+- **Business operations.** `sim.pflow.xyz` builds a help desk from three components glued at a shared queue and derives the analysis suite and the running application from that one model.
+- **Token standards.** ERC-20 and ERC-721 as nets (Chapter 4), with conservation as a discovered invariant rather than an audited property.
+- **Music.** `beats.bitwrap.io` — every note a transition firing; the sequencer is the net.
+- **Infrastructure.** The deployment tooling that operates this ecosystem (private): an app manifest is a handful of fields and a marking, and the services entry, vhost, certificate and uptime check are derived from it. Thirteen live services, zero drift, and no code written to guarantee that.
+- **Twenty implementations.** `pflow-polyglot`: one `model.json`, five forms across ten languages, one golden trace.
 
-$$(BB^T)[i,j] = \sum_k B[i,k] \cdot B[j,k]$$
-
-This counts the number of transitions that places $i$ and $j$ both feed into — their co-occurrence through the transition layer. The diagonal entry $(BB^T)[i,i]$ counts how many transitions consume from place $i$: its outflow degree.
-
-$BB^T$ is a round-trip: start at places, pass through transitions, return to places. In linear-algebraic language, $B^T$ is a map from the place space to the transition space and $B$ is its adjoint bringing it back. The composite $BB^T$ is an **endofunctor** — a mapping from the place space to itself. It encodes how the transition layer mediates relationships among places.
-
-### The Diagonal Is the Invariant
-
-Now look at what the poker analysis net computed in Chapter 13. Each value place $\text{val}_H$ had one play transition producing tokens (constant inflow) and $n$ drain transitions consuming tokens (outflow proportional to $n$). The drain count $n$ is exactly $(BB^T)[\text{val}_H, \text{val}_H]$ — the diagonal entry for that place. And the equilibrium concentration was:
-
-$$\text{val}_H^* = \frac{1}{n} = \frac{1}{(BB^T)_{ii}}$$
-
-The ODE system relaxed to a steady state that depends only on the diagonal of $BB^T$. Not the full matrix — just the diagonal. Each place's equilibrium is determined by its own connectivity, independent of every other place.
-
-This independence is not accidental. The catalytic-pump construction decouples the places: each value accumulator has its own source, its own drains, and no cross-talk with other accumulators. The full matrix $BB^T$ has off-diagonal entries — multiple value places might share drain transitions in a more complex net — but the construction projects those away. At equilibrium, only the diagonal survives.
-
-### The Categorical Trace
-
-In category theory, the **trace** of an endomorphism extracts the diagonal information — it maps a square matrix to the sum of its diagonal entries, discarding everything off-diagonal. For a finite-dimensional endomorphism $f$, $\text{tr}(f) = \sum_i f_{ii}$.
-
-The ODE system computes something stronger than the scalar trace: it computes each diagonal entry individually. The equilibrium vector $M^*$ is a function of the diagonal of $BB^T$ alone. The system *relaxes into reading only the diagonal* of the round-trip endofunctor.
-
-This is what Chapter 13's rate auto-derivation was doing all along. When the algorithm counted drain connections per candidate and derived rate constants from those counts, it was reading $(BB^T)_{ii}$ for each candidate. When the ODE solver ran those rates to equilibrium, it was dynamically computing the same readout. Both paths arrive at the diagonal of $BB^T$. The rate derivation computes it statically by counting. The ODE computes it dynamically by relaxing. They agree because they are computing the same invariant of the same structure.
-
-The tic-tac-toe result — center (4) > corner (3) > edge (2) — is a diagonal readout of $BB^T$ restricted to win-line connectivity. The poker result — straight flush (1 drain) > four of a kind (2 drains) > ... > high card (32 drains) — is the inverse diagonal readout. Both are the categorical trace of the entity-constraint endofunctor, computed through simulation.
-
-### Portability
-
-The construction — bipartite structure, round-trip endofunctor, diagonal readout via ODE — has nothing to do with games. Games are where the book validated it. But the pattern applies to anything expressible as "entities participate in constraints":
-
-**Financial networks.** Assets are places, portfolio allocations are transitions. $(BB^T)_{ii}$ counts how many portfolios asset $i$ participates in — its exposure. The ODE equilibrium ranks assets by systemic importance.
-
-**Supply chains.** Components are places, products are transitions. The diagonal counts how many products each component feeds. The equilibrium identifies strategic bottlenecks without supply chain domain knowledge.
-
-**Access control.** Principals are places, permission sets are transitions. The diagonal measures privilege surface area. Higher connectivity means higher risk exposure.
-
-**Governance.** Voters are places, decisions are transitions. The diagonal measures structural influence — how many decision points each voter participates in.
-
-In every case, the recipe is identical: encode the entity-constraint structure as a bipartite graph, form $BB^T$, and read the diagonal — either by counting (static analysis) or by ODE relaxation (dynamic computation). The equilibrium concentrations rank entities by structural importance within the constraint network, with no training data and no domain heuristics.
+In every case the recipe is identical — declare the structure, derive the rest — and every instance inherited composability, conservation and checkability without its author asking for them.
 
 ## The Structure Underneath
 
-The four-layer stack describes the book's architecture. The categorical trace names the key invariant. But there's a unifying structure that explains *why* all the layers compose so cleanly — why ODE analysis transfers from tic-tac-toe to poker, why ZK circuits work for any net, why typed schemas compose without surprises.
+The four-layer stack describes the book's architecture. Underneath it is one structure that explains *why* edge-matching composition works — why two models glued at a shared place need no glue code, and why what is true of the parts stays true of the whole.
 
 That structure is the **symmetric monoidal category** (SMC).
 
@@ -168,48 +131,30 @@ This theorem has been silently at work in every chapter:
 
 - **The ODE decouples** (Chapter 13) because the monoidal product means independence. Each accumulator's equation $\dot{x}_i = 1 - n_i x_i$ is a separate lens, composed in parallel. No information leaks between components because $\otimes$ *means* no interaction.
 
-- **ZK proofs are generic** (Chapter 12) because the circuit encodes the incidence matrix — the SMC's morphism structure — as arithmetic constraints. Swapping topology constants gives proofs for a different game, a different workflow, a different token standard.
-
 - **Typed composition refines** (Chapter 4). Adding an unlinked schema to a CompositeNet is adding a new object to the category, and the monoidal product guarantees it can't affect existing schemas — that much is monotonic. Adding a *link* is not: it identifies transitions or places, which is a quotient rather than a product, and quotients remove behavior. What the structure buys is refinement — every composite trace projects to a valid component trace — which preserves safety properties and not liveness.
-
-- **Mass-action kinetics is well-behaved** (Chapter 3) because it's a monoidal functor from the discrete SMC to continuous dynamics. It preserves the product structure: independent components stay independent.
 
 ### What the Category Doesn't See
 
-The SMC encoding captures process structure — which compositions are valid, which transitions are independent. But it flattens something every computation in this book depends on: the privileged present.
+The SMC encoding captures process structure — which compositions are valid, which transitions are independent. It has no privileged present: every marking is just another object. But every engine in this book reads one particular marking on every step, and that marking has a tense structure the category does not see.
 
-In the free SMC, markings are objects, firing sequences are morphisms, and all markings are homogeneous. There is no distinguished "current state." The marking that a DDM simulation reads on every step — the thing that determines which transitions are enabled right now — has no special status. It's just another object, related to other objects by transition morphisms.
+Chapter 6 showed it on a net small enough to see whole. History places are **past** — write-once, monotone, the boolean case of the tropical accumulation Chapter 13 uses for timed nets. The board and turn places are **present** — the marking the step is about. The move transitions and their guards are **future** — recomputed from the marking on every step, never stored. Appendix E states the split once, formally. The short version: *the past is tropical, the future is predicate, and the present is the boundary where they meet.*
 
-But every engine we built tells a different story. Execution state has a three-part structure — a *zipper* in the sense of Huet (1997):
+This is not a deficiency of the SMC framework but a scope boundary. The category tells you what can compose. The tenses tell you where you are in the composition. What matters for this book is that all three are *data in the same document* — the event log, the marking, the guards — so the question "do two implementations agree about where we are?" is answered by a trace diff, not an argument.
 
-- **Left context (past).** The tropical semiring accumulates firing history into a compressed summary. Past firings are irreversible; the tropical core is the proof. This is the left context of the execution zipper in Appendix E.
-- **Hole (present).** The current marking. It is simultaneously the output of tropical accumulation and the input to the predicate layer. Change the marking and you are in a different universe — different history is relevant, different transitions are enabled.
-- **Right context (future).** Guards and predicates constrain what fires next, computed fresh from the marking on every step. Win detection, turn enforcement, balance checks — all recomputed when the hole moves.
+### Where Declare-Then-Derive Already Runs
 
-The SMC has no hole. It was never meant to. The categorical encoding is a theorem about what compositions are valid — the right tool for structure. But computation requires focus, and focus requires a boundary between what has happened and what might happen next.
+Step back and look at what is running. In every row the left column is a document in the four-primitive vocabulary, and everything in the right column is computed from it:
 
-Two established treatments of time illuminate the gap. Schultz and Spivak's temporal type theory treats time as a parameter — an interval you index over, where the current moment has no special status. Prior's tense logic treats past and future as modalities — operators that shift perspective relative to an implicit now. Both smuggle the present in through the side door. The zipper makes it structural: the marking *is* the present, and the present is a universe relative to which past and future are both defined.
+| Domain | Declared artifact | Derived from it |
+|--------|-------------------|-----------------|
+| Business simulation | `sim.pflow.xyz` model (JSON-LD) | Analysis suite and the running application |
+| Ecosystem devops (private) | App manifest (YAML) | Services entry, nginx vhost, certificate, uptime synthetic |
+| Agent workflows (private) | Journey frontmatter (a Petri net) | The prompts themselves — the document is the runtime |
+| Multi-language parity | `pflow-polyglot/model.json` | Twenty-plus implementations and one golden trace |
+| Formal proof | The same `model.json` | Kernel-checked Lean theorems |
+| Content addressing | `index.md` frontmatter | Searchable facets and a CID-addressed URL |
 
-This is not a deficiency of the SMC framework — it's a scope boundary. The category tells you what can compose. The zipper tells you where you are in the composition. Every serious computational use of Petri nets — workflow engines, protocol stacks, ZK circuits — bolts mutable execution state onto the immutable categorical skeleton. The zipper names that joint.
-
-### The Ecosystem Through Categorical Eyes
-
-Step back and look at what this book built. The layers compose because they form a categorical structure:
-
-| Layer | Categorical Role | Book Content |
-|-------|-----------------|--------------|
-| Theory | Objects | Token language, net types, JSON-LD, DDM |
-| Models | Morphisms | Coffee shop, tic-tac-toe, Hold'em, sudoku, enzyme kinetics |
-| Analysis | Functors | Incidence reduction, ODE signatures, P-invariants |
-| Proofs | Natural transformations | ZK proofs, lenses, sealed invariants |
-
-Each layer composes with the ones above and below. Models compose via typed links. Analysis composes via functor composition. Proofs compose via vertical composition of natural transformations.
-
-This isn't imposed structure. The book accumulated one chapter at a time, each solving a specific problem. But Petri nets carry symmetric monoidal structure inherently, and everything built on them inherits it. The coherence shows up as: techniques from one chapter transfer cleanly to another. The ODE analysis that works on tic-tac-toe works on poker. The ZK circuit that proves tic-tac-toe transitions proves any Petri net transition. The composition rules that wire order processing to inventory wire any two schemas together.
-
-The category theory is not a framework the book adopted but the structure that was always there — the reason the abstraction turned out to be universal.
-
-For readers who want the formal treatment — the free SMC construction, the precise functor definitions, and the lens product decomposition theorem — see Appendix E.
+None of this was designed as a system. The book accumulated one chapter at a time, each solving a specific problem, and the rows above accumulated the same way. They cohere because the alphabet forces them to: a place is a place in a help desk, a drum machine and a fleet of web services, and composing by shared place works identically in each. The category theory in Appendix E is not a framework the book adopted but the reason that coherence was always going to be there.
 
 ## The Premise, Revisited
 
@@ -217,6 +162,6 @@ Chapter 1 opened with a complaint: informal models fail because they don't captu
 
 Petri nets fix this by making structure explicit. Places hold state. Transitions change it. Arcs constrain what can flow where. Conservation laws fall out of the topology. The model is the specification.
 
-But the deeper lesson — the one that emerged through writing this book, not before it — is that the Petri net formalism is itself a layer over something simpler. The structure that matters most is the directed bipartite graph. The Petri net adds semantics to that graph. The ODE adds dynamics. The ZK circuit adds proof. Each layer is useful. None is the whole story. And the invariant that connects them — the diagonal of $BB^T$, computed dynamically by the ODE and verified cryptographically by the ZK circuit — is a categorical property of the bipartite structure itself. It exists whether you call the formalism a Petri net, a chemical reaction network, or a bipartite constraint graph.
+But the deeper lesson — the one that emerged through writing this book, not before it — is that what made all of this possible is not a property of Petri nets specifically. It is that **the model is a value, not a program.** A net is a document: four primitives — place, transition, arc, guard — and a marking. It can be hashed, diffed, composed by matching edges, and handed to a stranger in another language or another decade who can check it without trusting us. Every derived artifact in Part IV, every invariant in Part I, and every one of the domains above follows from that one fact. The topology of a system determines more about its behavior than any amount of parameter tuning — and it can only be *read* because it was written down as data.
 
-If there's a single sentence version of what this book argues, it might be: **the topology of a system — what connects to what, through what — determines more about its behavior than any amount of parameter tuning, training data, or runtime optimization.** The Petri net is one way to read that topology. The ODE is one way to compute its invariants. The diagonal of $BB^T$ is one such invariant — and it turned out to be the one that matters most. The topology was always there, waiting to be read.
+That is the claim this book has been circling, and the name for it is Metamodel: a small, fixed alphabet whose local composition rules generate an unbounded space of specific, checkable systems. Not one system that swallows every domain. Four primitives, remixed without limit. The palette is small on purpose, and the smallness is the whole reason it travels.

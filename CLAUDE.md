@@ -23,13 +23,21 @@ book-pflow-xyz/
 
 ## Source Material
 
-Content draws from three sibling projects in this workspace:
+Content draws from sibling projects in this workspace:
 
 | Source | Path | Content |
 |--------|------|---------|
-| blog.stackdump.com | `~/Workspace/blog-stackdump-com/content/posts/` | 21 blog posts (~21k words) |
+| blog.stackdump.com | `~/Workspace/blog-stackdump-com/content/posts/` | ~45 blog posts; `metamodel.md` is the canonical Metamodel statement |
 | petri-pilot | `~/Workspace/petri-pilot/` | Docs, 13 example models, generated apps |
 | go-pflow | `~/Workspace/go-pflow/` | 60+ docs, 18 examples, research paper outline |
+| pflow-polyglot | `~/Workspace/pflow-polyglot/` | One model, five forms, golden trace (`FORMS.md`) |
+| sim-pflow-xyz | `~/Workspace/sim-pflow-xyz/` | Business-operations instance (*The Model Is the App*) |
+
+**Editorial rule (2026-08-23):** the book serves the Metamodel narrative
+(model is a value; four primitives; declare then derive). Mathematical
+connections that do not serve it are cut rather than kept for their own
+sake — the comonad/coKleisli and tense-logic material went this way. ZK is
+presented as a derived artifact, not a headline.
 
 ## Building & Publishing
 

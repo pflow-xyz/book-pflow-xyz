@@ -42,7 +42,9 @@ A Petri net has exactly four kinds of things:
 
 **Arcs** are arrows connecting places to transitions and transitions to places. An arc from a place to a transition means "this transition needs a token from this place." An arc from a transition to a place means "this transition produces a token in this place." Arcs define the flow — who needs what, and who produces what.
 
-That's it. Four primitives. No inheritance hierarchies, no configuration languages, no plugin architectures. Every Petri net ever drawn — from a traffic light to a biochemical pathway to a poker game — is built from these four elements.
+That's it. No inheritance hierarchies, no configuration languages, no plugin architectures. Every Petri net ever drawn — from a traffic light to a biochemical pathway to a poker game — is built from these elements.
+
+One distinction is worth fixing now, because the rest of the book leans on it. Places, transitions and arcs are **structure** — they are what a model *is*. Tokens are **state** — the marking is what a model is *doing* right now, and it changes on every firing while the structure does not. The alphabet this book builds with is therefore three structural terms plus one more that arrives in Chapter 4: the **guard**, a condition on when a transition may fire. Place, transition, arc, guard — four primitives, and no fifth. Everything else, from `balances` to `brew` to `kick_0`, is what a domain sounds like once it has been written in them.
 
 ### The Firing Rule
 
@@ -138,6 +140,6 @@ The model becomes the specification. The code becomes a derived artifact. When t
 
 This is the opposite of how most software is built, where the code *is* the model and the specification exists (if at all) as outdated documentation. With Petri nets, the model is a living, executable, analyzable artifact that stays authoritative throughout the project's life.
 
-The rest of this book shows what this looks like in practice — from a coffee shop inventory system to a zero-knowledge proof of a game move, all built from places, transitions, arcs, and tokens.
+The rest of this book shows what this looks like in practice — from a coffee shop inventory system to a running application, a kernel-checked theorem and a zero-knowledge proof of a game move — all derived from the same four primitives: places, transitions, arcs, and guards.
 
 > **Try it live:** See the [Stoplight](https://pilot.pflow.xyz/stoplight/) for a cyclic state machine or the [Dining Philosophers](https://pilot.pflow.xyz/dining-philosophers/) for mutual exclusion — both generated from Petri net models at [pilot.pflow.xyz](https://pilot.pflow.xyz/).

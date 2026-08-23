@@ -81,6 +81,14 @@ run: build-web
 serve:
 	mdbook serve --open
 
+# Toolchain parity: run here and on pflow.dev, diff the output.
+# pflow.dev (2026-08-23): mdbook 0.5.2, mdbook-katex 0.10.0-alpha, pandoc 3.1.3, xelatex (texlive 2023).
+# mdbook + mdbook-katex: cargo install; pandoc: static tarball into ~/.local/bin; xelatex: apt texlive-xetex.
+# Math is pre-rendered by mdbook-katex at build time — no client JS; a page with raw $...$ means the preprocessor is missing.
+toolchain:
+	@for t in mdbook mdbook-katex pandoc xelatex go; do \
+	  printf '%-14s' $$t; command -v $$t >/dev/null && ([ $$t = go ] && go version || $$t --version 2>&1 | head -1) || echo MISSING; done
+
 test:
 	mdbook test 2>/dev/null || true
 	go vet ./...

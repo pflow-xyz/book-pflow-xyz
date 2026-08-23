@@ -113,3 +113,47 @@
 
 **Zero-knowledge proof**
 : A cryptographic protocol where a prover convinces a verifier that a statement is true without revealing any information beyond the truth of the statement. In pflow, ZK proofs verify that a Petri net transition was validly fired without revealing the marking (Chapter 12).
+
+---
+
+## Ecosystem Vocabulary
+
+Terms coined in this book and the blog it grew from, rather than inherited from Petri net theory. Each entry names where the term was introduced.
+
+**Core–observer boundary** — see the entry above; introduced in *Earned Compression*.
+
+**Declare, then derive**
+: The Metamodel working discipline. The model is declared once as data; analysis, the running application, proofs and, in this ecosystem's own deployment tooling, the infrastructure that serves it are computed from that document. Nothing downstream is hand-written to agree with the model, so nothing downstream can disagree with it (Chapter 21; *The Model Is the App*).
+
+**Drift**
+: Disagreement between a declared artifact and the world it describes — a manifest and a host, a vendored module and its upstream, two implementations of one net. Metamodel's claim is not that drift never happens but that it is always *detectable* by comparing two values: a manifest against a host, a vendored file against its lockfile, a trace against the golden trace (Chapters 20, 21).
+
+**Edge-matching composition**
+: Two nets compose by sharing a place, the way two tiles meet because their edges agree. No glue code is written to make them fit; the shared place *is* the interface. P-invariants of the components survive the gluing (Chapters 4, 21; *A Tiling for Computation*).
+
+**Golden trace**
+: A canonical firing sequence and its resulting markings, checked byte-for-byte against every implementation of a model. `pflow-polyglot/parity/trace.golden` holds twenty-plus implementations across four languages to one trace; the build fails on divergence (Chapter 20).
+
+**Internal DSL (as a failure mode)**
+: A model expressed as *code in a host language* that constructs a net — Rust macros, Python calls, Solidity structs. Five such ports of an early version of this work claimed to encode the same thing and could not prove it, because the specification existed only as five programs. The fix was to make the model a document (Chapter 21; book `ROADMAP.md` §Lineage).
+
+**Journey**
+: A workflow whose control flow is a Petri net declared in a markdown document's frontmatter, with one prompt per transition in the body. The document is both the documentation and the runtime — there is no second copy of the control flow to drift (Chapter 21).
+
+**Manifest**
+: The declared description of an application — a handful of fields and a marking in one YAML file — from which its service entry, virtual host, certificate and uptime check are derived. The infrastructure instance of declare-then-derive (Chapter 21).
+
+**Metamodel**
+: Capitalised: a model for making models — the cross-cutting claim of this book. A small, fixed alphabet — place, transition, arc, guard — whose local composition rules generate an unbounded space of specific, checkable systems, because a model written in it is a value rather than a program. Lowercase `metamodel`, in code font, is a Go package implementing one instance of the vocabulary (Chapter 21; *A Tiling for Computation*).
+
+**Model is a value, not a program**
+: The single fact Metamodel rests on. A value can be hashed, diffed, composed and checked by a machine that has never seen any of our runtimes; a program can only be run. Content addressing (Chapter 16), dual implementation (Chapter 20) and the golden trace all depend on it.
+
+**Polyglot forms**
+: The five shapes an implementation of one model can take — *interpreter* (a generic engine reads the document), *lambda* (the net as a pure step function), *generated* (source emitted from the document), *contract* (on-chain), *proof* (a kernel-checked theorem) — all held to one golden trace (*The Proof Form*; `pflow-polyglot/FORMS.md`).
+
+**Tropical past, predicate future**
+: The tense structure of an executing model. Write-once places and the event log are the *past* — monotone and irreversible, the boolean case of tropical $(\max,+)$ accumulation. Guards are the *future* — predicates recomputed from the marking on every step and stored nowhere. The marking is the *present*, the boundary where they meet. All three are data in the one model document (Chapter 6; Appendix E; *The Zipper Whose Hole Is a Universe*).
+
+**Write-once place**
+: A place with incoming arcs only; a token arrives and never leaves. History places in game nets (prefixed `_`) are the canonical case. The smallest instance of tropical accumulation (Chapter 6).

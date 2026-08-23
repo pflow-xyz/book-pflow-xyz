@@ -68,6 +68,8 @@ When O plays at position (0,2):
 
 The history layer doesn't change the game mechanics — it adds information without altering what moves are legal. But it enables win detection, which needs to know not just that a cell is occupied, but *which player* occupies it.
 
+It also makes visible a split that every executing model in this book has, and that this net is small enough to show whole. The history places are **write-once**: a token arrives and never leaves. They are the model's *past* — monotone, irreversible, accumulating facts that a pattern collector can AND together without ever replaying the moves. The board places and `Next` are the *present*: the marking the next step is about. The move transitions and their guards are the *future*: recomputed from the marking on every step, stored nowhere. The past is tropical, the future is predicate, and the marking is where they meet. Appendix E states this once, formally; here it is just three groups of places and transitions, all in the same document.
+
 ### The Full Place Set
 
 The complete model has 30 places:

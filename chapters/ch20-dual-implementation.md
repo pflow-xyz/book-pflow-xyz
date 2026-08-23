@@ -202,6 +202,16 @@ For Petri nets, unambiguous means:
 
 These are exactly the properties you need for a formal modeling system. The mathematics works only if the implementation matches the theory. Dual implementation is how you check.
 
+## From Two to Twenty
+
+Two implementations prove a specification is unambiguous. They do not prove it is *portable* — that a stranger in a third language could read the document and arrive at the same behavior. And the history of this project holds a warning about what happens when there is no document to arrive at.
+
+An early version of this work was ported five times — Rust, Python, Lua, TypeScript, Solidity — and each port was an *internal DSL*: you wrote code, in that language, that built a net. All five claimed to encode the same thing. None could prove it, because the specification lived only in five separate programs that agreed by intention. They drifted apart quietly over about two years, and nothing noticed, because nothing was checking.
+
+`pflow-polyglot` is the structural fix. One `model.json`. Twenty-plus implementations across Go, Rust, Python and JavaScript, in five *forms* — an interpreter that reads the document, a pure step function, generated source, an on-chain contract, and a kernel-checked proof — every one held to a single golden trace (`parity/trace.golden`) and a golden reachability set. The check is byte-for-byte and it fails the build. Not "we tried to keep these in sync": a model that stopped being a program repeated five times and became a document checked twenty times.
+
+This is the dual-implementation discipline at its limit, and it is also the point at which the discipline stops being about Go and JavaScript. State-root parity between two runtimes is the smallest case of a general fact: when the model is a value, agreement is a comparison, and disagreement is a diff.
+
 ## The Ecosystem View
 
 Dual implementation is not just a testing technique — it's an architectural principle. Every tool in the ecosystem can verify every other tool's work:
@@ -215,9 +225,11 @@ JSON-LD Model (source of truth)
     |
     +-- petri-pilot (Go)  --  Code generation, event sourcing
     |
-    +-- ZK circuits (gnark)  --  Cryptographic proofs
+    +-- pflow-polyglot  --  20+ implementations, one golden trace
+    |
+    +-- Lean / gnark  --  Kernel-checked theorems, ZK circuits
 ```
 
 The JSON-LD model is the shared contract. Each tool processes it independently. Each tool can verify its results against any other tool processing the same model. The model format is declarative (Chapter 16), so there's no ambiguity about what it means — only about how each tool computes from it. And dual implementation resolves that ambiguity.
 
-This is the practical payoff of the universal abstraction. One formalism — Petri nets. One format — JSON-LD. Multiple implementations — Go, JavaScript, gnark circuits. Verification — by agreement. The mathematics provides the theory. Dual implementation provides the confidence that the code matches the mathematics.
+This is the practical payoff of the universal abstraction. One formalism — Petri nets. One format — JSON-LD. Many implementations — two runtimes, twenty ports, two proof forms. Verification — by agreement. The mathematics provides the theory. Dual implementation provides the confidence that the code matches the mathematics.
