@@ -32,6 +32,7 @@ CHAPTERS = chapters/preface.md \
 book:
 	mdbook build
 	cp robots.txt sitemap.xml build/html/
+	python3 seo-postprocess.py build/html
 
 # Pandoc → EPUB
 epub: build/book.epub
