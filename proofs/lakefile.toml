@@ -1,0 +1,5 @@
+name = "PflowProofs"
+defaultTargets = ["PflowProofs"]
+
+[[lean_lib]]
+name = "PflowProofs"
