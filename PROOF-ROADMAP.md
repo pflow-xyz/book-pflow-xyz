@@ -53,6 +53,10 @@ the induced `y` is a P-invariant of the glued net. Core Lean 4 preferred
 the statement every compositionality claim in the book rests on.
 **Status:** done 2026-08-22 — `book-pflow-xyz/proofs/` (lake project `PflowProofs`, core Lean 4.33, no mathlib, zero `sorry`). `invariant_lift`: if `y₁`, `y₂` are invariants of `N₁`, `N₂` and `y` agrees with them along the place map `f : P₁ ⊕ P₂ → Q`, then `y` is an invariant of `glue f N₁ N₂`; crux lemma `sumOver_reindex` by list induction. Settle corollary `settle_ones_lifted` derived from the theorem and `settle_ones_decide` checked independently by `decide`. Not formalised: the pushout universal property (f is any covering place map), transition gluing, the marking-level consequence.
 
+### Lean
+The Lean-specific plan — which claims become G (general) vs D (per-model,
+generated) theorems, in what order — is [`proofs/LEAN-ROADMAP.md`](proofs/LEAN-ROADMAP.md).
+
 ### Later
 - Appendix E wording: "P-invariants of a component are still derivable from the composite's incidence matrix" — P2 shows this holds by *restriction* (composite → part), not by zero-extension (part → composite). Reword.
 - Liveness does *not* lift — a formal counterexample to pair with P4.
@@ -63,3 +67,4 @@ the statement every compositionality claim in the book rests on.
 
 ## Log
 - 2026-08-22 — roadmap created; P1–P4 launched as one multi-agent run (8 agents: implementer + adversarial verifier per track; all four verified on the first round, minor defects fixed by hand afterwards).
+- 2026-08-23 — `proofs/LEAN-ROADMAP.md` added: L2–L15 sequenced, L16–L19 parked.
