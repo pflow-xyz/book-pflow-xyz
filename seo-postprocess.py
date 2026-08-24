@@ -18,7 +18,7 @@ BOOK = "Petri Nets as a Universal Abstraction"
 # GA4 measurement ID (G-…). Empty = no analytics injected. Set once the
 # book.pflow.xyz property (or a second web stream on the pflow.xyz property)
 # exists; measurement IDs are public, they ship in the HTML either way.
-GA_MEASUREMENT_ID = ""
+GA_MEASUREMENT_ID = "G-6ZSBNBBZ6N"
 MARK = "<!-- seo-postprocess -->"
 SKIP = {"404.html", "print.html"}
 
