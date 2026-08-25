@@ -261,7 +261,7 @@ The ODE has "discovered" the opening strategy: play the center. No minimax tree,
 
 **Finding winning threats.** When X has center and a corner, the ODE identifies the opposite corner as the best move (score 1.39) because it creates a two-way threat — a fork that completes one diagonal while opening another. The pattern collectors naturally amplify fork positions because they have higher connectivity.
 
-**Blocking.** When X has two in a row, O's best move is the blocking position (score 0.80 vs. 0.74-0.77 for other moves). The ODE discovers blocking because the flow toward WinX is dramatically higher along the threatened pattern. Placing a token to block cuts off that flow.
+**Blocking.** When X has two in a row, O's best move is the blocking position (score 0.80 vs. 0.74-0.77 for other moves). The ODE discovers blocking because the flow toward WinX is dramatically higher along the threatened pattern. Placing a token to block cuts off that flow. Note how thin the margin is: a forced block wins by hundredths where the opening preferences differ by half a point. Tactical necessities are second-order effects in the relaxed flow — a weakness the tournament results below make concrete.
 
 ### Performance
 
@@ -276,17 +276,7 @@ opts := &solver.Options{
 
 Each solve takes roughly 4 milliseconds, making a full game (about 45 total evaluations across all moves) complete in about 1.8 seconds. Fast enough for interactive play.
 
-### ODE vs. Random: Results
-
-Running the ODE AI against a random player over many games:
-
-| Matchup | X Wins | O Wins | Draws |
-|---------|--------|--------|-------|
-| ODE vs Random | ~95% | ~2% | ~3% |
-| Random vs ODE | ~15% | ~70% | ~15% |
-| ODE vs ODE | ~10% | ~5% | ~85% |
-
-The ODE AI dominates random play. When both players use ODE evaluation, the game usually draws — the correct outcome for optimal play. The model, without any game-specific heuristics, approximates optimal strategy.
+How well does this evaluator actually play? Measuring that fairly requires two refinements the model does not yet have — the game must stop when someone wins, and a draw must be worth something to the defender. Both come next; the tournament follows them.
 
 ## Game Halting and Draw Detection
 
@@ -309,11 +299,37 @@ Draw detection adds a move counter. Each play transition deposits a token into `
 - 9 move tokens have accumulated (all squares filled)
 - `game_active` is still marked (no winner)
 
-The draw transition awards a point to `WinO`, encoding the principle that "a draw is a win for the defender." This changes the ODE dynamics:
+The draw transition deposits into its own `draw` place, and the scoring objective counts it for the defender: `win_x - win_o - draw`, which X maximizes and O minimizes. This encodes the principle that "a draw is a win for the defender" — tic-tac-toe is asymmetric, O cannot force a win, so O's goal is "X does not win" and a draw counts fully. (Keeping the draw in its own place, rather than crediting `WinO` directly, also keeps the outcome announceable: an application reading the marking can tell a draw from a win.) This changes the ODE dynamics:
 
 **Without draw detection:** O's scores are always negative. The model only sees win paths, so it favors positions with more winning lines even when blocking is essential.
 
 **With draw detection:** O's scores become positive because draws count as partial victories. Blocking a threat now has measurable value — it preserves the possibility of a draw, which has positive worth.
+
+### Tournament Results
+
+With halting and draw detection in place, the complete model can play. The scoring function from earlier now reads the declared objective — `score = win_x - win_o - draw`, negated for O — and the tournament is reproducible: 100 games per matchup, the random player seeded, ODE ties broken by declared move order. The harness is `examples/ch06-ttt-tournament/`, pinned to a released go-pflow, and prints this table plus an ODE-vs-ODE game trace.
+
+| Matchup | X Wins | O Wins | Draws |
+|---------|--------|--------|-------|
+| ODE vs Random | ~97% | 0% | ~3% |
+| Random vs ODE | ~3% | ~88% | ~9% |
+| ODE vs ODE | **100%** | 0% | 0% |
+
+The ODE evaluator dominates random play from either side. As O — the seat that only exists to deny X — it converts ~88% of games into wins against a random X, which the draw-blind scorer could never do: without the draw term, blocking has no measurable value.
+
+The third row looks wrong and is the most instructive number in the table. Two identical players, and X wins *every* game — where a naive reading expects all draws. But "same player both sides means a tie" is a property of **perfect** players only. Two copies of an imperfect evaluator lose in whichever seat their shared weakness is punished, and tic-tac-toe's seats are not symmetric: X's job is threat *creation*, a strategic property the aggregate flow measures well, while O's job is threat *denial* — exact, discrete, forced. So the same evaluator that goes ~88% as O against random play fumbles reliably against the one opponent that punishes a single missed block every time: itself. (An earlier edition of this table reported ~85% draws for this matchup. It was measured on the draw-blind model — `score = win_x - win_o`, a tie worth zero to both sides instead of counting against X — with unseeded tie-breaking on top: an artifact, not a property of the evaluator. The move *sequences* still vary slightly between runs, because the solver's floating-point summation order follows map iteration and flips near-ties; the outcome never varies.) A representative game:
+
+```
+ply 1: X takes center        ply 2: O takes corner (2,0)
+ply 3: X takes corner (0,0)  ply 4: O blocks the diagonal at (2,2)
+ply 5: X takes edge (2,1), threatening column 1
+ply 6: O plays (0,2) — the losing move
+ply 7: X completes column 1 at (0,1)
+```
+
+At ply 6 the block at (0,1) is forced. Exact minimax over the same net confirms it: `o_play_01` values at +1 for O (the draw) and every other move at -1 (X wins). The relaxation's own numbers at that position show why it fails: the forced block scores 0.248 while two strategically-pretty but losing corner moves score 0.275. A block's value is conditional on the opponent's *next discrete move*; in the continuous flow that conditionality is a second-order effect, and 0.027 of aggregate connectivity outweighs it. The forced block is exactly the thin-margin tactical judgment flagged earlier, and the margin goes the wrong way.
+
+That is the honest boundary of the relaxation used *alone*. It is a **strategic prior** derived from topology — it finds the center opening, the corner defense, forks, and most blocks, with no game knowledge anywhere — but a tactical necessity is a second-order effect in the relaxed flow, and it will occasionally miss one. The right place for a prior is not the driver's seat. Where its right seat is — and what it does there — closes this chapter, once the integer reduction has given the prior its closed form.
 
 ## The Integer Reduction
 
@@ -381,6 +397,52 @@ For simple nets, step 3 is integer counting. For complex nets, step 3 is ODE sim
 
 What we have is a **static evaluation function defined purely by net topology and current state**. No heuristics, no training data, no game-specific knowledge beyond the Petri net model itself. For any game or system modeled as a Petri net with designated terminal states, the function is: *for each position, how connected is it to winning?* The Petri net is the domain knowledge — the topology encodes the rules, and the incidence structure encodes the strategy.
 
+## Oracle Play
+
+The tournament showed where the static evaluator's honesty runs out: it is a strategic prior, and a prior that drives loses to a forced block. This section puts it in its right seat. The result is perfect play, and — this is the point — perfect play *derived from the net*, with no more game knowledge than the evaluator itself used.
+
+### The Search Is Already in the Net
+
+Exact minimax needs four things: the legal moves, whose turn it is, when the game is over, and what the outcome was. The net declares all four. Legal moves are **enabled transitions** — an occupied cell's move is not pruned by game logic, it is simply not enabled, because the position token is gone. The turn is whichever turn place holds a token. The win detectors and the draw call are **the referee**: fired to quiescence between moves, they decide the game exactly as they did during simulation. And a missing turn token — absorbed by a detector — *is* the game-over test. The search over those semantics is a page of code with nothing about tic-tac-toe in it:
+
+```go
+func minimax(mk Marking, alpha, beta int) int {
+    mk = fireHouse(mk)              // detectors and the draw call referee
+    switch {
+    case mk["x_turn"] > 0:
+        // maximize over enabled x_play_* moves, prior-ordered
+    case mk["o_turn"] > 0:
+        // minimize over enabled o_play_* moves, prior-ordered
+    default:                        // turn token absorbed: game over
+        return mk["win_x"] - mk["win_o"]   // win +1, loss -1, draw 0
+    }
+}
+```
+
+Change the net — a 4x4 board, a misère rule where completing a line loses, an extra win pattern — and this player changes with it, because it was never written, only derived. The rules live in one artifact and everything else is a view of it.
+
+### The Prior Takes Its Seat
+
+The static evaluator's role changes from *player* to **oracle**: its ranking decides which move the search examines first, and never what any position is worth. That division of labor is exactly what alpha-beta wants — cutoffs come from trying strong moves early, so an ordering heuristic pays in pruned subtrees while remaining unable to corrupt the answer. And the integer reduction is what makes the oracle cheap: the ranking is the incidence degree, readable off the graph, with the ODE solve needed only where topology alone stops being enough.
+
+The prior's value is measurable, not rhetorical: from the empty board, the exact search expands 18,297 positions taking moves in declared order, and 7,135 with the prior ordering them — the same proven answer at 2.6x less work. Trying center before edge is most of what there is to know about tic-tac-toe move ordering, and the prior knows it from the arc structure alone.
+
+### Perfect Play, Measured
+
+The same tournament harness, with the oracle seated:
+
+| Matchup | X Wins | O Wins | Draws |
+|---------|--------|--------|-------|
+| Oracle vs Oracle | 0% | 0% | **100%** |
+| ODE vs Oracle | 0% | 0% | **100%** |
+| Oracle vs ODE | 38% | 0% | 62% |
+
+Every game between two oracles is a draw — the "identical players tie" intuition holds the moment both players are actually perfect, and the search proves the game's value from the empty board is the draw. The oracle never loses from either seat: as O it blocks every threat the bare relaxation missed, and as X it converts the heuristic's missed blocks into wins 38% of the time while conceding nothing. This construction — the relaxation ordering an exact search over the same net — is what a deployed bot should ship, and it is what the pflow what-if service's game bots do ship.
+
+### The Objective Is a Modelling Statement
+
+One detail in the harness deserves its own paragraph, because it is a lesson about declaring objectives rather than about search. The oracle's leaves score win +1, loss -1, draw 0 — the three outcomes must rank for perfect play to mean anything. The model's *declared* objective, `win_x - win_o - draw`, instead folds the draw into the defender's win. That is the right encoding for the asymmetric question it was written to ask — O cannot force a win, so O's goal is "X does not win," and a draw counts fully for O. But it makes X literally indifferent between drawing and losing, and the first version of this harness proved it the hard way: an oracle X maximizing the declared objective cheerfully lost 59% of its games against itself, every loss a position it valued identically to the draw it could have had. Same net, same search, one term moved in the objective — and "perfect play" quietly meant something else. An objective is a modelling statement, and this is what getting one wrong looks like from the inside.
+
 ## The GameNet Pattern
 
 Tic-tac-toe demonstrates the GameNet pattern from Chapter 4:
@@ -391,6 +453,7 @@ Tic-tac-toe demonstrates the GameNet pattern from Chapter 4:
 4. **Pattern collectors as transitions** — compositional win detection
 5. **ODE scoring** — strategic value emerges from topology
 6. **Integer reduction** — for simple games, the ODE collapses to incidence degree counting
+7. **Oracle play** — the prior orders an exact search over the same net; perfect play is derived, not programmed
 
 The same pattern scales to more complex games. A Connect Four model would have 42 position places (7 columns × 6 rows) and more pattern collectors (horizontal, vertical, diagonal sequences of 4). A Go model would have 361 position places. The complexity is in the number of places and patterns, not in the logic — the logic is always the same: tokens flow, patterns collect, scores emerge. And when the game is simple enough, the scores are integers you can read off the graph without running the solver at all.
 

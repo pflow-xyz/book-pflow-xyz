@@ -19,3 +19,4 @@ internal/static/public/
 
 # Playwright logs
 .playwright-mcp/
+examples/ch06-ttt-tournament/ch06-ttt-tournament
