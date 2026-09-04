@@ -90,6 +90,12 @@
 **Reachability graph**
 : The graph of all markings reachable from the initial marking through sequences of transition firings. Each node is a marking, each edge is a transition firing. The reachability graph may be infinite for unbounded nets.
 
+**SDE (Stochastic Differential Equation)**
+: Here, specifically the chemical Langevin equation: continuous state evolving under the same propensities SSA uses, but with intrinsic firing noise built into the diffusion term rather than sampled as discrete events. Cheap to sweep like the ODE, with an honest variance band like SSA — the regime between them. Distinct from a layer of exogenous Brownian motion added to an ODE for external uncertainty (a price feed, say), which answers a different question (Chapter 3).
+
+**SSA (Stochastic Simulation Algorithm)**
+: The discrete engine's execution method (Gillespie's direct method): pick the next transition to fire and the time until it fires, both drawn from the model's own propensities, then repeat. Produces one exact discrete sample path, or an ensemble of them, rather than a mean-field trajectory — the right tool when small counts or gating (read arcs, inhibitors, reachable capacities, guards) make the continuous relaxation inapplicable (Chapter 3).
+
 **State equation**
 : The algebraic relation $\mathbf{m}' = \mathbf{m}_0 + \mathbf{C} \cdot \boldsymbol{\sigma}$ where $\boldsymbol{\sigma}$ is the firing count vector (how many times each transition has fired). A necessary but not sufficient condition for reachability — the actual firing sequence must also be valid.
 

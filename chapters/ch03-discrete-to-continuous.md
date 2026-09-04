@@ -243,6 +243,40 @@ solver.FastEquilibriumOptions()     // Tolerance 1e-4, 3 steps (game AI)
 solver.StrictEquilibriumOptions()   // Tolerance 1e-9, 10 steps (research)
 ```
 
+## When the Relaxation Doesn't Apply
+
+Everything above rests on one assumption: that a transition's firing rate is a smooth function of the current marking. That assumption is false for four common modeling constructs, and it's worth naming them before you reach for `solver.Solve` out of habit.
+
+**Read arcs, inhibitor arcs, reachable capacities, and guards all depend on a firing instant** — a specific moment where the marking is checked against a threshold. Mass action has no such moment. It treats every input as a continuous flow, all the time, so there is no point at which it can ask "is this inhibitor's threshold exceeded right now?" or "did this firing just hit the capacity bound?" go-pflow's `stochastic` package checks for exactly these four constructs (`Model.Gating()`) before handing a model to a continuous engine, and refuses rather than guess:
+
+```go
+result, err := stochastic.Forecast(model, marking, stochastic.Options{})
+// Diverged: true
+// Reason: this model constrains firing in ways a continuous solution cannot
+// express... Use the discrete engine (Simulate).
+```
+
+This isn't a missing feature — it's the ODE being honest about a question it cannot answer. A model with a capacity that the net's own transitions can actually reach needs the discrete engine, `stochastic.Simulate`, which fires one event at a time and can check the bound at the instant it matters. Chapter 5's coffee shop model has exactly this shape: `beans_supply` and the other supply places declare a capacity that the refill transitions genuinely reach, and the full ODE treatment there is an approximation that happens to be good enough for the questions that chapter asks — not a proof that capacity survived the relaxation. Section "Restocking and Capacity Limits" in Chapter 5 comes back to this.
+
+**Below the four gating constructs, a second and separate question is population size.** On an ungated net, the ODE's trajectory and the discrete engine's *average* over many runs agree — that's the law of large numbers, not a coincidence. A thousand coffee beans drawn down twenty at a time behaves like a smooth curve because it effectively is one; the discreteness averages out. But three baristas and a milk supply that runs dry five orders into a rush are a different regime. There, the *variance* is the answer you're after — how often does the queue actually run dry, not what does it do "on average" — and the ODE has no queue-was-empty event to count. It can't have an opinion on a question it was never built to see. The rule of thumb: large populations and you want the average, use the ODE; small counts and you want the distribution of outcomes, or "how often does X happen," run the discrete engine and look at the spread across realizations.
+
+**An arc weight above 1 is not the same law, more or less precisely computed, in the two engines.** The ODE's mass-action rate multiplies the input place's concentration into the flux once per input arc, no matter the weight — a transition that consumes 20g of beans per firing still contributes $M(\text{beans})$ to the rate, not $M(\text{beans})^{20}$ or any combinatorial term in 20. The discrete engine's propensity, by contrast, uses the full combinatorial count — the number of distinct ways to draw 20 indistinguishable tokens from however many are on hand, which is what "mass action" has meant in chemistry since the 19th century. The two conventions coincide exactly at weight 1, where there's only one way to draw one token, and diverge for any recipe that consumes more than a single unit of an ingredient per firing. Neither is wrong — "what does the concentration do on average" and "how many indistinguishable tokens can I draw" are legitimately different questions once more than one token is consumed per firing — but don't expect a weight-20 arc to produce quantitatively matching numbers from both engines, even on a net the ODE doesn't refuse.
+
+**A third engine sits between the two.** The chemical Langevin equation — a stochastic differential equation built from the same propensities the discrete engine uses, but with continuous state — gives *intrinsic* firing noise: an honest variance band, at roughly the ODE's cost, independent of population size. That's a different thing from the volatility petri-pilot's older `petri_sde` tool adds: that tool layers exogenous geometric Brownian motion onto user-chosen "volatile" places on top of the ODE — the right tool for a DeFi price feed or an external demand shock, but noise imposed from outside the model rather than noise the net's own structure produces. Use the SDE path when the population is too large for the discrete engine's per-firing cost to be worth paying, but small enough that the ODE's zero-variance answer would be misleading, and the model has no gating for the ODE to refuse over in the first place.
+
+### Choosing an Engine
+
+| Your model has... | Use |
+|---|---|
+| a read arc, inhibitor, reached capacity, or guard | the discrete engine (or the ODE, and read the refusal) |
+| large populations, no gating, you want the average | the ODE |
+| small counts, you want the distribution or "how often does X happen" | the discrete engine |
+| any input arc with weight > 1 | expect the two engines to disagree quantitatively — decide which rate law your model actually means |
+| exogenous continuous uncertainty (price, demand) on top of the ODE | the volatility layer, not the relaxation itself |
+| intrinsic firing noise, cheap enough to sweep | the chemical Langevin SDE |
+
+The lesson isn't "the ODE is fragile." It's that discrete, stochastic, and continuous are three different questions about the same net, and a model that answers one honestly may have nothing to say about another. Ask the question the engine was built to answer.
+
 ## The Full Picture
 
 The continuous relaxation transforms the Petri net from a discrete-event system into a dynamical system. The incidence matrix becomes the stoichiometry matrix. The firing rule becomes mass-action kinetics. The state equation becomes a differential equation.

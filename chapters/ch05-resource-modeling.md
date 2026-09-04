@@ -356,6 +356,12 @@ In a guard-based formulation (Chapter 4), these thresholds would be guards on th
 
 The guard checks not just whether there's enough for *this* drink, but whether stock is above the alert threshold plus one recipe's worth. This is precautionary guarding — blocking production before the resource reaches critical levels.
 
+### A Caveat About the ODE
+
+Everything in this chapter so far ran on the continuous relaxation from Chapter 3, and for the questions asked so far — bottleneck ranking, sensitivity, the shape of a rush-hour surge — that's the right tool. But the capacities on `beans_supply` and `milk_supply` are exactly the construct Chapter 3's "When the Relaxation Doesn't Apply" warns about: a **reachable** capacity, one the refill transitions actually hit, not a bound declared and never approached. Handed to go-pflow's discrete engine instead of the solver, this model's capacities would make `stochastic.Forecast` refuse outright — correctly, because mass action has no firing instant at which to check "did this refill just hit the 500g cap?" The ODE trajectories in this chapter are a smooth approximation of that boundary, not a proof it survived the relaxation intact.
+
+It matters more as the shop gets smaller. A thousand grams of beans drawn down 18 at a time is exactly the large-population case the ODE is built for — the average *is* the interesting number. A shop that stocks four shots' worth of beans overnight and wants to know how often it actually runs dry before the morning delivery is asking the other question: not what the average looks like, but how much a single real night varies. That's `stochastic.Simulate`, run across enough realizations to see the spread, not the solver run once. Same net, same recipes, different question — and, per Chapter 3's rule 3, the two engines would not even agree on the espresso recipe's rate law once you look closely, since the recipe consumes 18g of beans per shot and the ODE and the discrete engine multiply that weight into the rate differently above 1.
+
 ## Full Day Simulation
 
 The most revealing analysis simulates an entire business day with varying demand:
