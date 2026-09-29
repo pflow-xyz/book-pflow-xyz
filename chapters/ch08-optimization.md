@@ -15,11 +15,13 @@ Four items with different weights and values, capacity budget of 15:
 | Item | Weight | Value | Efficiency (v/w) |
 |------|--------|-------|-------------------|
 | item0 | 2 | 10 | 5.0 |
-| item1 | 4 | 12 | 3.0 |
+| item1 | 4 | 10 | 2.5 |
 | item2 | 6 | 12 | 2.0 |
-| item3 | 9 | 16 | 1.78 |
+| item3 | 9 | 18 | 2.0 |
 
-The optimal solution takes items 0, 1, and 3 — total weight 15, total value 38. Item2 is excluded despite reasonable efficiency because its weight (6) prevents the higher-value item3 (weight 9) from fitting alongside items 0 and 1.
+These are the values in go-pflow's [`examples/knapsack`](https://github.com/pflow-xyz/go-pflow/blob/main/examples/knapsack/cmd/main.go), which produced every simulation number in this chapter.
+
+The optimal solution takes items 0, 1, and 3 — total weight 15, total value 38. Item2 and item3 tie on efficiency at 2.0, so the ratio can't choose between them; capacity does. After items 0 and 1 take 6 units, item3 fills the remaining 9 exactly, while item2 would leave 3 idle (items 0, 1, 2 weigh 12 and are worth 32).
 
 ### Net Structure
 
@@ -42,15 +44,19 @@ The arc from `capacity` to `take_item0` has weight 2 — taking item0 costs 2 un
 
 The critical structural property: all items compete for the same capacity pool. Taking item2 (weight 6) leaves less capacity for item3 (weight 9). This competition is encoded in the shared input place, not in any explicit exclusion logic.
 
-## Item Efficiency Encoded in Transition Rates
+## Why Every Item Is Taken Equally
 
-In the basic model, all transitions have rate 1.0. The mass-action dynamics determine how items are consumed:
+In the basic model, all transitions have rate 1.0. go-pflow's mass-action kinetics are first-order in every input place ([`solver/ode.go`](https://github.com/pflow-xyz/go-pflow/blob/main/solver/ode.go)):
 
-$$v(\text{take\_item}_i) = k_i \cdot M(\text{item}_i) \cdot M(\text{capacity})^{w_i}$$
+$$v(\text{take\_item}_i) = k_i \cdot M(\text{item}_i) \cdot M(\text{capacity})$$
 
-With uniform rate constants ($k_i = 1$ for all items), the transition rate depends on the arc weight — items with larger weights have their rates modulated by higher powers of the remaining capacity. As capacity depletes, heavier items' rates drop faster.
+The arc weight $w_i$ scales how much capacity each firing consumes, not the rate: it does *not* appear as an exponent. (Chemical mass action would raise $M(\text{capacity})$ to the power $w_i$; go-pflow does not.)
 
-This creates a natural priority: lighter items are consumed first because they have lower-order dependence on capacity. Heavy items are left for later, and if capacity runs out, they're stranded.
+This makes the dynamics solvable by hand. Let $\tau(t) = \int_0^t M(\text{capacity})\,ds$. Each item place obeys $\dot M(\text{item}_i) = -M(\text{item}_i)\,M(\text{capacity})$, so
+
+$$M(\text{item}_i) = e^{-\tau}$$
+
+— the same curve for every item, whatever its weight or value. Values never enter the dynamics at all; they sit on output arcs into a place nothing reads. All active items are therefore taken in one common fraction $f = 1 - e^{-\tau}$, and the remaining capacity is $15 - W f$, where $W$ is the total weight of the active items. If $W > 15$, capacity runs out at $f = 15/W$ and the net settles at value $15V/W$, with $V$ the total value of the active items. If $W \le 15$, $f \to 1$ and the net eventually collects all of $V$. Every number in the rest of this chapter follows from that formula.
 
 ## Continuous Relaxation and Rounding
 
@@ -69,9 +75,9 @@ Item consumption (fraction taken):
   item3: 71.4% taken
 ```
 
-The continuous relaxation takes *fractional* amounts of each item — all at approximately 71.4%. This is the nature of ODE simulation: it finds a smooth approximation rather than discrete 0/1 choices. The total value is 35.71, compared to the discrete optimum of 38.
+The continuous relaxation takes *fractional* amounts of each item — all at exactly $15/21 = 71.4\%$, as the formula predicts ($W = 21$, $V = 50$, value $15 \cdot 50/21 = 35.71$). The total value is 35.71, compared to the discrete optimum of 38.
 
-The fractional solution looks like the LP (linear programming) relaxation of the knapsack, but it is not one: an LP relaxation is an upper bound on the integer optimum, while the ODE settles at 35.71, *below* the integer optimum of 38. Mass-action kinetics spreads consumption across items proportionally; it is a smooth dynamics, not a maximiser. The gap between 35.71 and 38 tells us that simple rounding won't find the optimum. We need more information about the solution structure.
+The fractional solution looks like the LP (linear programming) relaxation of the knapsack, but it is not one: an LP relaxation is an upper bound on the integer optimum (here the LP value is 38 — items 0 and 1 whole, then 9 units at ratio 2.0), while the ODE settles at 35.71, *below* the integer optimum of 38. Mass-action kinetics spreads consumption across items proportionally; it is a smooth dynamics, not a maximiser. The gap between 35.71 and 38 tells us that simple rounding won't find the optimum. We need more information about the solution structure.
 
 ## Exclusion Analysis for Sensitivity
 
@@ -87,9 +93,9 @@ This is where the Petri net approach delivers insight that branch-and-bound does
 
 Three of the four items behave as expected — excluding them reduces the total value. But item2 is anomalous: **excluding it *increases* the value from 35.71 to 37.75**.
 
-This means item2 is actively hurting the solution. It's not just "not included in the optimum" — it's competing for capacity that other items would use more effectively. By consuming 6 units of capacity at an efficiency of only 2.0, item2 crowds out items 0 and 3, which have better value-for-weight ratios.
+The formula explains the whole table. While the active items overweigh the capacity, the value is $15V/W$ — capacity times the aggregate value density of the active set. Excluding item0 costs the most because it is the densest item: $V/W$ falls from $50/21 = 2.38$ to $40/19 = 2.11$, giving 31.58. Excluding item3 leaves items weighing 12, which fit, so the net collects their full value of 32. Item2 is the only exclusion that raises the value, because without it the remaining weights sum to exactly 15 and the net can take all of items 0, 1 and 3.
 
-The exclusion analysis tells us exactly which item to remove from the model. No combinatorial search needed — one sensitivity pass reveals the suboptimal item.
+So item2 is "hurting" the solution in a precise sense: its exclusion is the one that makes the rest fit. On this instance one sensitivity pass — five ODE runs — points at the optimum. Single exclusions only examine subsets of size $n-1$, though, and on a larger instance the optimum usually drops several items; that this heuristic finds the optimum in general is not shown here.
 
 ### Convergence After Exclusion
 
@@ -101,9 +107,9 @@ With item2's transition disabled, the ODE converges toward the discrete optimum:
 | t=100 | 37.97 | 0.03 |
 | t=1000 | 38.00 | 0.00 |
 
-Given enough simulation time, the continuous relaxation without the suboptimal item converges to the exact discrete optimum of 38. The remaining items (0, 1, 3) are fully compatible — their combined weight equals the capacity exactly — so the ODE reaches the integer solution.
+Given enough simulation time, the continuous relaxation without item2 converges to the exact discrete optimum of 38. The remaining items (0, 1, 3) weigh exactly the capacity, so capacity and items drain together: $M(\text{capacity}) = 15e^{-\tau}$ integrates to $e^\tau = 1 + 15t$, and the gap to 38 is $38/(1 + 15t)$ — algebraic rather than exponential, which is why it takes until $t = 1000$ to close.
 
-This is the power of combining structural analysis (exclusion) with continuous relaxation (ODE). The exclusion step eliminates competition from suboptimal items. The ODE step then finds the remaining optimum naturally.
+The exclusion step removes the item whose presence keeps the rest from fitting; the ODE then fills the set that remains. It reaches the integer optimum here because $2 + 4 + 9 = 15$, not because the dynamics select it.
 
 ## Comparison with Branch-and-Bound
 
@@ -115,10 +121,10 @@ The two approaches solve the same problem through fundamentally different mechan
 
 | Aspect | Branch-and-Bound | DDM/ODE |
 |--------|------------------|---------|
-| Core operation | Binary search tree | Continuous dynamics |
-| Decisions | Explicit (take/skip) | Emergent (competition) |
+| Core operation | Decision-tree search with bounds | Continuous dynamics |
+| Decisions | Explicit (take/skip) | None — every active item is taken in the same fraction |
 | Solution type | Exact integer | Fractional approximation |
-| Complexity | Exponential (pruned) | Polynomial (ODE integration) |
+| Cost | Exponential worst case (pruned) | One ODE solve per run; does not solve the integer problem |
 | Primary output | "What's optimal?" | "Why is it optimal?" |
 
 For exact solutions, branch-and-bound wins — it finds items 0, 1, 3 with value 38 directly. The ODE reaches 35.71 by taking fractional amounts of everything.
@@ -140,7 +146,7 @@ In practice, the approaches complement each other. Use ODE simulation to underst
 
 The 4-item example is intentionally small. For larger instances:
 
-- **100 items**: The ODE simulation remains polynomial — the number of transitions scales linearly. Exclusion analysis requires 100 ODE runs (one per item). Branch-and-bound may require exponentially many branches.
+- **100 items**: Each ODE run stays cheap — the number of transitions scales linearly — and single-item exclusion analysis is 101 runs. But single exclusions only look at 99-item subsets, and the optimum will typically drop many items, so this does not replace branch-and-bound's exponential worst case; a benchmark on larger instances has not been done.
 
 - **Correlated items**: When items have similar efficiency ratios, the exclusion analysis shows which ones truly contribute and which are interchangeable. This information is invisible to pure optimization.
 
@@ -156,6 +162,6 @@ The knapsack model demonstrates a fourth application pattern, distinct from reso
 4. **Exclusion analysis** reveals which elements actively hurt the objective
 5. **Continuous relaxation** approximates the optimum; structural insight guides to the exact solution
 
-This is optimization by simulation rather than search. The ODE doesn't find the optimal solution directly — it reveals the solution's structure. That structure, in turn, makes finding the optimum straightforward.
+This is optimization by simulation rather than search. The ODE doesn't find the optimal solution directly — it reveals the solution's structure. On this instance that structure leads straight to the optimum; on larger ones it is a guide for search, not a substitute.
 
 > **Try it live:** Explore the [Knapsack optimizer](https://pilot.pflow.xyz/knapsack/) at pilot.pflow.xyz to see mass-action kinetics reveal optimal item selection.
