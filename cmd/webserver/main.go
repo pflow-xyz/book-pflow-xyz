@@ -24,6 +24,7 @@ func main() {
 	registerDeployRoutes(server)
 	server.HandleFunc("/metrics", handleMetrics)
 	registerLLMSRoutes(server)
+	registerRedirects(server)
 	server.Handle("/", http.FileServerFS(publicFS))
 
 	addr := fmt.Sprintf(":%d", *port)
@@ -31,6 +32,23 @@ func main() {
 	if err := http.ListenAndServe(addr, logRequests(server)); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
+}
+
+// registerRedirects serves a 301 for every renumbered chapter, so links
+// published under the old numbers keep working. The browser carries any
+// #fragment across the redirect itself.
+func registerRedirects(mux *http.ServeMux) {
+	redirects, err := book.Redirects()
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	for from, to := range redirects {
+		dest := to
+		mux.HandleFunc("GET "+from, func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, dest, http.StatusMovedPermanently)
+		})
+	}
+	log.Printf("%d chapter redirects", len(redirects))
 }
 
 func logRequests(next http.Handler) http.Handler {
