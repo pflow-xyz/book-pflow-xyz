@@ -13,7 +13,7 @@
 : A hash-based identifier for content-addressed data. In the pflow ecosystem, CIDs identify JSON-LD models deterministically — the same model always produces the same CID regardless of where or when it's computed (Chapter 16).
 
 **Compression ratio ($\rho$)**
-: For a transition, tokens consumed divided by tokens produced. $\rho = 1$ is the reversible core; $\rho > 1$ is an observer that destroys state to produce a verdict. A property of the incidence matrix column, so every analysis of $C$ can see it. See *Core–observer boundary*.
+: For a transition, tokens consumed divided by tokens produced. $\rho = 1$ is the core; $\rho > 1$ is an observer that destroys state to produce a verdict. A property of the incidence matrix column, so every analysis of $C$ can see it. See *Core–observer boundary*.
 
 **Conservation law**
 : An equation $\mathbf{y}^T \mathbf{C} = \mathbf{0}$ where $\mathbf{y}$ is a vector of weights and $\mathbf{C}$ is the incidence matrix. Conservation laws prove that weighted sums of token counts remain constant across all firings. Example: in an SIR model, $S + I + R = N$ for all time.
@@ -37,7 +37,7 @@
 : A transition is enabled at a marking $\mathbf{m}$ if every input place has at least as many tokens as the corresponding arc weight: $\mathbf{m}(p) \geq W(p, t)$ for all input places $p$. An enabled transition may fire; a disabled one cannot.
 
 **Equilibrium**
-: A state where all derivatives are approximately zero — the system has stopped changing. The solver's equilibrium detector monitors the derivative norm and stops early when the system reaches steady state.
+: A state where all derivatives are approximately zero — the system has stopped changing. go-pflow's `SolveUntilEquilibrium` stops early once the largest absolute derivative stays below a tolerance (default $10^{-6}$) for several consecutive checks (`solver/equilibrium.go`; Appendix A).
 
 **Event sourcing**
 : A state management pattern where state is computed by replaying an immutable log of events from the initial state: $\text{State}(t) = \text{fold}(\text{apply}, \text{initialState}, \text{events}[0..t])$. In Petri net terms, events are transition firings and state is the marking (Chapter 20).
@@ -67,13 +67,13 @@
 : The distribution of tokens across all places at a given moment; the state of the Petri net. Written as a vector $\mathbf{m}$ where $\mathbf{m}(p)$ is the token count at place $p$. The initial marking $\mathbf{m}_0$ is the starting state.
 
 **Mass-action kinetics**
-: A rate law from chemistry where the rate of a reaction is proportional to the product of reactant concentrations. Applied to Petri nets: the continuous firing rate of transition $t$ is $r_t \prod_{p \in \text{inputs}(t)} m(p)^{w(p,t)}$ where $r_t$ is the rate constant and $w(p,t)$ is the arc weight (Chapter 3).
+: A rate law from chemistry where the rate of a reaction is proportional to the product of reactant concentrations. As go-pflow implements it, the continuous firing rate of transition $t$ is $r_t \prod_{p \in \text{inputs}(t)} m(p)$, where $r_t$ is the rate constant: first order in every input place, whatever the arc weight. The weight $w(p,t)$ enters only the stoichiometry, so place $p$ drains at $w(p,t)$ times the flux ([`solver/ode.go`](https://github.com/pflow-xyz/go-pflow/blob/main/solver/ode.go); Chapter 3).
 
 **MiMC (Minimum Multiplicative Complexity)**
 : A hash function designed for efficiency inside arithmetic circuits. Used in pflow's zero-knowledge proofs to hash Petri net markings with minimal constraint count (Chapter 12).
 
 **Monotonic expansion**
-: The property that tokens can only be created, never destroyed. Used in game nets where history places (prefixed with `_`) accumulate records of moves without ever losing them (Chapter 6).
+: The discipline of a schema that only grows: new facts can be added, existing facts are never retracted, so learning more never invalidates what was already known (Chapter 16). The history places of Chapters 6 and 7 follow the same discipline at the level of a single net. See *Write-once place*.
 
 **ODE (Ordinary Differential Equation)**
 : An equation relating a function to its derivatives. The continuous relaxation of a Petri net produces a system of ODEs: $\frac{d\mathbf{m}}{dt} = \mathbf{C} \cdot \mathbf{r}(\mathbf{m})$ where $\mathbf{r}(\mathbf{m})$ is the rate vector (Chapter 3).
@@ -132,13 +132,13 @@ Terms coined in this book and the blog it grew from, rather than inherited from 
 : The Metamodel working discipline. The model is declared once as data; analysis, the running application, proofs and, in this ecosystem's own deployment tooling, the infrastructure that serves it are computed from that document. Nothing downstream is hand-written to agree with the model, so nothing downstream can disagree with it (Chapter 21; *The Model Is the App*).
 
 **Drift**
-: Disagreement between a declared artifact and the world it describes — a manifest and a host, a vendored module and its upstream, two implementations of one net. Metamodel's claim is not that drift never happens but that it is always *detectable* by comparing two values: a manifest against a host, a vendored file against its lockfile, a trace against the golden trace (Chapters 20, 21).
+: Disagreement between a declared artifact and the world it describes — a manifest and a host, a vendored module and its upstream, two implementations of one net. Metamodel does not prevent drift; it makes drift detectable by comparing two values: a manifest against a host, a vendored file against its lockfile, a trace against the golden trace (Chapters 20, 21).
 
 **Edge-matching composition**
-: Two nets compose by sharing a place, the way two tiles meet because their edges agree. No glue code is written to make them fit; the shared place *is* the interface. P-invariants of the components survive the gluing (Chapters 4, 21; *A Tiling for Computation*).
+: Two nets compose by sharing a place, the way two tiles meet because their edges agree. No glue code is written to make them fit; the shared place *is* the interface. Invariants carry across in a specific sense: if a P-invariant of each component agrees with the other on the shared places, together they define a P-invariant of the composite — the theorem `invariant_lift`, kernel-checked in Lean ([`proofs/PflowProofs/InvariantLift.lean`](https://github.com/pflow-xyz/book-pflow-xyz/blob/main/proofs/PflowProofs/InvariantLift.lean)). A component's invariant extended by zeros is not in general an invariant of the composite, and liveness does not carry across at all (Appendix E; Chapters 4, 21; *A Tiling for Computation*).
 
 **Golden trace**
-: A canonical firing sequence and its resulting markings, checked byte-for-byte against every implementation of a model. `pflow-polyglot/parity/trace.golden` holds twenty-plus implementations across four languages to one trace; the build fails on divergence (Chapter 20).
+: A canonical firing sequence and its resulting markings, checked byte-for-byte against every implementation of a model. `pflow-polyglot/parity/trace.golden` holds thirty-nine programs in ten languages to one six-line trace. `make parity` runs the twenty Go, Rust, Python and JavaScript programs under Bazel and fails the build on any divergence; `make parity-native` checks the rest against the same file (Chapter 20).
 
 **Internal DSL (as a failure mode)**
 : A model expressed as *code in a host language* that constructs a net — Rust macros, Python calls, Solidity structs. Five such ports of an early version of this work claimed to encode the same thing and could not prove it, because the specification existed only as five programs. The fix was to make the model a document (Chapter 21; book `ROADMAP.md` §Lineage).
@@ -156,10 +156,10 @@ Terms coined in this book and the blog it grew from, rather than inherited from 
 : The single fact Metamodel rests on. A value can be hashed, diffed, composed and checked by a machine that has never seen any of our runtimes; a program can only be run. Content addressing (Chapter 16), dual implementation (Chapter 20) and the golden trace all depend on it.
 
 **Polyglot forms**
-: The five shapes an implementation of one model can take — *interpreter* (a generic engine reads the document), *lambda* (the net as a pure step function), *generated* (source emitted from the document), *contract* (on-chain), *proof* (a kernel-checked theorem) — all held to one golden trace (*The Proof Form*; `pflow-polyglot/FORMS.md`).
+: The five shapes an implementation of one model can take — *interpreter* (a generic engine reads the document), *lambda* (the net as a pure step function), *generated* (source emitted from the document), *contract* (on-chain), *proof* (the program checks its claims over every reachable marking before it prints anything; in Lean the check is a theorem the kernel accepts at compile time) — all held to one golden trace (*The Proof Form*; `pflow-polyglot/FORMS.md`).
 
 **Tropical past, predicate future**
 : The tense structure of an executing model. Write-once places and the event log are the *past* — monotone and irreversible, the boolean case of tropical $(\max,+)$ accumulation. Guards are the *future* — predicates recomputed from the marking on every step and stored nowhere. The marking is the *present*, the boundary where they meet. All three are data in the one model document (Chapter 6; Appendix E; *The Zipper Whose Hole Is a Universe*).
 
 **Write-once place**
-: A place with incoming arcs only; a token arrives and never leaves. History places in game nets (prefixed `_`) are the canonical case. The smallest instance of tropical accumulation (Chapter 6).
+: A place that no move takes a token back from: once a token arrives, the transitions that wrote it never consume it. History places are the canonical case — `X11` and `O02` in the tic-tac-toe net of Chapter 6, `_D2_01` in the Sudoku net of Chapter 7. Their only downstream transitions are the pattern and constraint collectors that turn a completed pattern into a verdict. The smallest instance of tropical accumulation (Appendix E).
