@@ -2,7 +2,9 @@
 
 This appendix documents the JSON model format used by petri-pilot for code generation. The schema defines what a valid Petri net model looks like — places, transitions, arcs, and the higher-level structures (roles, views, navigation, admin, event sourcing, simulation) that drive application generation.
 
-The full JSON Schema is published at `github.com/pflow-xyz/petri-pilot/schema/petri-model.schema.json`.
+The full JSON Schema is [`schema/petri-model.schema.json`](https://github.com/pflow-xyz/petri-pilot/blob/main/schema/petri-model.schema.json) in petri-pilot.
+
+The schema file describes the format, but the code that reads a model decides what is accepted. petri-pilot's CLI decodes a model into go-pflow's `metamodel.Model` ([`metamodel/schema.go`](https://github.com/pflow-xyz/go-pflow/blob/v0.33.0/metamodel/schema.go), at v0.33.0, the version petri-pilot's `go.mod` pins), plus the extension fields of `modelWithExtensions` in [`cmd/petri-pilot/main.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/cmd/petri-pilot/main.go): `admin`, `navigation`, `roles`, `access`, `views`, `debug` and `graphql`. Where the schema file and that loader disagree, this appendix follows the loader and says so. The disagreements are transition `bindings` and `rate`, arc `type` and `kinetic`, and `eventSourcing`. They were found by reading the Go types against the schema file. No model was run through the CLI to confirm them.
 
 ## Top-Level Structure
 
@@ -98,9 +100,9 @@ A transition is an action that fires when enabled. Each transition becomes an HT
   "event_type": "OrderValidated",
   "http_method": "POST",
   "http_path": "/api/validate",
-  "bindings": {
-    "amount": "body.amount"
-  }
+  "bindings": [
+    {"name": "amount", "type": "number", "value": true}
+  ]
 }
 ```
 
@@ -109,21 +111,26 @@ A transition is an action that fires when enabled. Each transition becomes an HT
 | `id` | Yes | string | — | Unique identifier, snake_case |
 | `description` | No | string | — | Used in OpenAPI spec |
 | `guard` | No | string | — | Boolean precondition (guard DSL) |
-| `event_type` | No | string | PascalCase of id | Custom event type name |
+| `event_type` | No | string | PascalCase of id | Custom event type name (go-pflow marks it deprecated) |
 | `http_method` | No | string | `"POST"` | `GET`, `POST`, `PUT`, `DELETE`, `PATCH` |
 | `http_path` | No | string | `/api/{id}` | Custom HTTP path |
-| `bindings` | No | object | — | Parameter bindings from request |
+| `bindings` | No | array of objects | — | Operational data the transition reads or writes |
+| `rate` | No | number | — | Firing rate for ODE simulation (loader only; not in the schema file) |
+
+The schema file is stale on `bindings`: it describes the field as an object mapping names to strings. The loader's `Transition.Bindings` is an array of `Binding` objects with fields `name`, `type`, `keys` (map access path), `value` (true for the transferred amount) and `place`. Go's JSON decoder does not turn an object into an array, so by the types an object-form `bindings` fails to parse. The old map form survives as the separate field `legacy_bindings`. The binding in the example above is copied from pflow-xyz's [`extend-operations.json`](https://github.com/pflow-xyz/pflow-xyz/blob/main/examples/showcase/fixtures/extend-operations.json) fixture.
 
 ### Guard Syntax
 
-Guards are boolean expressions evaluated against the current state:
+Guards are boolean expressions evaluated against the current state. The lexer is petri-pilot's [`pkg/dsl/lexer.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/dsl/lexer.go); strings may use single or double quotes.
 
 | Operator | Meaning | Example |
 |----------|---------|---------|
 | `==`, `!=` | Equality | `status == 'approved'` |
 | `<`, `>`, `<=`, `>=` | Comparison | `amount > 0` |
 | `&&`, `\|\|`, `!` | Boolean | `a > 0 && b > 0` |
+| `+`, `-`, `*`, `/`, `%` | Arithmetic | `balances[from] - amount >= 0` |
 | `name[key]` | Map access | `balances[from]` |
+| `tokens('p')`, `sum`, `count`, `minOf`, `maxOf` | Marking aggregates (see [Objective Functions](#objective-functions)) | `tokens('stock') > 0` |
 
 ## Arcs
 
@@ -143,9 +150,13 @@ An arc connects a place to a transition (input) or a transition to a place (outp
 |-------|----------|------|---------|-------------|
 | `from` | Yes | string | — | Source element ID |
 | `to` | Yes | string | — | Target element ID |
-| `weight` | No | integer | `1` | Tokens consumed/produced (min 1) |
+| `weight` | No | integer | `1` | Tokens consumed/produced (min 1); a threshold on read and inhibitor arcs |
+| `type` | No | `"inhibitor"` or `"read"` | normal | Arc kind (loader only; not in the schema file) |
+| `kinetic` | No | boolean | `true` | Whether an input place scales the ODE firing rate (loader only) |
 | `keys` | No | array of strings | — | Map access keys for data places |
 | `value` | No | string | `"amount"` | Value binding name |
+
+The schema file has no `type` field, but go-pflow's `Arc` does, and petri-pilot's own [`services/vet-clinic.json`](https://github.com/pflow-xyz/petri-pilot/blob/main/services/vet-clinic.json) uses both kinds, for example `{"from": "wait_emergency", "to": "start_wellness", "type": "inhibitor"}`. Neither kind moves tokens. An inhibitor arc blocks the transition while its place holds at least `weight` tokens. A read arc allows the transition only while its place holds at least `weight` tokens. These are the contextual arcs of [Appendix E](appendix-e-categorical-foundations.md#where-the-free-structure-stops-two-boundaries), outside the incidence matrix. Setting `kinetic: false` keeps an input arc's enabling and consumption but removes its place from the rate product. go-pflow's [`metamodel/validation.go`](https://github.com/pflow-xyz/go-pflow/blob/v0.33.0/metamodel/validation.go) rejects three things here: an unknown `type`, which is not quietly run as a normal arc; a read arc that does not run place → transition; and `kinetic: false` on any arc other than a consuming place → transition arc.
 
 ## Constraints
 
@@ -308,6 +319,8 @@ Snapshot and retention configuration.
 
 Retention durations use the pattern `^\d+[dwmy]$` — number followed by `d` (days), `w` (weeks), `m` (months), or `y` (years).
 
+The schema file defines this block, but the loader does not read it: neither go-pflow's `Model` nor `modelWithExtensions` has an `eventSourcing` field, so Go's decoder drops it when a model file is read. In the Go generator, `buildEventSourcingContext` in [`pkg/codegen/golang/context.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/codegen/golang/context.go) is defined but has no caller. Treat the block as a declared format, not yet a working feature.
+
 ## Simulation
 
 ODE simulation configuration for AI move evaluation.
@@ -340,15 +353,15 @@ ODE simulation configuration for AI move evaluation.
 
 ### Objective Functions
 
-The `objective` field uses guard DSL syntax extended with aggregate functions:
+The `objective` field is a numeric guard-DSL expression, using arithmetic and the aggregate functions below. The same functions are available to guards and constraints. Except for `tokens`, each function takes a place-ID **prefix**: over token places it ranges over every place whose ID starts with the argument, and over a map data place of that name it ranges over the map's values. The definitions are `MakeAggregates` and `MakeAggregatesWithData` in [`pkg/dsl/guard.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/dsl/guard.go).
 
 | Function | Description | Example |
 |----------|-------------|---------|
-| `tokens('place')` | Token count at a place | `tokens('goal')` |
-| `sum('place')` | Sum of values in a data place | `sum('score')` |
-| `count('place')` | Count of entries in a map place | `count('inventory')` |
-| `minOf('place')` | Minimum value | `minOf('health')` |
-| `maxOf('place')` | Maximum value | `maxOf('score')` |
+| `tokens('place')` | Token count at exactly that place | `tokens('goal')` |
+| `sum('prefix')` | Total tokens across matching places, or the sum of a map's values | `sum('score')` |
+| `count('prefix')` | Matching places holding at least one token, or map entries with a positive value | `count('inventory')` |
+| `minOf('prefix')` | Smallest count among matching places, or smallest map value | `minOf('health')` |
+| `maxOf('prefix')` | Largest count among matching places, or largest map value | `maxOf('score')` |
 
 ### Solver Configuration
 
@@ -360,7 +373,7 @@ The `objective` field uses guard DSL syntax extended with aggregate functions:
 
 ## Minimal Example
 
-The smallest valid model:
+A small model that satisfies the schema:
 
 ```json
 {
@@ -379,4 +392,4 @@ The smallest valid model:
 }
 ```
 
-This defines a one-shot toggle: a token starts in `off`, the `switch` transition fires, and the token moves to `on`. Four fields, two places, one transition, two arcs — the simplest possible Petri net application.
+This defines a one-shot toggle: a token starts in `off`, the `switch` transition fires, and the token moves to `on`, where it stays because nothing consumes from `on`. The model uses only the four required fields. `on` takes the default `initial` of 0, and both arcs take the default weight of 1. The schema's minimums are one place, one transition and one arc, so a model with a single place and a single arc would also validate. This one was checked by reading it against the schema file, not by running it through petri-pilot's validator.
