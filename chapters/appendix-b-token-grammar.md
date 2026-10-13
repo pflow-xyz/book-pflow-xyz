@@ -1,6 +1,6 @@
 # Appendix B: Token Language Grammar
 
-This appendix documents the S-expression DSL for defining token model schemas. The DSL is an alternative to JSON for defining Petri net models — more readable for humans, equivalent in expressiveness.
+This appendix documents the S-expression DSL for defining token model schemas, the syntax introduced in [Chapter 4: The Token Language](ch04-token-language.md). The implementation is go-pflow's [`tokenmodel/dsl`](https://github.com/pflow-xyz/go-pflow/tree/main/tokenmodel/dsl) package: [`lexer.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/dsl/lexer.go), [`parser.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/dsl/parser.go), [`ast.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/dsl/ast.go) and [`interpret.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/dsl/interpret.go), with tests in [`dsl_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/dsl/dsl_test.go). The rules below were read from that code; the tests were not re-run for this appendix. The DSL is easier to read than JSON, but it expresses less: the JSON model format of Appendix C has fields the DSL has no syntax for (see [Equivalence with JSON](#equivalence-with-json)).
 
 ## Lexical Elements
 
@@ -12,8 +12,8 @@ The lexer recognizes these token types:
 | `RParen` | `)` | `)` |
 | `Arrow` | `->` | `->` |
 | `Keyword` | `:` followed by symbol | `:type`, `:guard`, `:keys`, `:value`, `:initial`, `:exported`, `:kind` |
-| `Symbol` | letter or `_`, then letters/digits/`_`/`-`/`[`/`]`/`.` | `balances`, `map[string]int64`, `v1.0.0` |
-| `Number` | digits, optionally prefixed with `-` | `42`, `-1`, `0` |
+| `Symbol` | letter or `_` (or a `-` not followed by `>` or a digit), then letters/digits/`_`/`-`/`[`/`]`/`.` | `balances`, `map[string]int64`, `v1.0.0`, `ERC-020` |
+| `Number` | integer digits, optionally prefixed with `-`; no decimal point | `42`, `-1`, `0` |
 | `String` | `"..."` with backslash escapes | `"hello"`, `"line\n"` |
 | `Guard` | `{...}` with nested brace support | `{amount > 0}`, `{balances[from] >= amount}` |
 | `Comment` | `;` to end of line | `; this is ignored` |
@@ -26,14 +26,14 @@ A schema definition has the form:
 
 ```lisp
 (schema <name>
-  (version <version-string>)       ; optional
-  (states ...)                     ; required
-  (actions ...)                    ; required
-  (arcs ...)                       ; required
-  (constraints ...))               ; optional
+  (version <version>)
+  (states ...)
+  (actions ...)
+  (arcs ...)
+  (constraints ...))
 ```
 
-The `<name>` is a symbol identifying the schema. Clauses may appear in any order, but the conventional order is version, states, actions, arcs, constraints.
+The `<name>` and `<version>` are symbols, so `v1.0.0` is written without quotes; a quoted string in either position is a parse error. The parser requires none of the clauses: `(schema Test (version v1.0.0))` is a complete schema in `TestParser_MinimalSchema`. Clauses may appear in any order, and a repeated clause replaces the earlier one. The conventional order is version, states, actions, arcs, constraints.
 
 ## States
 
@@ -48,12 +48,12 @@ The `states` clause defines places in the Petri net:
 
 | Keyword | Value | Default | Description |
 |---------|-------|---------|-------------|
-| `:type` | symbol | (none) | Data type: `string`, `int64`, `float64`, `bool`, `map[string]int64`, `map[string]string`, `map[string]map[string]int64` |
+| `:type` | symbol | (none) | Data type, stored as written and not checked by the parser or by validation. go-pflow's tests use `uint256`, `map[address]uint256` and `map[address]map[address]uint256` |
 | `:kind` | `token` or `data` | `data` | Whether the place holds a token count or structured data |
-| `:initial` | number, string, or `nil` | (none) | Initial value |
-| `:exported` | (no value) | false | Flag — presence means the state is externally visible |
+| `:initial` | integer, string, `nil`, `(map)` or `(list)` | (none) | Initial value; `(map)` and `(list)` are an empty map and an empty list |
+| `:exported` | (no value) | false | Flag; an exported state can be bound across schemas |
 
-All keywords are optional. A minimal state definition is just `(state <id>)`.
+All keywords are optional. A minimal state definition is just `(state <id>)`, which is a data state. The default kind differs from the JSON model format, where a place with no `kind` is a token place; a token-counting place in the DSL needs `:kind token`.
 
 ### Examples
 
@@ -105,14 +105,16 @@ The `arcs` clause defines connections between states and actions:
   (arc <source> -> <target> :keys (<key1> <key2> ...) :value <binding>))
 ```
 
-The `->` arrow separates source from target. Arcs are bipartite: they connect a state to an action (input arc) or an action to a state (output arc).
+The `->` arrow separates source from target. The parser accepts any two symbols here; the check that an arc joins a state to an action (input arc) or an action to a state (output arc) comes afterwards, when `Interpret` calls `Schema.Validate` ([`tokenmodel/validate.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/validate.go)), which also rejects an end that names no declared state or action.
 
 ### Arc Keywords
 
 | Keyword | Value | Description |
 |---------|-------|-------------|
 | `:keys` | parenthesized list of symbols | Map access keys for data places |
-| `:value` | symbol | Value binding name (defaults to `amount`) |
+| `:value` | symbol | Value binding name; when absent, the runtime uses `amount` |
+
+The DSL has no syntax for arc weight or for inhibitor and read arcs. go-pflow's `tokenmodel.Arc` has `Weight` and `Type` fields, but the DSL parser, the builder and the struct-tag dialect never set them, so every arc written in the DSL is a normal arc of weight 1. The contextual arcs of [Appendix E](appendix-e-categorical-foundations.md#where-the-free-structure-stops-two-boundaries) have to be written in JSON or Go.
 
 ### Examples
 
@@ -138,7 +140,7 @@ The `constraints` clause defines invariants:
   (constraint <id> {<expression>}))
 ```
 
-The expression is enclosed in `{...}` braces, like guard expressions. Constraints are checked at validation time and should hold for all reachable markings.
+The expression is enclosed in `{...}` braces, like guard expressions. `Schema.Validate` does not look at constraints. go-pflow's `tokenmodel.Runtime` ([`runtime.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/runtime.go)) evaluates them against the token counts after each action it executes, provided `CheckConstraints` is true (the default) and a guard evaluator has been supplied; with no evaluator, constraints are skipped. A constraint is a runtime assertion about the markings a run actually visits. It does not prove the property over every reachable marking.
 
 ### Examples
 
@@ -158,13 +160,20 @@ Guard expressions (used in both `:guard` and `constraint`) support:
 |----------|-----------|----------|
 | Comparison | `==`, `!=`, `<`, `>`, `<=`, `>=` | `amount > 0` |
 | Boolean | `&&`, `\|\|`, `!` | `a > 0 && b > 0` |
-| Arithmetic | `+`, `-`, `*`, `/` | `sum(balances)` |
+| Arithmetic | `+`, `-`, `*`, `/`, `%` | `balances[from] - amount >= 0` |
 | Map access | `name[key]` | `balances[from]` |
-| Aggregates | `sum()`, `count()`, `tokens()`, `minOf()`, `maxOf()` | `sum(balances) == total_supply` |
+| Aggregates | see below | `sum("balances_") == totalSupply` |
 
-Guard expressions are opaque to the DSL parser — the lexer captures everything between `{` and `}` as a single token. The guard DSL parser in petri-pilot evaluates these expressions at runtime against the current state.
+The DSL parser does not read guard expressions. The lexer captures everything between `{` and the matching `}` as a single token, and the parser stores it as a string. Evaluation happens later, through whatever guard evaluator the runtime is given, and the expression language has two implementations whose operators agree but whose aggregate functions do not:
+
+- go-pflow's [`tokenmodel/guard`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/guard/aggregate.go) provides `sum`, `count`, `tokens`, `min` and `max`. Each takes a place ID or ID prefix as a string: `sum("balances_")` adds the token counts of every place whose ID starts with `balances_` (`guard_test.go` checks it equals 600 on its test marking).
+- petri-pilot's [`pkg/dsl`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/dsl/guard.go) names the last two `minOf` and `maxOf`, and its `sum`, `count`, `minOf` and `maxOf` also accept a data state's map, so `sum(balances)` totals the values in the `balances` map.
+
+The constraint `sum(balances) == total_supply` used in this appendix is written for petri-pilot's evaluator. Under go-pflow's it fails to evaluate, because `balances` is a bare name rather than a string and is not a token place.
 
 ## Complete Examples
+
+Neither example below is in go-pflow's test suite, and neither was run for this appendix. The nearest tested schema is `erc020DSL` in [`dsl_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/dsl/dsl_test.go), a fuller ERC-20 with allowances and `burn`: `TestInterpret_ERC020` parses and interprets it and checks for 3 states, 5 actions, 10 arcs and 1 constraint, and `TestRoundTrip_ParseAndValidate` passes it through `Schema.Validate`.
 
 ### ERC-20 Token
 
@@ -219,6 +228,8 @@ Guard expressions are opaque to the DSL parser — the lexer captures everything
     (constraint conservation {received + validated + shipped + completed == 1})))
 ```
 
+The conservation constraint holds by construction. Each action has one input arc and one output arc of weight 1, so every firing moves the single token one place along the chain and the four counts always sum to the initial 1. That follows from the arcs by hand; it was not checked by a run.
+
 ## AST Representation
 
 The parser produces an abstract syntax tree with these node types:
@@ -231,17 +242,19 @@ The parser produces an abstract syntax tree with these node types:
 | `ArcNode` | Source, Target, Keys, Value | A connection |
 | `ConstraintNode` | ID, Expr | An invariant |
 
-The AST is the same regardless of whether the schema was defined via the S-expression DSL, the Go struct tag syntax, or the fluent builder API. All three produce identical `SchemaNode` trees, which are then compiled to Petri nets.
+The S-expression DSL is one of three front ends that build a `SchemaNode`. The others are the fluent builder ([`builder.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/dsl/builder.go), `dsl.Build(...)`) and the Go struct-tag dialect (`tags.go` in the same package, `dsl.ASTFromStruct`). `Interpret` turns any `SchemaNode` into a `tokenmodel.Schema` and validates it. The three front ends do not produce identical trees for the same model: the builder and struct-tag paths default the version to `v1.0.0` and give token states the type `int`, where the parser leaves both empty unless the source sets them.
 
 ## Equivalence with JSON
 
-Every DSL schema has an equivalent JSON representation. The mapping is direct:
+A parsed DSL schema has two JSON forms. The first is `tokenmodel.Schema` itself, whose JSON field names come from the struct tags in [`tokenmodel/schema.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/schema.go); its top-level keys are `states`, `actions`, `arcs` and `constraints`. The second is the model format of [Appendix C: JSON Schema Reference](appendix-c-json-schema.md), which calls the same things `places`, `transitions`, `arcs` and `constraints`. go-pflow's `metamodel.FromTokenModel` ([`metamodel/convert.go`](https://github.com/pflow-xyz/go-pflow/blob/main/metamodel/convert.go)) converts the first into the second:
 
-| DSL | JSON |
-|-----|------|
-| `(state id :kind token :initial 1)` | `{"id": "id", "kind": "token", "initial": 1}` |
-| `(action id :guard {expr})` | `{"id": "id", "guard": "expr"}` |
-| `(arc src -> tgt :keys (k) :value v)` | `{"from": "src", "to": "tgt", "keys": ["k"], "value": "v"}` |
-| `(constraint id {expr})` | `{"id": "id", "expr": "expr"}` |
+| DSL | `tokenmodel.Schema` JSON | Appendix C model JSON |
+|-----|--------------------------|-----------------------|
+| `(state id :kind token :initial 1)` | `{"id": "id", "kind": "token", "initial": 1}` | `{"id": "id", "kind": "token", "initial": 1}` |
+| `(action id :guard {expr})` | `{"id": "id", "guard": "expr"}` | `{"id": "id", "guard": "expr"}` |
+| `(arc src -> tgt :keys (k) :value v)` | `{"source": "src", "target": "tgt", "keys": ["k"], "value": "v"}` | `{"from": "src", "to": "tgt", "weight": 1, "keys": ["k"], "value": "v"}` |
+| `(constraint id {expr})` | `{"id": "id", "expr": "expr"}` | `{"id": "id", "expr": "expr"}` |
 
-The DSL is syntactic sugar. The JSON schema (Appendix C) is the canonical format.
+petri-pilot accepts DSL input by this route. Its `parseModelV2` ([`pkg/mcp/server.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/mcp/server.go)) treats input that begins with `(` as DSL, calls `ParseSchema` and then `FromTokenModel`, and copies each data state's `:initial` into the place's `initial_value`, because `FromTokenModel` drops it.
+
+The two formats are not equally expressive. Arc weights and types, transition rates, roles, views and the other sections of Appendix C have no DSL syntax, so every DSL schema has a JSON model but a JSON model cannot in general be written as DSL without losing fields.
