@@ -4,7 +4,7 @@
 
 The previous chapter used ODE simulation as a heuristic for constraint satisfaction — ranking moves, not solving directly. This chapter goes further: applying continuous relaxation to a combinatorial optimization problem where the ODE provides direct insight into the solution structure.
 
-The 0/1 knapsack problem asks: given items with weights and values, select a subset that maximizes total value within a weight budget. It's NP-hard. Traditional approaches use branch-and-bound — systematic enumeration with pruning. The Petri net approach uses mass-action kinetics — items compete for capacity through continuous dynamics. The competition reveals which items matter and which actively hurt the solution.
+The 0/1 knapsack problem asks: given items with weights and values, select a subset that maximizes total value within a weight budget. It's NP-hard. Traditional approaches use branch-and-bound — systematic enumeration with pruning. The Petri net approach uses mass-action kinetics — items compete for capacity through continuous dynamics. Repeating the simulation with one item removed at a time shows which removal raises the value the dynamics settle at.
 
 ## The 0/1 Knapsack as a Petri Net
 
@@ -19,7 +19,7 @@ Four items with different weights and values, capacity budget of 15:
 | item2 | 6 | 12 | 2.0 |
 | item3 | 9 | 18 | 2.0 |
 
-These are the values in go-pflow's [`examples/knapsack`](https://github.com/pflow-xyz/go-pflow/blob/main/examples/knapsack/cmd/main.go), which produced every simulation number in this chapter.
+These are the values in go-pflow's [`examples/knapsack`](https://github.com/pflow-xyz/go-pflow/blob/main/examples/knapsack/cmd/main.go), which produced every simulation number in this chapter; the example's [README](https://github.com/pflow-xyz/go-pflow/blob/main/examples/knapsack/README.md) records its output. The numbers were not re-run for this chapter, but each one also follows from the closed form derived below.
 
 The optimal solution takes items 0, 1, and 3 — total weight 15, total value 38. Item2 and item3 tie on efficiency at 2.0, so the ratio can't choose between them; capacity does. After items 0 and 1 take 6 units, item3 fills the remaining 9 exactly, while item2 would leave 3 idle (items 0, 1, 2 weigh 12 and are worth 32).
 
@@ -27,7 +27,7 @@ The optimal solution takes items 0, 1, and 3 — total weight 15, total value 38
 
 The Petri net encodes the knapsack as a dynamic system:
 
-- **Item places**: Each holds 1 token (item available) or 0 (item taken). This enforces the 0/1 constraint — you either take an item or you don't.
+- **Item places**: Each holds 1 token (item available) or 0 (item taken). Under the discrete firing rule this enforces the 0/1 constraint: an item is taken once or not at all. The ODE relaxes it, so an item place can settle anywhere between 0 and 1.
 - **Capacity place**: Holds tokens representing available weight budget. Initial marking = 15 (the weight limit).
 - **Take transitions**: One per item. Consumes the item token plus capacity tokens equal to the item's weight. Produces tokens into value and weight tracking places.
 
@@ -66,7 +66,7 @@ Running the ODE simulation with uniform rates:
 Final state (continuous approximation):
   Value accumulated:    35.71
   Weight used:          15.00
-  Capacity remaining:    0.00
+  Capacity remaining:   0.00
 
 Item consumption (fraction taken):
   item0: 71.4% taken
@@ -81,7 +81,7 @@ The fractional solution looks like the LP (linear programming) relaxation of the
 
 ## Exclusion Analysis for Sensitivity
 
-This is where the Petri net approach delivers insight that branch-and-bound doesn't. **Exclusion analysis** disables each item's transition one at a time and re-runs the ODE:
+**Exclusion analysis** disables each item's transition one at a time (`main.go` sets the item's token and its rate to 0) and re-runs the ODE to $t = 10$:
 
 | Excluded | Final Value | Relative to Baseline |
 |----------|-------------|---------------------|
@@ -103,11 +103,11 @@ With item2's transition disabled, the ODE converges toward the discrete optimum:
 
 | Time | Value | Gap to Optimal |
 |------|-------|----------------|
-| t=10 | 37.75 | 0.25 |
-| t=100 | 37.97 | 0.03 |
-| t=1000 | 38.00 | 0.00 |
+| t=10 | 37.75 | 0.2517 |
+| t=100 | 37.97 | 0.0253 |
+| t=1000 | 38.00 | 0.0025 |
 
-Given enough simulation time, the continuous relaxation without item2 converges to the exact discrete optimum of 38. The remaining items (0, 1, 3) weigh exactly the capacity, so capacity and items drain together: $M(\text{capacity}) = 15e^{-\tau}$ integrates to $e^\tau = 1 + 15t$, and the gap to 38 is $38/(1 + 15t)$ — algebraic rather than exponential, which is why it takes until $t = 1000$ to close.
+Given enough simulation time, the continuous relaxation without item2 converges to the exact discrete optimum of 38. The remaining items (0, 1, 3) weigh exactly the capacity, so capacity and items drain together: $M(\text{capacity}) = 15e^{-\tau}$ integrates to $e^\tau = 1 + 15t$, and the gap to 38 is $38/(1 + 15t)$ (0.2517, 0.0253 and 0.0025 at the three times, matching the table) — algebraic rather than exponential, which is why it takes until $t = 1000$ to close.
 
 The exclusion step removes the item whose presence keeps the rest from fitting; the ODE then fills the set that remains. It reaches the integer optimum here because $2 + 4 + 9 = 15$, not because the dynamics select it.
 
@@ -117,30 +117,23 @@ The two approaches solve the same problem through fundamentally different mechan
 
 **Branch-and-bound** treats optimization as *search*. It builds a decision tree where each node represents a binary choice: take this item or skip it. The algorithm explores branches, computing upper bounds to prune paths that can't improve on the best solution found so far. It's systematic enumeration with smart pruning — still exponential in the worst case, but practical for moderate problem sizes.
 
-**DDM/ODE** treats optimization as *simulation*. Instead of explicit decisions, items compete for capacity through continuous dynamics. The mass-action kinetics $v = k \cdot [\text{item}] \cdot [\text{capacity}]$ means all enabled transitions fire simultaneously at rates proportional to available resources. There's no decision tree — just differential equations evolving toward equilibrium.
+**The ODE** treats optimization as *simulation*. Instead of explicit decisions, items compete for capacity through continuous dynamics. The mass-action kinetics $v = k \cdot [\text{item}] \cdot [\text{capacity}]$ means all enabled transitions fire simultaneously at rates proportional to available resources. There's no decision tree — just differential equations evolving toward equilibrium.
 
-| Aspect | Branch-and-Bound | DDM/ODE |
-|--------|------------------|---------|
+| Aspect | Branch-and-Bound | ODE |
+|--------|------------------|-----|
 | Core operation | Decision-tree search with bounds | Continuous dynamics |
 | Decisions | Explicit (take/skip) | None — every active item is taken in the same fraction |
 | Solution type | Exact integer | Fractional approximation |
 | Cost | Exponential worst case (pruned) | One ODE solve per run; does not solve the integer problem |
-| Primary output | "What's optimal?" | "Why is it optimal?" |
+| Primary output | The optimal subset | A relaxed value, and its sensitivity to each item |
 
-For exact solutions, branch-and-bound wins — it finds items 0, 1, 3 with value 38 directly. The ODE reaches 35.71 by taking fractional amounts of everything.
+For the exact answer, search wins. Branch-and-bound finds items 0, 1, 3 with value 38, and on four items so does plain enumeration: of the 16 subsets, {0, 1, 3} is the only one worth 38. The ODE reaches 35.71 by taking the same fraction of everything.
 
-But the ODE reveals *structure* that search obscures. The exclusion analysis shows item2 is actively counterproductive. Branch-and-bound discovers this implicitly through pruning, but it doesn't report it as an insight. The ODE makes the competition visible.
+What the ODE adds is the sensitivity table. The exclusion pass singles out item2 as the one item whose removal raises the relaxed value; branch-and-bound reaches the same subset by pruning, without reporting why. The closed form says how much that table can carry: the dynamics never read the values, so on this instance the signal is the weight fit — without item2 the remaining items fill capacity exactly.
 
 ### When to Use Each
 
-| DDM/ODE Approach | Branch-and-Bound |
-|------------------|------------------|
-| Exploratory analysis | Exact solutions |
-| Sensitivity insights | Guaranteed optimum |
-| Fast iteration | Proven correctness |
-| Understanding *why* | Finding *what* |
-
-In practice, the approaches complement each other. Use ODE simulation to understand the problem structure — which items matter, which compete, where the bottlenecks are. Then use branch-and-bound (or dynamic programming) to find the exact solution, informed by the structural insights.
+The two can be chained: run the exclusion pass to find items whose removal helps, then give the reduced instance to branch-and-bound or dynamic programming for the exact answer. This chapter shows the first half on one four-item instance; no example in go-pflow runs the combined workflow.
 
 ## Beyond Four Items
 
@@ -148,9 +141,9 @@ The 4-item example is intentionally small. For larger instances:
 
 - **100 items**: Each ODE run stays cheap — the number of transitions scales linearly — and single-item exclusion analysis is 101 runs. But single exclusions only look at 99-item subsets, and the optimum will typically drop many items, so this does not replace branch-and-bound's exponential worst case; a benchmark on larger instances has not been done.
 
-- **Correlated items**: When items have similar efficiency ratios, the exclusion analysis shows which ones truly contribute and which are interchangeable. This information is invisible to pure optimization.
+- **Items with equal efficiency**: item2 and item3 tie at 2.0 here, and the exclusion pass separates them only by how their weights fit the capacity, since the dynamics never read values. Whether it tells interchangeable items apart on other instances has not been demonstrated.
 
-- **Multiple constraints**: Adding a second constraint (volume, fragility) means adding a second capacity place with its own arc weights. The Petri net handles this naturally — each constraint is an independent place. Branch-and-bound becomes the multidimensional knapsack problem, which is significantly harder.
+- **Multiple constraints**: A second constraint (volume, fragility) makes this the multidimensional knapsack problem, which is harder for any method. In the net it is a second capacity place with its own arc weights. Each take transition then has three input places, so every item still drains along one shared curve, now with $\tau$ the integral of $M(\text{capacity}_1)\,M(\text{capacity}_2)$, and the net stops at the fraction where the first capacity runs out. That follows from the same derivation; `examples/knapsack` has no such variant to run.
 
 ## The Pattern
 
@@ -159,9 +152,9 @@ The knapsack model demonstrates a fourth application pattern, distinct from reso
 1. **Decision variables** become places (items available or taken)
 2. **Resource constraints** become shared capacity places with weighted arcs
 3. **Competition** emerges from mass-action kinetics — items fight for capacity
-4. **Exclusion analysis** reveals which elements actively hurt the objective
-5. **Continuous relaxation** approximates the optimum; structural insight guides to the exact solution
+4. **Exclusion analysis** shows which single removal raises the relaxed value
+5. **Continuous relaxation** settles below the optimum here; the exclusion pass leads to the exact solution on this instance
 
-This is optimization by simulation rather than search. The ODE doesn't find the optimal solution directly — it reveals the solution's structure. On this instance that structure leads straight to the optimum; on larger ones it is a guide for search, not a substitute.
+The ODE does not find the optimum. It produces a relaxed value and a sensitivity table, and on this instance the table leads straight to the optimum. On larger instances it can at best guide a search, and that has not been benchmarked.
 
-> **Try it live:** Explore the [Knapsack optimizer](https://pilot.pflow.xyz/knapsack/) at pilot.pflow.xyz to see mass-action kinetics reveal optimal item selection.
+> **Try it live:** The [Knapsack model](https://pilot.pflow.xyz/knapsack/) at pilot.pflow.xyz is a variant of this chapter's instance (petri-pilot's `services/knapsack.json`): item1 weighs 5 and is worth 15, item3 weighs 8 and is worth 13, and each transition's rate is its item's efficiency rather than 1.0. Items therefore drain at different speeds, the closed form above does not carry over, and its trajectories differ from the numbers in this chapter. Its optimum is again items 0, 1 and 3, weight 15, value 38.
