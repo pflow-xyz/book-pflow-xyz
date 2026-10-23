@@ -4,7 +4,7 @@
 
 The previous chapters built progressively: resources (coffee shop), two-player games (tic-tac-toe), constraint puzzles (Sudoku), optimization (knapsack), and chemistry (enzyme kinetics). Each used a focused subset of Petri net features. Texas Hold'em asks for several at once: sequential phases, multi-player turn control, role-based permissions, conditional betting, and event sourcing for audit trails.
 
-The model in this chapter is petri-pilot's tutorial Hold'em net, [`services/texas-holdem.json`](https://github.com/pflow-xyz/petri-pilot/blob/main/services/texas-holdem.json): five seats, four streets, 18 places and 32 transitions in one JSON file, from which petri-pilot generates an event-sourced Go service ([`examples/texasholdem`](https://github.com/pflow-xyz/petri-pilot/tree/main/examples/texasholdem)). The demo runs at [pilot.pflow.xyz/texas-holdem](https://pilot.pflow.xyz/texas-holdem/). The same primitives as the earlier chapters carry the phases, the turn order and the event log. Chips, bet sizing and the winner do not fit into this net, and the chapter marks where the structure stops.
+The model in this chapter is a tutorial Hold'em net, `services/texas-holdem.json`: five seats, four streets, 18 places and 32 transitions in one JSON file, from which an application generator produced an event-sourced Go service (`examples/texasholdem`) and a browser demo. Neither the generated code nor the demo is public any longer; the file paths below name where each cited piece lived. The same primitives as the earlier chapters carry the phases, the turn order and the event log. Chips, bet sizing and the winner do not fit into this net, and the chapter marks where the structure stops.
 
 ## The Challenge
 
@@ -94,7 +94,7 @@ It would ensure:
 - Player has matched the current bet (can't raise without calling first)
 - Player has enough chips to raise
 
-In the demo, chip stacks, bets, blinds and the pot live in the browser's JavaScript state ([`frontends/texas-holdem/main.js`](https://github.com/pflow-xyz/petri-pilot/blob/main/frontends/texas-holdem/main.js)), not in the net.
+In the demo, chip stacks, bets, blinds and the pot live in the browser's JavaScript state (`frontends/texas-holdem/main.js`), not in the net.
 
 Guards add business logic without changing the Petri net structure. The net handles *what can happen* (which transitions exist). Guards handle *when it can happen* (what conditions must hold). A guard can only disable a firing the structure allows, so every marking the guarded net reaches is also reachable without guards, and invariants and mutual exclusion proved from the net alone still hold. Deadlock freedom does not carry over the same way: a guard that is never true disables a transition the structural analysis counted on.
 
@@ -135,7 +135,6 @@ Transitions (32):
   p0_skip, p1_skip, ...                    -- Pass the turn (needs only pN_turn)
 ```
 
-The net can be opened in the editor at [pilot.pflow.xyz/pflow?model=texas-holdem](https://pilot.pflow.xyz/pflow?model=texas-holdem).
 
 ### A Defect in the Arcs
 
@@ -150,7 +149,7 @@ The model's `access` block restricts the phase transitions to a `dealer` role an
 | `dealer` | `start_hand`, `deal_flop`, `deal_turn`, `deal_river`, `go_showdown`, `determine_winner`, `end_hand` |
 | `admin` | inherits `dealer` (also listed on `start_hand`) |
 
-There are no per-seat roles. Nothing in the model binds `p0_raise` to the person in seat 0, so any caller can fire any seat's action while that seat holds the turn token. Enforcement is also thinner than the declaration. petri-pilot can generate a permission middleware from the `access` block, but the generated example passes it an empty rule list ([`examples/texasholdem/service.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/examples/texasholdem/service.go), `accessRules := []*AccessControl{}`), and its router ([`api.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/examples/texasholdem/api.go)) applies only an optional authentication middleware, not the permission check. In this model the roles are a declaration; the runtime does not yet enforce them.
+There are no per-seat roles. Nothing in the model binds `p0_raise` to the person in seat 0, so any caller can fire any seat's action while that seat holds the turn token. Enforcement is also thinner than the declaration. The generator could produce a permission middleware from the `access` block, but the generated example passes it an empty rule list (`examples/texasholdem/service.go`, `accessRules := []*AccessControl{}`), and its router (`api.go`) applies only an optional authentication middleware, not the permission check. In this model the roles are a declaration; the runtime does not yet enforce them.
 
 ## Event Sourcing for Audit Trails
 
@@ -169,14 +168,14 @@ Every transition in the model names an event type (`p0_raise` → `p0_raised`, `
 The Petri net's discrete transitions map directly onto event sourcing, and the generated code implements three uses of it:
 
 - **Replay**: Given the initial marking and the event sequence, reconstruct any game state by replaying transitions. `GET /api/texasholdem/{id}/at/{version}` replays the stream up to a version.
-- **Audit**: A firing that was not enabled cannot appear in the log. `Execute` in [`aggregate.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/examples/texasholdem/aggregate.go) refuses any transition that cannot fire from the current marking before it appends an event.
+- **Audit**: A firing that was not enabled cannot appear in the log. `Execute` in the generated `aggregate.go` refuses any transition that cannot fire from the current marking before it appends an event.
 - **Undo**: `POST /api/texasholdem/{id}/truncate` discards every event after a target version. Truncation rewrites the stream, so the log is append-only only as long as nobody calls it.
 
 This is the event sourcing pattern, revisited in [Chapter 20: Dual Implementation and Verification](ch20-dual-implementation.md): $\text{State}(t) = \text{fold}(\text{apply}, \text{initialState}, \text{events}[0..t])$. Each event is a transition firing. Each state is a marking. The fold is the firing rule applied sequentially.
 
 ## ODE Analysis of Hand Strength
 
-The demo's strategic analysis is not an ODE over the 18-place game net. For each decision, the frontend builds a separate eight-place net (`buildHandStrengthPetriNet` in [`main.js`](https://github.com/pflow-xyz/petri-pilot/blob/main/frontends/texas-holdem/main.js)) whose initial marking and rates are set from card heuristics, solves it with the pflow.xyz Tsit5 solver, and reads values off the final state. From `computeODEHandStrength`:
+The demo's strategic analysis is not an ODE over the 18-place game net. For each decision, the frontend builds a separate eight-place net (`buildHandStrengthPetriNet` in `main.js`) whose initial marking and rates are set from card heuristics, solves it with the pflow.xyz Tsit5 solver, and reads values off the final state. From `computeODEHandStrength`:
 
 ```javascript
 const model = buildHandStrengthPetriNet(holeCards, communityCards)

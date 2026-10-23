@@ -101,7 +101,7 @@ A small model in the editor's format, with readable ids and the espresso weights
 This file can be:
 - Loaded back into the editor (visual round-trip)
 - Parsed by go-pflow's [`parser`](https://github.com/pflow-xyz/go-pflow/blob/main/parser/json.go) for ODE simulation (Chapter 3)
-- Read by petri-pilot, which recognizes the editor's shape and converts it with go-pflow's [`parser.ModelFromJSON`](https://github.com/pflow-xyz/go-pflow/blob/main/parser/model.go), and generated into a running service (Chapter 18)
+- Converted by go-pflow's [`parser.ModelFromJSON`](https://github.com/pflow-xyz/go-pflow/blob/main/parser/model.go) into the `metamodel.Model` format that sim.pflow.xyz stores and runs (Chapter 18)
 - Sealed with a content-addressed CID (Chapter 16)
 - Shared via URL
 
@@ -166,7 +166,7 @@ A saved model opens in the editor at `https://pflow.xyz/?cid={cid}`; `GET /o/{ci
 
 ### Embedding in Web Pages
 
-The `<petri-view>` element shown earlier can be embedded in any HTML page. An embedded element is the same component as the full editor, with the same simulation; server saving and GitHub login appear only when the element carries the `data-backend` attribute. Petri-pilot's model viewer at `/pflow` is built this way (Chapter 18).
+The `<petri-view>` element shown earlier can be embedded in any HTML page. An embedded element is the same component as the full editor, with the same simulation; server saving and GitHub login appear only when the element carries the `data-backend` attribute.
 
 Blog posts at blog.stackdump.com link to models instead of embedding the component. The editor's Share dialog produces the snippet they use: the server-rendered SVG wrapped in a link to the editor.
 
@@ -195,9 +195,9 @@ Then iteration: add initial tokens, set arc weights, run a simulation, observe t
 Once the model stabilizes, it travels through the ecosystem:
 1. **Editor** — design and iterate visually
 2. **go-pflow** — run formal analysis (reachability, P-invariants, sensitivity)
-3. **petri-pilot** — generate a running application
+3. **sim.pflow.xyz** — run seeded what-ifs and check verdicts against the stored model
 4. **ZK circuit** — add privacy with zero-knowledge proofs
 
 The circles and rectangles on screen are the same places and transitions that appear in incidence matrices, ODE systems and ZK circuits. The drawing is one view of a document that the other tools read directly.
 
-> **Try it live:** Design your own Petri net at [pflow.xyz](https://pflow.xyz/), then see generated applications at [pilot.pflow.xyz](https://pilot.pflow.xyz/).
+> **Try it live:** Design your own Petri net at [pflow.xyz](https://pflow.xyz/), then see stored models run as seeded what-ifs at [sim.pflow.xyz](https://sim.pflow.xyz/).

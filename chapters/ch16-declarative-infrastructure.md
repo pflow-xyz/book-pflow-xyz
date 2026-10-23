@@ -61,13 +61,12 @@ Each snippet is self-describing. Each links to a vocabulary that defines its ter
 
 A JSON-LD document is a serialized RDF graph: a set of subject-predicate-object triples. It makes statements about the world but never tells you what to *do* with them. There are no callbacks, no event handlers, no conditionally-included fields.
 
-This matters for interoperability. The same `.jsonld` Petri net file is read by three tools:
+This matters for interoperability. The same `.jsonld` Petri net file is read by two tools:
 
 1. **JavaScript** — the pflow.xyz browser editor ([`public/petri-view.js`](https://github.com/pflow-xyz/pflow-xyz/blob/main/public/petri-view.js)) loads it, renders the net, and runs simulations
 2. **Go parser** — go-pflow's `FromJSON` ([`parser/json.go`](https://github.com/pflow-xyz/go-pflow/blob/main/parser/json.go)) reads it for ODE-based analysis and validation
-3. **Go code generator** — petri-pilot reads it through go-pflow's parser (`parseModel` in [`pkg/mcp/server.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/mcp/server.go)), unfolds colored places into its own model, and compiles that into a service
 
-That is two independent readers and three consumers. They do not coordinate at runtime; the file is assertions, not a protocol. What keeps the readers in agreement is a shared contract rather than a conversation: go-pflow pins its reading of the editor format to the goldens in [`parser/testdata/editor-shape/`](https://github.com/pflow-xyz/go-pflow/tree/main/parser/testdata/editor-shape) ([`editor_shape_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/parser/editor_shape_test.go)), and other readers replay the same inputs. None of the three runs a JSON-LD processor on the file. Each reads the fields it understands and ignores the rest: the code generator doesn't care about `x`/`y` layout coordinates, and the simulator doesn't care about `parents` lineage. The RDF reading of the file matters at one point, sealing, described below.
+They are independent readers. They do not coordinate at runtime; the file is assertions, not a protocol. What keeps the readers in agreement is a shared contract rather than a conversation: go-pflow pins its reading of the editor format to the goldens in [`parser/testdata/editor-shape/`](https://github.com/pflow-xyz/go-pflow/tree/main/parser/testdata/editor-shape) ([`editor_shape_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/parser/editor_shape_test.go)), and other readers replay the same inputs. Neither runs a JSON-LD processor on the file. Each reads the fields it understands and ignores the rest: the Go simulator doesn't care about `x`/`y` layout coordinates or `parents` lineage. The RDF reading of the file matters at one point, sealing, described below.
 
 Declarative data degrades gracefully by design. Contrast this with imperative serialization — formats where the order of fields implies a processing sequence, or where consumers must execute embedded logic to reconstruct the data. JSON-LD sidesteps all of that. The `@context` fixes what each term means; each consumer decides what to do with it.
 
@@ -161,7 +160,7 @@ The mirror stops at *behavior*. A document can only grow, but a composed net can
 A model created in the pflow.xyz visual editor (JavaScript) can be:
 1. Saved as JSON-LD with `@context: "https://pflow.xyz/schema"`
 2. Loaded by go-pflow for ODE simulation and analysis
-3. Compiled by petri-pilot into a running service
+3. Converted by go-pflow's `parser.ModelFromJSON` into the `metamodel.Model` that sim.pflow.xyz stores and runs (Chapter 18)
 4. Sealed with a content-addressed CID for immutable reference
 5. Shared via URL, embedded in a page as a `<petri-view>` element, or stored under its CID (the top-level example nets in pflow-xyz's `examples/` directory are stored under file names that are their CIDs)
 

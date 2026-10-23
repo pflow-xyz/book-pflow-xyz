@@ -65,7 +65,7 @@ func Full(src fs.FS) ([]byte, error) {
 	for _, e := range entries {
 		fmt.Fprintf(&b, "- [%s](%s/%s)\n", e.Title, BaseURL, e.Slug())
 	}
-	b.WriteString("\nRelated: https://pflow.xyz (editor + browser solver), https://pilot.pflow.xyz (code generation, MCP analysis tools), https://blog.stackdump.com (essays), https://github.com/pflow-xyz/go-pflow (Go library).\n")
+	b.WriteString("\nRelated: https://pflow.xyz (editor + browser solver), https://sim.pflow.xyz (hosted simulation and verification, MCP server), https://blog.stackdump.com (essays), https://github.com/pflow-xyz/go-pflow (Go library).\n")
 
 	lastPart := ""
 	for _, e := range entries {

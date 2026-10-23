@@ -18,9 +18,6 @@
 **Conservation law**
 : An equation $\mathbf{y}^T \mathbf{C} = \mathbf{0}$ where $\mathbf{y}$ is a vector of weights and $\mathbf{C}$ is the incidence matrix. Conservation laws prove that weighted sums of token counts remain constant across all firings. Example: in an SIR model, $S + I + R = N$ for all time.
 
-**Context (code generation)**
-: The universal intermediate representation in petri-pilot's code generation pipeline. The Context computes everything templates need from the raw model — derived structures, feature flags, helper methods. Templates are pure functions from Context to source code (Chapter 18).
-
 **Contextual arc**
 : A read arc (fires only if a place holds a token, without consuming it) or an inhibitor arc (fires only if it holds none). Neither appears in the incidence matrix, since neither changes the marking. Nets with contextual arcs do not generate the free symmetric monoidal category of ordinary nets (Montanari & Rossi, 1995); they are the categorical half of the core–observer boundary, and the natural home of guards.
 

@@ -64,7 +64,7 @@
 - ODE simulation for capacity planning
 - Bottleneck analysis from equilibrium
 - From model to running application
-- **Source material**: blog/coffeeshop-model, petri-pilot/services/coffeeshop.json, go-pflow/examples/coffeeshop/
+- **Source material**: blog/coffeeshop-model, sim-pflow-xyz/services/coffeeshop.json, go-pflow/examples/coffeeshop/
 
 ### Chapter 6: Game Mechanics — Tic-Tac-Toe
 **Learning objective**: Encode game rules, turn control, and win detection as net structure.
@@ -74,7 +74,7 @@
 - History places for pattern detection
 - Win detection without search
 - ODE-guided strategy: heatmaps from topology
-- **Source material**: blog/tic-tac-toe-model, go-pflow/examples/tictactoe/, petri-pilot/services/tic-tac-toe.json
+- **Source material**: blog/tic-tac-toe-model, go-pflow/examples/tictactoe/, sim-pflow-xyz/services/tic-tac-toe.json
 
 ### Chapter 7: Constraint Satisfaction — Sudoku
 **Learning objective**: Express constraints as token conservation and solve via continuous relaxation.
@@ -103,7 +103,7 @@
 - Emergent Michaelis-Menten behavior
 - Conservation laws from P-invariants
 - Parameter exploration and sensitivity
-- **Source material**: blog/enzyme-kinetics-model, petri-pilot/services/enzyme-kinetics.json
+- **Source material**: blog/enzyme-kinetics-model, sim-pflow-xyz/services/enzyme-kinetics.json
 
 ### Chapter 10: Complex State Machines — Texas Hold'em
 **Learning objective**: Model multi-player, multi-phase systems with roles and guards.
@@ -113,7 +113,7 @@
 - Betting conditions as guard expressions
 - Event sourcing for audit trails
 - ODE analysis of game flow
-- **Source material**: blog/texas-holdem-model, petri-pilot/services/texas-holdem.json, petri-pilot/frontends/texas-holdem/
+- **Source material**: blog/texas-holdem-model, sim-pflow-xyz/services/texas-holdem.json
 
 ---
 
@@ -170,14 +170,14 @@
 - Sharing and embedding models
 - **Source material**: pflow-xyz project
 
-### Chapter 16: Code Generation — From Model to Application
-**Learning objective**: Generate full-stack applications from a Petri net model.
+### Chapter 16: sim.pflow.xyz — From Description to Checked Model
+**Learning objective**: Store a Petri net model in a hosted service, run it as a seeded what-if, and get verdicts about it that someone else can re-check.
 
-- The petri-pilot pipeline: model → schema → code
-- Events-first pattern: separating events from bindings
-- Generated API endpoints and state management
-- Customization architecture: hooks, slots, overrides
-- **Source material**: petri-pilot/ARCHITECTURE.md, petri-pilot/docs/events-first-pattern.md
+- The surfaces: MCP server (`sim_*` tools), HTTP API, consoles
+- Content-addressed, immutable models; strict decoding; models from descriptions and code
+- Seeded scenarios and shared-seed comparison on go-pflow's engines; the ODE's refusal of gated nets
+- Diagnosis, verification (proved / refuted / unknown), receipts and witnesses
+- **Source material**: sim-pflow-xyz/README.md, sim-pflow-xyz/web/sim-landing/llms.txt, sim-pflow-xyz/docs/engine-selection.md
 
 ### Chapter 17: The go-pflow Library
 **Learning objective**: Use the core Go library for simulation, analysis, and integration.

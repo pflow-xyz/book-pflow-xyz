@@ -35,7 +35,7 @@ Chapters 11-16 push the formalism further. Process mining discovers nets from ev
 
 ### Part IV: Building with pflow
 
-Chapters 17-20 cover the ecosystem tools. The visual editor for designing nets interactively. The code generator that turns models into full-stack applications. The Go library's API and package structure. And the parity discipline that keeps every implementation honest — two at first, twenty by the end. The Epilogue names the claim the whole book has been making.
+Chapters 17-20 cover the ecosystem tools. The visual editor for designing nets interactively. The hosted service that runs a stored model as seeded what-ifs and checks it. The Go library's API and package structure. And the parity discipline that keeps every implementation honest — two at first, twenty by the end. The Epilogue names the claim the whole book has been making.
 
 ## The pflow Ecosystem
 
@@ -45,11 +45,10 @@ The projects referenced throughout this book form a unified ecosystem:
 |---------|---------|-----|
 | **go-pflow** | Core library — ODE simulation, reachability, process mining | github.com/pflow-xyz/go-pflow |
 | **pflow.xyz** | Visual browser-based editor for designing nets | pflow.xyz |
-| **petri-pilot** | Code generator — turns net models into running applications | pilot.pflow.xyz |
 | **pflow-polyglot** | One model, five forms, ten languages, one golden trace | github.com/pflow-xyz/pflow-polyglot |
-| **sim.pflow.xyz** | Business operations as calibrated what-if models | sim.pflow.xyz |
+| **sim.pflow.xyz** | Hosted what-if simulation and verification of stored models, with an MCP server | sim.pflow.xyz |
 
-All of them share the same JSON-LD model format. A net designed in the editor can be simulated by the library and compiled by the code generator without format conversion. The model is the source of truth.
+The editor and the library share the same JSON-LD model format, and go-pflow converts it into the model format sim.pflow.xyz stores and runs. A net designed in the editor can be simulated by the library without format conversion. The model is the source of truth.
 
 ## Conventions
 

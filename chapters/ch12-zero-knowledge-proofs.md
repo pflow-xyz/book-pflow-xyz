@@ -35,9 +35,9 @@ The state roots are commitments. They bind the prover to a specific marking with
 
 ## State Commitment via MiMC Hashing
 
-The hash function matters. Inside a ZK circuit, every operation becomes arithmetic constraints on a finite field. SHA-256 needs thousands of boolean operations — roughly 25,000 constraints per compression. **MiMC** (Minimal Multiplicative Complexity) is designed for arithmetic circuits: it operates over the same finite field the circuit uses. gnark's BN254 MiMC absorbs one field element at a time, running 110 rounds of $x \mapsto x^5$ on each, and each round costs three multiplications ([`encryptPow5`](https://github.com/Consensys/gnark/blob/v0.14.0/std/internal/mimc/encrypt.go) in gnark v0.14.0, the version petri-pilot pins; 110 rounds is `mimcNbRounds` in gnark-crypto's `bn254/fr/mimc`). That is 330 constraints per element, so hashing a marking of $N$ places costs $330N$ (derived from the code, not measured).
+The hash function matters. Inside a ZK circuit, every operation becomes arithmetic constraints on a finite field. SHA-256 needs thousands of boolean operations — roughly 25,000 constraints per compression. **MiMC** (Minimal Multiplicative Complexity) is designed for arithmetic circuits: it operates over the same finite field the circuit uses. gnark's BN254 MiMC absorbs one field element at a time, running 110 rounds of $x \mapsto x^5$ on each, and each round costs three multiplications ([`encryptPow5`](https://github.com/Consensys/gnark/blob/v0.14.0/std/internal/mimc/encrypt.go) in gnark v0.14.0, the version the circuit code below pins; 110 rounds is `mimcNbRounds` in gnark-crypto's `bn254/fr/mimc`). That is 330 constraints per element, so hashing a marking of $N$ places costs $330N$ (derived from the code, not measured).
 
-The hash used throughout this chapter is from petri-pilot's `zk-tictactoe/petri_circuits.go`:
+The hash used throughout this chapter is from the ZK tic-tac-toe circuit code, `zk-tictactoe/petri_circuits.go` (not public):
 
 ```go
 func petriMimcHash(api frontend.API, values []frontend.Variable) frontend.Variable {
@@ -208,7 +208,7 @@ The last four lines restrict `Winner` to `win_x` (place 29) or `win_o` (place 30
 
 Because the game logic lives in the net topology, the circuit doesn't know anything about tic-tac-toe. Change the topology constants and you get ZK proofs for a different game.
 
-The tests in petri-pilot's `zk-tictactoe/petri_circuits_test.go` check both circuits against gnark's test prover. `TestPetriTransitionCircuit_FullGameXWins` plays X to a left-column win (cells 0, 1, 3, 4, 6, alternating X and O) and asserts that a proof succeeds for every move and for the `x_win_col0` firing; `TestPetriWinCircuit_XWins` and `TestPetriWinCircuit_OWins` assert that the win proof succeeds for each player. Two tests assert failure: `TestPetriTransitionCircuit_WrongTurn` builds a witness that fires an X move on O's turn, and `TestPetriWinCircuit_NoWinnerFails` claims a win for X after two moves. Neither circuit has been re-run for this chapter.
+The tests in `zk-tictactoe/petri_circuits_test.go` check both circuits against gnark's test prover. `TestPetriTransitionCircuit_FullGameXWins` plays X to a left-column win (cells 0, 1, 3, 4, 6, alternating X and O) and asserts that a proof succeeds for every move and for the `x_win_col0` firing; `TestPetriWinCircuit_XWins` and `TestPetriWinCircuit_OWins` assert that the win proof succeeds for each player. Two tests assert failure: `TestPetriTransitionCircuit_WrongTurn` builds a witness that fires an X move on O's turn, and `TestPetriWinCircuit_NoWinnerFails` claims a win for X after two moves. Neither circuit has been re-run for this chapter.
 
 ### Constraint Counts
 
@@ -251,7 +251,7 @@ The same circuit structure handles token transfers. An ERC-20 transfer is a Petr
 - `balances[to]` is an output place (tokens produced)
 - The guard `balances[from] >= amount` is the enabledness check
 
-petri-pilot's `zk-erc20/petri_circuits.go` applies the circuit to a two-account ERC-20 net with 5 places (`totalSupply`, two balances, two allowances) and 10 transitions (transfer, approve, transferFrom, mint and burn, one of each per account; `zk-erc20/petri_state.go`). Two things change. `Amount` becomes a public input and weights every arc, so a transfer of 100 debits 100 and credits 100:
+The companion `zk-erc20/petri_circuits.go` applies the circuit to a two-account ERC-20 net with 5 places (`totalSupply`, two balances, two allowances) and 10 transitions (transfer, approve, transferFrom, mint and burn, one of each per account; `zk-erc20/petri_state.go`). Two things change. `Amount` becomes a public input and weights every arc, so a transfer of 100 debits 100 and credits 100:
 
 ```go
 for _, p := range arc.Inputs {

@@ -108,7 +108,7 @@ This pattern — a shared resource place controlling access — models mutexes, 
 
 Say "model" in a meeting today and most people hear "large language model": billions of parameters, opaque weights, probabilistic outputs. Petri nets are a different kind of model, small and executable, and inspectable all the way down.
 
-A coffee shop with five ingredients and five recipes is ten places and five transitions ([Chapter 5](ch05-resource-modeling.md)). petri-pilot's Texas Hold'em model, a simplified five-player table with all four betting rounds, has 18 places and 32 transitions ([`services/texas-holdem.json`](https://github.com/pflow-xyz/petri-pilot/blob/main/services/texas-holdem.json)). A Sudoku solver is larger but still finite and fully visible.
+A coffee shop with five ingredients and five recipes is ten places and five transitions ([Chapter 5](ch05-resource-modeling.md)). The tutorial Texas Hold'em model of [Chapter 10](ch10-complex-state-machines.md), a simplified five-player table with all four betting rounds, has 18 places and 32 transitions. A Sudoku solver is larger but still finite and fully visible.
 
 Small models offer properties that large models cannot:
 
@@ -145,4 +145,4 @@ In most software the code is the model, and the specification, if there is one, 
 
 The rest of this book shows what this looks like in practice — from a coffee shop inventory system to a running application, a kernel-checked theorem and a zero-knowledge proof of a game move — all derived from the same four primitives: places, transitions, arcs, and guards.
 
-> **Try it live:** See the [Stoplight](https://pilot.pflow.xyz/stoplight/) for a cyclic state machine or the [Dining Philosophers](https://pilot.pflow.xyz/dining-philosophers/) for mutual exclusion — both generated from Petri net models at [pilot.pflow.xyz](https://pilot.pflow.xyz/). The live stoplight is petri-pilot's [`services/stoplight.json`](https://github.com/pflow-xyz/petri-pilot/blob/main/services/stoplight.json): the same three-place cycle, starting in red, with transitions named `go`, `slow` and `stop`.
+> **Try it live:** The [what-if console](https://sim.pflow.xyz/whatif/) at sim.pflow.xyz runs any stored Petri net model on a seeded simulator, and its [catalog](https://sim.pflow.xyz/) lists the models it holds, from a [vet clinic](https://sim.pflow.xyz/whatif/?id=ae6ab5aeb95dd994bc561479) to [tic-tac-toe](https://sim.pflow.xyz/whatif/?id=5a08c67862a2eb55799f5229).

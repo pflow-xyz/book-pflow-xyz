@@ -167,9 +167,9 @@ Guard expressions (used in both `:guard` and `constraint`) support:
 The DSL parser does not read guard expressions. The lexer captures everything between `{` and the matching `}` as a single token, and the parser stores it as a string. Evaluation happens later, through whatever guard evaluator the runtime is given, and the expression language has two implementations whose operators agree but whose aggregate functions do not:
 
 - go-pflow's [`tokenmodel/guard`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/guard/aggregate.go) provides `sum`, `count`, `tokens`, `min` and `max`. Each takes a place ID or ID prefix as a string: `sum("balances_")` adds the token counts of every place whose ID starts with `balances_` (`guard_test.go` checks it equals 600 on its test marking).
-- petri-pilot's [`pkg/dsl`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/dsl/guard.go) names the last two `minOf` and `maxOf`, and its `sum`, `count`, `minOf` and `maxOf` also accept a data state's map, so `sum(balances)` totals the values in the `balances` map.
+- sim.pflow.xyz's guard DSL (`pkg/dsl/guard.go`; sim's source is not public) names the last two `minOf` and `maxOf`, and its `sum`, `count`, `minOf` and `maxOf` also accept a data state's map, so `sum(balances)` totals the values in the `balances` map.
 
-The constraint `sum(balances) == total_supply` used in this appendix is written for petri-pilot's evaluator. Under go-pflow's it fails to evaluate, because `balances` is a bare name rather than a string and is not a token place.
+The constraint `sum(balances) == total_supply` used in this appendix is written for sim.pflow.xyz's evaluator. Under go-pflow's it fails to evaluate, because `balances` is a bare name rather than a string and is not a token place.
 
 ## Complete Examples
 
@@ -255,6 +255,6 @@ A parsed DSL schema has two JSON forms. The first is `tokenmodel.Schema` itself,
 | `(arc src -> tgt :keys (k) :value v)` | `{"source": "src", "target": "tgt", "keys": ["k"], "value": "v"}` | `{"from": "src", "to": "tgt", "weight": 1, "keys": ["k"], "value": "v"}` |
 | `(constraint id {expr})` | `{"id": "id", "expr": "expr"}` | `{"id": "id", "expr": "expr"}` |
 
-petri-pilot accepts DSL input by this route. Its `parseModelV2` ([`pkg/mcp/server.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/mcp/server.go)) treats input that begins with `(` as DSL, calls `ParseSchema` and then `FromTokenModel`, and copies each data state's `:initial` into the place's `initial_value`, because `FromTokenModel` drops it.
+go-pflow provides both halves of this route: `ParseSchema` in [`tokenmodel/dsl`](https://github.com/pflow-xyz/go-pflow/blob/v0.33.0/tokenmodel/dsl/interpret.go) and then `FromTokenModel` in [`metamodel/convert.go`](https://github.com/pflow-xyz/go-pflow/blob/v0.33.0/metamodel/convert.go). `FromTokenModel` drops each data state's `:initial`, so a tool that accepts DSL input this way has to copy it into the place's `initial_value` itself.
 
-The two formats are not equally expressive. Arc weights and types, transition rates, roles, views and the other sections of Appendix C have no DSL syntax, so every DSL schema has a JSON model but a JSON model cannot in general be written as DSL without losing fields.
+The two formats are not equally expressive. Arc weights and types, transition rates, views, parameters and the other sections of Appendix C have no DSL syntax, so every DSL schema has a JSON model but a JSON model cannot in general be written as DSL without losing fields.

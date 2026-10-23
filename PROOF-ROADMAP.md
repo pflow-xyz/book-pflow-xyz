@@ -2,7 +2,7 @@
 
 Started 2026-08-22. The book (Appendix E) and the blog make categorical
 claims that are *asserted*; the ecosystem's verification (`pflow verify`,
-`petri_verify`, ZK provers, one hand-written Lean file) proves *algebraic*
+`sim_verify`, ZK provers, one hand-written Lean file) proves *algebraic*
 properties of single nets. This roadmap closes the gap, in leverage order.
 Status is kept here; each item names the repo it lands in.
 
@@ -10,11 +10,11 @@ Status is kept here; each item names the repo it lands in.
 
 | Capability | Where | Kind |
 |---|---|---|
-| P/T-invariants, `structural` verdicts (any initial marking) | go-pflow `pflow verify`, petri-pilot `petri_verify`, sim `sim_invariants` | linear-algebra proof |
+| P/T-invariants, `structural` verdicts (any initial marking) | go-pflow `pflow verify`, sim `sim_verify` / `sim_invariants` | linear-algebra proof |
 | deadlock-free / bounded / live / mutex / unreachable | `pflow verify` | exhaustive or witness |
 | 1-safety, every structural P-invariant, confluence — `by decide` | `pflow-polyglot/lean/proof.lean`, **generated** from `model.json` by `tools/codegen -lang lean` (P1) | **kernel-checked** |
 | transition validity, 128 B | pflow-rs `pflow-zk-arkworks` / `-risc0`, bitwrap-io | cryptographic, one step |
-| composition by pushout | pflow-jl `glue` (AlgebraicPetri `oapply`), petri-pilot `sim_compose` | construction (oracle, not proof) |
+| composition by pushout | pflow-jl `glue` (AlgebraicPetri `oapply`), sim `sim_compose` | construction (oracle, not proof) |
 
 ## Items
 

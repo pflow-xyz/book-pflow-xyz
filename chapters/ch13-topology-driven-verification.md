@@ -4,7 +4,7 @@
 
 Chapter 12 built ZK circuits by hand — defining the `PetriTransitionCircuit` step by step, wiring up MiMC hashes and delta computations manually. That was instructive, but nobody should write ZK circuits by hand for every new model. This chapter closes the loop: given a Petri net JSON model, go-pflow's [`petrigen`](https://github.com/pflow-xyz/go-pflow/tree/main/zkcompile/petrigen) package generates the gnark circuits, the witness generator and their tests, and the compiled circuit can then be exported as a Solidity verifier. The topology becomes constant arrays in the circuit, so changing the model and regenerating gives a new proof system.
 
-Along the way, graph connectivity turns out to carry strategic value as well as circuit structure. Once the modeler says which transitions are moves and which are goals, rate constants for the ODE can be read off the bipartite graph, with no training data and no manual tuning, and counting win-line connections reproduces the classic tic-tac-toe heuristic (center > corner > edge). The derived rates are the constants of petri-pilot's ZK ODE circuit.
+Along the way, graph connectivity turns out to carry strategic value as well as circuit structure. Once the modeler says which transitions are moves and which are goals, rate constants for the ODE can be read off the bipartite graph, with no training data and no manual tuning, and counting win-line connections reproduces the classic tic-tac-toe heuristic (center > corner > edge). The derived rates are the constants of the ZK ODE circuit built for this game.
 
 ## The Compilation Pipeline
 
@@ -192,11 +192,11 @@ The rate auto-derivation algorithm operates on the bipartite directed graph of t
 3. Count how many target transitions take those unique places as inputs
 4. That count is the rate constant
 
-The implementation is `deriveRatesFromTopology` in petri-pilot's ZK ODE code generator, `zk-ode/codegen/context.go`. Candidates and targets are given as globs over transition names (`x_play_*`, `x_win_*`), so the move/goal split is the modeler's input, not something the graph decides. Two details of the code: a count of 0 or 1 leaves the default rate of 1, and a rate written explicitly in the model is kept rather than derived.
+The implementation is `deriveRatesFromTopology` in the ZK ODE circuit generator, `zk-ode/codegen/context.go` (not public). Candidates and targets are given as globs over transition names (`x_play_*`, `x_win_*`), so the move/goal split is the modeler's input, not something the graph decides. Two details of the code: a count of 0 or 1 leaves the default rate of 1, and a rate written explicitly in the model is kept rather than derived.
 
 ### Tic-Tac-Toe: Strategy from Topology
 
-The ZK variant of the TTT Petri net from [Chapter 6](ch06-game-mechanics.md) (the one Chapter 12 compiles; 33 places and 35 transitions, against Chapter 6's 30 and 34) is the model used here, `services/tic-tac-toe.json` in petri-pilot. Each play transition (like `x_play_11`) produces a piece at a position (like `x11`). Each win transition (like `x_win_diag`) requires three specific pieces as inputs.
+The ZK variant of the TTT Petri net from [Chapter 6](ch06-game-mechanics.md) (the one Chapter 12 compiles; 33 places and 35 transitions, against Chapter 6's 30 and 34) is the model used here, `services/tic-tac-toe.json` in sim.pflow.xyz's source (not public). Each play transition (like `x_play_11`) produces a piece at a position (like `x11`). Each win transition (like `x_win_diag`) requires three specific pieces as inputs.
 
 Apply the algorithm to the center position:
 

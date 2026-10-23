@@ -157,4 +157,4 @@ The knapsack model demonstrates a fourth application pattern, distinct from reso
 
 The ODE does not find the optimum. It produces a relaxed value and a sensitivity table, and on this instance the table leads straight to the optimum. On larger instances it can at best guide a search, and that has not been benchmarked.
 
-> **Try it live:** The [Knapsack model](https://pilot.pflow.xyz/knapsack/) at pilot.pflow.xyz is a variant of this chapter's instance (petri-pilot's `services/knapsack.json`): item1 weighs 5 and is worth 15, item3 weighs 8 and is worth 13, and each transition's rate is its item's efficiency rather than 1.0. Items therefore drain at different speeds, the closed form above does not carry over, and its trajectories differ from the numbers in this chapter. Its optimum is again items 0, 1 and 3, weight 15, value 38.
+> **Try it live:** This chapter's net is small enough to write as model JSON (Appendix C). Store it with `POST https://sim.pflow.xyz/api/models`, no account needed, and open the returned id in the [what-if console](https://sim.pflow.xyz/whatif/) at `/whatif/?id={id}`.

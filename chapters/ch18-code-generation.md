@@ -1,270 +1,167 @@
-# Code Generation — From Model to Application
+# sim.pflow.xyz — From Description to Checked Model
 
-**Learning objective**: Generate full-stack applications from a Petri net model.
+**Learning objective**: Store a Petri net model in a hosted service, run it as a seeded what-if, and get verdicts about it that someone else can re-check.
 
-The visual editor (Chapter 17) produces a model. The Go library (Chapter 19) analyzes it. But at some point you need a running application — HTTP endpoints, event storage, a frontend, authentication. [Petri-pilot](https://github.com/pflow-xyz/petri-pilot) bridges the gap: it takes a Petri net model and generates a deployable application from it.
+The visual editor (Chapter 17) produces a model. The Go library (Chapter 19) analyzes it. Between the two sits a practical question: once a model exists, where does it run, and how does someone who did not build it decide whether to believe what it says? [sim.pflow.xyz](https://sim.pflow.xyz/) is a hosted answer. You give it a model, written by hand or derived from a plain-language description or from source code, and it stores the model under a content address. You can then run seeded scenarios against it, compare them on a shared seed, rank its knobs by measured influence, and verify structural properties, with every verdict saying how far it reaches.
 
-This chapter explains the architecture: how a JSON model becomes a Go backend and JavaScript frontend, why events are separated from bindings, and how customization survives regeneration. The code excerpts are taken from petri-pilot's source, abridged and with error handling omitted; the design document they come from is [ARCHITECTURE.md](https://github.com/pflow-xyz/petri-pilot/blob/main/ARCHITECTURE.md).
+This chapter describes that service: its surfaces, the path a model takes through it, and the line it draws between what an engine can read and what it refuses to guess. The engines underneath are go-pflow's, at v0.33.0, the version sim's `go.mod` pins: the discrete and continuous simulators in [`stochastic`](https://github.com/pflow-xyz/go-pflow/tree/v0.33.0/stochastic), the model type in [`metamodel`](https://github.com/pflow-xyz/go-pflow/tree/v0.33.0/metamodel), the property checker in [`verify`](https://github.com/pflow-xyz/go-pflow/tree/v0.33.0/verify). sim's own source is not public, so the chapter cites its tools and HTTP routes, which anyone can call, and links go-pflow where go-pflow does the work. Tool behaviour is quoted from the tool descriptions the MCP server publishes; the example outputs below are real calls against the live service, rounded for the page.
+
+## The Surfaces
+
+sim.pflow.xyz is one service with three ways in:
+
+| Surface | Where | What it is for |
+|---------|-------|----------------|
+| MCP server | `https://sim.pflow.xyz/mcp` | `sim_*` tools for an LLM client: store, run, diagnose, verify, prove, publish |
+| HTTP API | `https://sim.pflow.xyz/api/...` | The same reads per model (`/api/models/{id}/scenario`, `/diagnose`, `/verify`, …), CORS-open |
+| Consoles | [`/whatif/?id={id}`](https://sim.pflow.xyz/whatif/), [`/build/`](https://sim.pflow.xyz/build/) | A generic what-if console for any stored model, and a guided builder |
+
+Connecting an MCP client is one line:
+
+```bash
+claude mcp add --transport http sim https://sim.pflow.xyz/mcp
+```
+
+Read tools (listing and fetching models, scenarios, comparisons, diagnosis, verification, invariants, reachability) work without signing in, and the ones that run an engine are rate-limited per client. Tools that store something under your name, call an LLM, or publish to Google Sheets ask for OAuth the first time they are used. The service's [llms.txt](https://sim.pflow.xyz/llms.txt) lists every tool and route; this chapter covers the ones that make up the main path.
 
 ## The Pipeline
 
-The pipeline has one intermediate stage between the model and the generated files:
-
 ```
-Model --EnrichModel, NewContext--> Context --template--> Artifact
-(JSON or DSL)                     (intermediate        (Go / JS / YAML)
-                                   representation)
-```
-
-Petri-pilot's own documentation calls this a functor from models to code. Read that as a description of the shape — every artifact is computed from the model, and nothing else feeds in — rather than as a checked categorical result; no functor laws are stated or tested.
-
-The templates are functions of the Context alone, so the same model and the same generator options should produce the same files. The parts most likely to break that, such as the suffixes that disambiguate colliding identifiers, have their own tests (`TestIdentScopeIsDeterministic` in [`pkg/codegen/golang/flat_ids_test.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/codegen/golang/flat_ids_test.go)). A byte-for-byte regeneration test exists for petri-pilot's single-file `core` generator ([`pkg/codegen/core/core_test.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/codegen/core/core_test.go), `TestGenerateDeterministic`), but not yet for the full application generator this chapter describes.
-
-### Step 1: Parse
-
-The model is a go-pflow `metamodel.Model`: places, transitions, arcs, roles, views, events. It is read from JSON, or from the tokenmodel S-expression DSL of Chapter 4 — petri-pilot's MCP tools accept either and treat input that starts with `(` as DSL (`parseModelV2` in [`pkg/mcp/server.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/mcp/server.go)).
-
-```go
-var model metamodel.Model // github.com/pflow-xyz/go-pflow/metamodel
-err := json.Unmarshal(jsonBytes, &model)
+description / source code / hand-written JSON
+        |
+        |  sim_generate, sim_code_to_flow, /build/, POST /api/models
+        v
+model (JSON, content-addressed, immutable)
+        |
+        +--> sim_scenario, sim_compare        seeded runs, shared-seed comparison
+        +--> sim_diagnose                      knobs ranked against a noise floor
+        +--> sim_verify, sim_invariants        proved / refuted / unknown
+        +--> sim_crosscheck                    independent readings, agreement or divergence
+        +--> sim_receipt                       a signed run anyone can replay
+        +--> sim_publish_app, sim_publish      a single-file app, a Google Sheet
 ```
 
-### Step 2: Validate
+Every arrow out of the model is a read. Running a scenario cannot change the model, and a changed model is a different model.
 
-Before generating code, petri-pilot checks the net. The structural pass rejects a model with no places or no transitions, an element with no arcs, and an arc whose source or target does not exist. The validator then builds a go-pflow net from the model and runs reachability analysis, warning when it finds deadlock states ([`pkg/validator/validator.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/validator/validator.go)).
+### Step 1: The Model
 
-```go
-result, err := validator.New(validator.DefaultOptions()).Validate(&model)
-```
-
-Guard expressions are not parsed at this stage; see [Guards as Expressions](#guards-as-expressions) below.
-
-### Step 3: Build Context
-
-The **Context** is the intermediate representation. `NewContext` first enriches the model with defaults (`metamodel.EnrichModel`), then computes everything the templates need ([`pkg/codegen/golang/context.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/codegen/golang/context.go)):
-
-```go
-ctx, err := golang.NewContext(&model, opts)
-```
-
-The Context contains:
-
-1. **Primitives** — Places, Transitions, Arcs (from the Petri net)
-2. **Derived structures** — Events, Routes, Handlers (computed from primitives)
-3. **Feature flags** — `HasViews`, `HasAdmin`, `HasNavigation` (conditional generation)
-4. **Helper methods** — `TransitionRequiresAuth`, `HasAccessControl` (template utilities)
-
-The design intent is that the Context is complete: every piece of information a template needs is reachable through it, so templates do not reach back into the raw model. The frontend generator has its own Context type ([`pkg/codegen/esmodules/context.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/codegen/esmodules/context.go)), built from the same model.
-
-### Step 4: Project to Artifacts
-
-Each template file is a projection from a Context to one source file:
-
-```
-Go Context --api.tmpl------> api.go
-Go Context --workflow.tmpl-> workflow.go
-Go Context --events.tmpl---> events.go
-JS Context --main.tmpl-----> src/main.js
-JS Context --admin.tmpl----> src/admin.js
-```
-
-The backend templates live in [`pkg/codegen/golang/templates/`](https://github.com/pflow-xyz/petri-pilot/tree/main/pkg/codegen/golang/templates) and the frontend templates in [`pkg/codegen/esmodules/templates/`](https://github.com/pflow-xyz/petri-pilot/tree/main/pkg/codegen/esmodules/templates).
-
-## Inside-Out Design
-
-Traditional code generation is "outside-in": templates consume ad-hoc data structures, and the templates encode most of the logic. Petri-pilot inverts this. The **model** contains everything needed to describe an application — state machine topology, access control, UI structure, operational config. Code is a projection of this model into a target language.
-
-This means the model is readable by humans, LLMs, and formal analysis tools. The generated code is an implementation detail. You modify the model, not the code.
-
-## Events First
-
-A central pattern in petri-pilot is the separation of **events** from **bindings**. The examples in this section are the ERC-20 transfer from petri-pilot's [events-first design note](https://github.com/pflow-xyz/petri-pilot/blob/main/docs/events-first-pattern.md); the same guard and keyed arcs appear in the runnable token model [`services/erc20.pflow`](https://github.com/pflow-xyz/petri-pilot/blob/main/services/erc20.pflow).
-
-### Events: The Complete Record
-
-An event is the full business record emitted when a transition fires. It captures everything relevant to the domain:
+A model is a go-pflow [`metamodel.Model`](https://github.com/pflow-xyz/go-pflow/blob/v0.33.0/metamodel/schema.go) in JSON: places, transitions and arcs, plus optional blocks that sim's engines read, such as capacities on places, rates, `stages` and a `schedule` on transitions, declared `parameters`, and a `simulation.objective`. Appendix C documents the format.
 
 ```json
 {
-  "id": "tokens_transferred",
-  "name": "Tokens Transferred",
-  "fields": [
-    {"name": "from", "type": "string", "required": true},
-    {"name": "to", "type": "string", "required": true},
-    {"name": "amount", "type": "number", "required": true},
-    {"name": "memo", "type": "string"},
-    {"name": "transaction_id", "type": "string"}
-  ]
+  "name": "toggle",
+  "places": [{"id": "off", "initial": 1}, {"id": "on"}],
+  "transitions": [{"id": "switch", "rate": 1.0}],
+  "arcs": [{"from": "off", "to": "switch"}, {"from": "switch", "to": "on"}]
 }
 ```
 
-Events are appended to the instance's event log and never modified, so any past state can be rebuilt by replaying the log.
+It is stored with `sim_create_model` (signed in, the model is yours) or `POST /api/models` (anonymous, stored unowned, reachable by anyone holding its id and listed for nobody). The id is a content address: the sha256 of the model's canonical JSON. Two uploads of the same model are the same model, an id can be cached forever, and nothing is mutated. Editing a model means storing a new one; `sim_extend` records the edit with lineage, and `sim_supersede_model` points the listing at the successor without moving anything else.
 
-### Bindings: Operational Data
+Storing refuses rather than guesses. The decoder reads the legal keys from go-pflow's Go type by reflection and refuses any key the model schema does not define, naming each with its path and the key it most likely meant: `places[0].intial` comes back with a suggestion of `initial`. The reason is written into the decoder: Go's JSON decoder silently drops an unknown key, so a misspelt `initial` would have stored a net with an empty place, and every run of it would have reported zeros with full confidence. Structural validation then reports every defect at once instead of the first one: a model with no name, places or transitions, a duplicated id, an arc whose endpoint does not exist, and go-pflow's own checks on arcs, parameters and schedules. It gates structure, not quality. A well-formed net is storable whether or not it is a good model of anything.
 
-Bindings extract only what's needed for state computation — the minimal data for guards and arc transformations:
+### Step 2: Getting a Model Without Writing JSON
 
-```json
-{
-  "id": "transfer",
-  "event": "tokens_transferred",
-  "guard": "balances[from] >= amount && amount > 0",
-  "bindings": [
-    {"name": "from", "type": "string", "keys": ["from"]},
-    {"name": "to", "type": "string", "keys": ["to"]},
-    {"name": "amount", "type": "number", "value": true}
-  ]
-}
-```
+Three routes produce a model from something less formal. All three end in the same store, under the same validation.
 
-The `tokens_transferred` event has five fields. The `transfer` binding uses three. The memo and transaction ID are preserved in the event for audit but don't participate in state computation.
+**From a description.** `sim_generate` asks the deployment's LLM to write a net from plain-language requirements ("a lunch counter with two cooks and a ten-seat queue"). Each answer is checked as it arrives: it must decode, pass the validator, and then pass behavioural checks for disconnected parts, transitions that never fire, places nothing fills, and any place ids the caller required. Whatever is wrong is shown back to the LLM, and it answers again, up to `retries` times (0–4, default 2). `best_of` (1–5) starts again from scratch when a sample still has problems and stops at the first clean one. `selfcheck` asks the LLM to play its own net forward and replays that play against the net, which catches inconsistency, though not a wrong idea. A net that decodes and validates is stored even when behavioural problems remain. The response says whether it is `clean` and lists the `problems`, so a stored model is not a passed model.
 
-### Why Separate Them?
+**From source code.** `sim_code_to_flow` takes a code snippet, a language hint and a focus (`control-flow`, the default, or `state-machine`, `resources` or `concurrency`) and derives a net from it with the same LLM. The answer goes through the same decoder as a hand-written model, then a stricter validator that also explores the net's reachable states with go-pflow's [`reachability`](https://github.com/pflow-xyz/go-pflow/tree/v0.33.0/reachability) package. When the answer validates, it is stored as a new model; when it does not, the raw JSON and the validation errors come back so the caller can fix it and store it by hand.
 
-The separation enables independent evolution. You can add fields to an event (new audit data, metadata) without changing the state logic. You can modify how bindings compute state without affecting the event schema. Events answer "what happened in the business domain?" Bindings answer "what data do I need to validate and update state?"
+**Interactively.** The [builder](https://sim.pflow.xyz/build/) is a guided conversation that edits a draft. After each turn it explores the draft's reachable markings through go-pflow's own firing rule (`Model.Enabled` and `Fire` in [`metamodel/firing.go`](https://github.com/pflow-xyz/go-pflow/blob/v0.33.0/metamodel/firing.go)), so its findings about dead transitions, unreachable places, deadlocks and unbounded growth are the engine's answer and not a second reading of the arcs. The exploration is bounded by a state count, a time budget and the request. When a bound is hit, claims that need the whole space ("this never fires") are withheld rather than guessed.
 
-This maps directly to Petri net semantics. The event is the record of a transition firing. The binding is the data needed to check enabledness (guards) and compute the new marking (arc transformations).
+Both LLM routes are only as good as the model they call, and both need a deployment with an LLM provider configured. The checks bound what a wrong net can get away with structurally. They cannot tell whether the net describes the process the caller had in mind. That is what the instruments in the next steps are for.
 
-### Event Names from Transitions
+### Step 3: Run It
 
-A transition does not have to declare its event type. When it names none, the generator derives one by putting the transition's ID in PascalCase and adding a past-tense suffix (`eventTypeFromStem` in [`pkg/codegen/golang/identifiers.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/codegen/golang/identifiers.go)): `validate` becomes `Validated`. The rule only appends `d` or `ed`, so `ship` becomes `Shiped` and `validate_order` becomes `ValidateOrdered`; a model that wants a better name declares it. Several transitions can share one declared event — the nine `x_play_*` transitions in [`services/tic-tac-toe.json`](https://github.com/pflow-xyz/petri-pilot/blob/main/services/tic-tac-toe.json) all emit `XPlayed`, and the generator emits one struct for it.
+`sim_scenario` runs a seeded what-if: marking overrides ("three staff instead of two"), rate overrides, piecewise rate schedules, and values for the model's declared structural parameters. Unset fields default to 8 hours, 16 realizations and seed 20260809. The service refuses, and does not clamp, more than 200 realizations, 10,000 hours or 5,000 samples. The result carries the trajectory (mean and standard deviation per place on a sample grid), final marking, time-weighted metrics, the places that ran out, contention, and the caveats and assumptions the engine wants the reader to see.
 
-## Generated File Structure
-
-The core files of a generated application are listed below; the full template-to-file maps are in `templates.go` in each generator package.
-
-### Backend (Go)
-
-| File | Purpose |
-|------|---------|
-| `workflow.go` | Petri net definition — places, transitions, arcs |
-| `aggregate.go` | Event-sourced aggregate — applies events to state |
-| `api.go` | HTTP handlers — REST endpoints for each transition |
-| `events.go` | Event types — structs for each event |
-| `openapi.yaml` | API description |
-| `views.go` | View definitions — query handlers for UI (if views defined) |
-| `auth.go` | Authentication — role-based access (if roles or access rules defined) |
-| `main.go` or `service.go` | Entry point for a standalone binary, or a service registered with `petri-pilot serve` |
-
-### Frontend (ES Modules)
-
-| File | Purpose |
-|------|---------|
-| `index.html` | Loads `src/main.js` as a module |
-| `src/main.js` | Entry point |
-| `src/admin.js` | Admin dashboard — instance listing, management |
-| `src/views.js` | Instance views — detail pages, state display |
-| `custom/extensions.js` | User customizations (preserved across regeneration) |
-| `custom/theme.css` | Custom styling (preserved) |
-
-The backend imports petri-pilot's runtime packages and a short list of modules pinned in [`go_mod.tmpl`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/codegen/golang/templates/go_mod.tmpl), among them SQLite, WebSocket, Prometheus and OAuth2 clients. The frontend is vanilla ES modules with no framework. The generator also writes a `package.json` whose only dependency is Vite, as a development server and bundler. Both halves are generated from the same model, through their separate Context types.
-
-## Guards as Expressions
-
-Access control and preconditions use a DSL, not embedded code:
-
-```json
-{
-  "guard": "balances[from] >= amount && from != to"
-}
-```
-
-The guard stays a string all the way into the generated code. The generator copies it into `aggregate.go` as an argument to `dsl.Evaluate`, which parses and evaluates it against the request's bindings and, for guards that read token counts such as `tokens("stock") > 0`, the current marking ([`pkg/dsl/`](https://github.com/pflow-xyz/petri-pilot/tree/main/pkg/dsl); the generated call is checked in `pkg/codegen/golang/marking_guard_test.go`). The DSL handles arithmetic, comparisons, boolean operators, map lookups, field access and function calls. A guard adds a data condition to the Petri net firing rule: the transition fires only when its input places are marked and its guard holds.
-
-Because the guard is evaluated at runtime, a guard that does not parse is reported when the transition is attempted, not by the validator in Step 2. Keeping it as data has other uses: it is readable in the model by people and LLMs, and the generated frontend lists each transition's guard in its model view. The frontend displays guards but does not evaluate them; the server decides enablement.
-
-## Feature Flags from Model Presence
-
-Templates use conditional generation based on what the model contains:
-
-```go
-{{if .HasAdmin}}
-// Generate admin dashboard code
-{{end}}
-```
-
-The flag is computed from model presence:
-
-```go
-func (c *Context) HasAdmin() bool {
-    return c.Admin != nil && c.Admin.Enabled
-}
-```
-
-The application's features follow from what the model declares: views produce `views.go`, navigation produces `navigation.go`, an enabled admin block produces `admin.go`, and roles or access rules produce `auth.go`, `middleware.go` and `permissions.go` ([`pkg/codegen/golang/generator.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/codegen/golang/generator.go)). Concerns outside the domain — tests, infrastructure and deployment files, observability, realtime updates, simulation endpoints — are switched by generator options instead.
-
-## Customization Architecture
-
-Generated code is regenerated when the model changes. But users need to customize behavior without losing changes. Petri-pilot solves this with a two-directory pattern:
+The default engine is go-pflow's discrete stochastic simulator (`stochastic.Simulate`, Gillespie's algorithm), which fires one event at a time. `"engine": "ode"` asks for the continuous mass-action reading (`stochastic.Forecast`) instead, and this is where the rule from Chapter 3 becomes an API: `Forecast` checks the model's gating (`Model.Gating()`) and refuses a net with a read arc, an inhibitor, a reachable capacity, a guard or a non-kinetic arc, because the ODE has no firing instant at which to test any of them. Asking for the ODE on the café in sim's catalog returns a refusal, not a curve:
 
 ```
-frontend/
-+-- src/              # REGENERATED -- core application code
-|   +-- main.js
-|   +-- admin.js
-|   +-- views.js
-+-- custom/           # PRESERVED -- user customizations
-    +-- extensions.js # Hook registrations
-    +-- components.js # Custom web components
-    +-- theme.css     # Custom styling
+diverged: true
+reason: this model constrains firing in ways a continuous solution cannot
+express, so the ODE would silently model an unconstrained system. Use the
+discrete engine (Simulate). Specifically: 17 non-kinetic input arc(s) gate
+and consume without scaling the rate; ... capacity is declared on
+[pantry/coffee_beans pantry/milk pantry/cups] but is a post-firing bound,
+which has no continuous analogue
 ```
 
-Files in `src/` are overwritten on every generation. Files in `custom/` are created once, with default content, and never overwritten: their entries in the frontend's template map carry a `SkipIfExists` flag ([`pkg/codegen/esmodules/templates.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/codegen/esmodules/templates.go)).
+`sim_compare` runs up to 20 scenarios against one model on one seed. The server enforces the shared seed, so a difference between two results comes from the scenarios and not from the random numbers. On the same café, with the default eight hours and 16 realizations:
 
-### Extension Points
+| Scenario | Orders complete | Walked out | Staff utilization |
+|----------|-----------------|------------|-------------------|
+| two staff (as stored) | 169 ± 6 | 89 ± 13 | 0.80 |
+| three staff | 217 ± 12 | 43 ± 14 | 0.68 |
 
-Generated code defines hooks that custom code can register with. This example ships, commented out, in the generated `custom/extensions.js` ([`extensions.tmpl`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/codegen/esmodules/templates/extensions.tmpl)):
+The ± figures are the spread across realizations at the horizon, which the result reports beside each mean. The run also says what it assumed: every step takes an exponentially distributed time, the most erratic a shop can be for a given average, so the result labels its queues and walkouts as the bad case rather than the typical one.
 
-```javascript
-// custom/extensions.js
-adminExtensions.customActions.push({
-  label: 'Export JSON',
-  className: 'btn btn-secondary',
-  onClick: (instance) => {
-    const json = JSON.stringify(instance, null, 2)
-    const blob = new Blob([json], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${instance.id}.json`
-    a.click()
-  }
-})
+### Step 4: Diagnose It
+
+A comparison answers a question the modeler thought to ask. `sim_diagnose` asks every such question at once: what one more of each resource, and a change in each rate, is worth to the outcome, each ranked against a measured noise floor. The ranking is derived from the net, so a new model gets its fitness checks by existing, with no test written first. The report also covers generic gates (mass balance, dormant sources, a staffing knee, whether any knob binds at all) and structural readings that need no run: T-invariants, siphons and traps with deadlock witnesses, and lumpability.
+
+The sample size adapts. Leave `realizations` unset, and the diagnosis starts with 24, doubling while the baseline outcome sits inside its own noise floor, up to 200. The report records where it settled and why. An explicit count is used exactly. The service's documentation reports that this pass has found capacity that does nothing (a café's pantry stock, a hospital's emergency bays) and, in a software-team model, capacity past which more engineers make the objective worse. Those are claims about specific catalog models, not general laws, but they are the kind of finding the tool exists to produce: "add more" gets measured instead of assumed. How a knob's influence is scored depends on what the model counts as success, which `sim_diagnose` infers from place tags or reads from a declared `simulation.objective`.
+
+### Step 5: Verify It
+
+Simulation samples behaviour. Verification makes claims about all of it, and sim keeps the two apart.
+
+`sim_verify` checks declared properties: deadlock-free, bounded, live, terminating, conserves, mutual exclusion, a linear invariant over place counts, and reachable or unreachable target markings. It runs through go-pflow's `metamodel/metapetri` bridge, which converts the model into an analysable net and records what the conversion could not express, and go-pflow's [`verify`](https://github.com/pflow-xyz/go-pflow/tree/v0.33.0/verify) package. Each verdict is `proved`, `refuted` or `unknown`. Unknown is never a pass, and the report's `ok` is true only when every property is proved. Each verdict also carries a method, which says how far it reaches:
+
+| Method | Meaning |
+|--------|---------|
+| `structural` | From the incidence matrix with no state search; a structural `bounded` holds for every initial marking |
+| `exhaustive` | Every state reachable from this initial marking |
+| `witness` | A firing sequence found by targeted search, decisive for this marking |
+| `partial` | The search was truncated, so only a refutation is sound |
+
+Run with the defaults (bounded and deadlock-free) on the same café, it returns one of each kind you would rather not see:
+
+```
+bounded        refuted   witness   counter/pending_espresso grows without bound
+                                   trace: [counter/order_espresso]
+deadlock-free  unknown   partial   no deadlock in the states explored, but the
+                                   state space was truncated
 ```
 
-The generated `src/admin.js` imports `custom/extensions.js`, renders any registered custom actions as buttons, and fires the archive, restore and delete lifecycle hooks. The file also declares slots for custom table columns, state renderers, custom view sections and created/transition-executed hooks, but no generated module invokes those yet, so registering one currently has no effect.
+Both verdicts are correct. Customer arrivals are a transition with no input place, so the net is open and its queue has no structural bound. The model relies on abandonment rates, not on structure, to keep the queue short, and the verifier says so with a one-step counterexample. The unbounded queue also means the state space cannot be exhausted, so deadlock freedom stays unknown and is not reported as a pass. The caveats list the three pantry capacities, carried into the analysis as post-firing bounds.
 
-## The Serving Layer
+`sim_invariants` returns the algebra on its own: the P-invariants (conservation laws, from Farkas' algorithm), the T-invariants (firing cycles), and the minimal siphons and traps, including any siphon empty at the initial marking, which proves every transition that needs it permanently disabled. The P-invariants are the conservation laws of Chapter 2, computed for whatever model you stored.
 
-When multiple generated services run together, petri-pilot provides a unified serving layer:
+`sim_crosscheck` runs every applicable reading of a model against the others: discrete means against the mean-field solve, derived conservation laws against simulated means and, for game models, the closed-form incidence ranking against rollouts and exact search. A divergence is a finding, not an error, and the tool names its likely cause, such as a small-count mean-field gap or a heavy arc weight, which gets a different rate law under each engine. Gated nets have no ODE reading to compare against at all.
 
-### Unified GraphQL API
+### Step 6: Results Someone Else Can Check
 
-All services implementing the `GraphQLService` interface are combined into a single schema at `/graphql`. Mutations are prefixed with the service name: instance creation on `blogpost` becomes `blogpost_create`, and a `transfer` transition on `erc20-token` becomes `erc20token_transfer` ([`pkg/serve/graphql.go`](https://github.com/pflow-xyz/petri-pilot/blob/main/pkg/serve/graphql.go)). A combined schema endpoint at `/schema` returns the full SDL.
+A result is only as useful as a stranger's ability to check it. Three mechanisms let someone other than the modeler check a result.
 
-### Model Viewer
+**Determinism.** Models are immutable and scenarios are pure, seeded reads, so the same scenario body against the same model id on the same surface returns the same answer, byte for byte. The HTTP and MCP surfaces fill unset fields differently (HTTP defaults to one hour, one realization and seed 0), so a comparison across surfaces must set them explicitly.
 
-The serving layer includes a Petri net viewer at `/pflow` that renders each served model using the pflow.xyz `<petri-view>` web component (Chapter 17). It converts the internal model format to JSON-LD and passes it to the web component for interactive visualization and simulation.
+**Receipts.** `sim_receipt` runs a scenario and returns, with the result, an Ed25519 signature over the model id, the scenario as run (defaults filled in), a hash of the result, and the service revision. The signature can be checked offline against the public key at `/api/receipts/key`, which shows the service reported this result. `POST /api/receipts/verify` replays the run and confirms that the result hash reproduces, which shows the result was not invented. Neither step needs an account.
 
-### GraphQL Playground
+**Witnesses.** The structural tools record their claims as edges with evidence that can be re-checked. `sim_canonical` computes an isomorphism-invariant id from a model's exact automorphism orbits, so two differently labelled copies of one net can be recognised. `sim_prove` decides `isomorphicTo`, `subnetOf`, `preservesInvariant` or `refines` between two stored models. A proof is stored with a witness: a map, a map with an invariant cover, or a simulation relation. A refutation carries a counterexample, and a search that runs out of budget answers unknown and records nothing. `sim_reach` asks whether one marking can be reached from another in a stored net. It answers no with a separating P-invariant or an exhaustive search, yes with a replayable firing trace, or unknown, listing which budget stopped it. `sim_check_witness` re-checks any of these against the stored models, without searching again.
 
-An interactive playground at `/graphql/i` provides:
+The pattern is the same throughout: an answer comes with the evidence that would let a reader reject it.
 
-1. **Editor** — Standard GraphQL playground for writing queries
-2. **Operations Explorer** — Parses the SDL to list all queries and mutations grouped by service
-3. **Models Panel** — Displays each model's Petri net as SVG, with events, roles, places, and transitions
+## From Model to Application
+
+A model in go-pflow's format can carry a `view`: prose, addressed to whoever builds an application on the model, that says what the application should be ("let two players play on the board; a click fires that cell's move transition"). Nothing executes it. It is part of the model's content hash because the same net presented as a game and as a dashboard is two different artifacts, and the id should say which one you have.
+
+`sim_publish_app` publishes the single-file HTML application written from that view, by a person or an LLM, and serves it at `https://sim.pflow.xyz/app/{id}`. The intended starting point is the runtime, not a blank page: `/lib/app-template.html` is a working console composed of the same web components the generic console runs, so an application built from them inherits the console's role derivation, influence ranking and caveats instead of reimplementing them. The app is served in a sandboxed origin with no cookies and no session, under a Content-Security-Policy that confines scripts, styles and fetches to sim's own origin, so it can reach only the public API. The upload checks refuse an empty or oversized document, one that never mentions its model id, and one that loads scripts or styles from elsewhere. Whether the app does what the view says is not checked; that responsibility stays with whoever wrote it.
+
+For readers who would rather have a spreadsheet than an app, `sim_publish` and `sim_publish_compare` write a scenario or a shared-seed comparison into the caller's own Google Sheet, with charts.
 
 ## The Complete Workflow
 
-A typical petri-pilot workflow:
+A typical session with sim.pflow.xyz:
 
-1. **Design** — Define the model as JSON or tokenmodel DSL
-2. **Validate** — `petri_validate` checks structure and Petri net properties
-3. **Simulate** — `petri_simulate` runs the model before any code is generated
-4. **Generate** — `petri_codegen` produces the application
-5. **Customize** — Edit `custom/extensions.js` for app-specific behavior
-6. **Iterate** — When the model changes, regenerate. Files in `custom/` are not overwritten.
+1. **Describe** — write the model as JSON, or derive it with `sim_generate`, `sim_code_to_flow` or the builder
+2. **Store** — `sim_create_model` or `POST /api/models`; read every reason the validator gives at once
+3. **Verify** — `sim_verify` and `sim_invariants`; read the method on each verdict, and treat unknown as unknown
+4. **Run** — `sim_scenario` on the discrete engine; ask for the ODE and read the refusal if the net is gated
+5. **Compare and diagnose** — `sim_compare` on a shared seed, `sim_diagnose` for the knobs you did not think to ask about
+6. **Hand it over** — a `sim_receipt` for the run that matters, a published app or sheet for the people who will use the answer
 
-The model is the contract. Events, routes, handlers, views and admin panels are derived from it, so changing the model and regenerating changes the application's structure. Customizations are kept but not updated: a hook in `custom/extensions.js` that refers to a transition the new model removed is left as it was, and finding it is the developer's job.
+The model is the contract here too. Every run, verdict and receipt names the model's content id, so a reader can always ask which net an answer came from, and get the same net back.
 
-> **Try it live:** Every generated application — [Tic-Tac-Toe](https://pilot.pflow.xyz/tic-tac-toe/), [Coffee Shop](https://pilot.pflow.xyz/coffeeshop/), [Texas Hold'em](https://pilot.pflow.xyz/texas-holdem/), [Knapsack](https://pilot.pflow.xyz/knapsack/) — is available at [pilot.pflow.xyz](https://pilot.pflow.xyz/).
+> **Try it live:** The [catalog](https://sim.pflow.xyz/) lists every model in the commons, each with a what-if console. The [Café](https://sim.pflow.xyz/whatif/?id=3ab9e15cde5c02b463c31354) used in this chapter, the [Vet Clinic](https://sim.pflow.xyz/whatif/?id=ae6ab5aeb95dd994bc561479) and [Tic-Tac-Toe](https://sim.pflow.xyz/whatif/?id=5a08c67862a2eb55799f5229) are good starting points.

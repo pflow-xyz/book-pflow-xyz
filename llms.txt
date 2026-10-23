@@ -5,7 +5,7 @@
 > state machines, workflows, resource flows, games, chemical kinetics, ZK
 > circuits, and token standards. Every chapter pairs the math with working
 > models from the pflow ecosystem: the browser editor (pflow.xyz), the Go
-> library (go-pflow), and the code generator / MCP server (pilot.pflow.xyz).
+> library (go-pflow), and the hosted simulation service / MCP server (sim.pflow.xyz).
 > Models are JSON-LD (`@context: https://pflow.xyz/schema`); the same model
 > runs as a discrete net, as a mass-action ODE system, and as a verified
 > application.
@@ -76,9 +76,9 @@ and Part IV for the tooling. The full text in one file is at
 - [The Visual Editor — pflow.xyz](https://book.pflow.xyz/ch17-visual-editor.html):
   designing nets interactively, how the drawing maps to the formalism,
   export/import
-- [Code Generation — From Model to Application](https://book.pflow.xyz/ch18-code-generation.html):
-  petri-pilot — from a JSON model to a Go backend, event store and JS
-  frontend that survive regeneration
+- [sim.pflow.xyz — From Description to Checked Model](https://book.pflow.xyz/ch18-code-generation.html):
+  a content-addressed model run as seeded what-if scenarios, diagnosed,
+  verified and published, on go-pflow's engines
 - [The go-pflow Library](https://book.pflow.xyz/ch19-go-pflow-library.html):
   package layout, builder API, solver configuration, state machines and
   workflows
@@ -99,8 +99,8 @@ and Part IV for the tooling. The full text in one file is at
 - [Token Language Grammar](https://book.pflow.xyz/appendix-b-token-grammar.html):
   S-expression DSL lexer and grammar
 - [JSON Schema Reference](https://book.pflow.xyz/appendix-c-json-schema.html):
-  the petri-pilot model format — places, transitions, arcs, roles, views,
-  event sourcing
+  go-pflow's metamodel JSON — places, transitions, arcs, constraints, views,
+  parameters, simulation
 - [Glossary](https://book.pflow.xyz/appendix-d-glossary.html): definitions
   from arc to T-invariant
 - [Categorical Foundations](https://book.pflow.xyz/appendix-e-categorical-foundations.html):
@@ -110,8 +110,8 @@ and Part IV for the tooling. The full text in one file is at
 
 - [pflow.xyz](https://pflow.xyz): the editor and browser ODE library
   ([llms.txt](https://pflow.xyz/llms.txt))
-- [pilot.pflow.xyz](https://pilot.pflow.xyz): code generation and the
-  petri-pilot MCP server (`/mcp`)
+- [sim.pflow.xyz](https://sim.pflow.xyz): hosted what-if simulation and
+  verification, and its MCP server (`/mcp`, `sim_*` tools)
 - [blog.stackdump.com](https://blog.stackdump.com): essays the book grew out of
 - [Source](https://github.com/pflow-xyz/book-pflow-xyz): markdown chapters,
   EPUB/PDF builds on the releases page

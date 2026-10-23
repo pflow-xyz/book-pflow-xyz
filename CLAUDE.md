@@ -28,10 +28,9 @@ Content draws from sibling projects in this workspace:
 | Source | Path | Content |
 |--------|------|---------|
 | blog.stackdump.com | `~/Workspace/blog-stackdump-com/content/posts/` | ~45 blog posts; `metamodel.md` is the canonical Metamodel statement |
-| petri-pilot | `~/Workspace/petri-pilot/` | Docs, 13 example models, generated apps |
 | go-pflow | `~/Workspace/go-pflow/` | 60+ docs, 18 examples, research paper outline |
 | pflow-polyglot | `~/Workspace/pflow-polyglot/` | One model, five forms, golden trace (`FORMS.md`) |
-| sim-pflow-xyz | `~/Workspace/sim-pflow-xyz/` | Business-operations instance (*The Model Is the App*) |
+| sim-pflow-xyz | `~/Workspace/sim-pflow-xyz/` | Business-operations instance (*The Model Is the App*); Chapter 18's subject; `services/*.json` holds the example models several chapters cite (private repo: cite tools and routes, not file links) |
 
 **Editorial rule (2026-08-23):** the book serves the Metamodel narrative
 (model is a value; four primitives; declare then derive). Mathematical

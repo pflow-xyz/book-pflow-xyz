@@ -18,7 +18,7 @@ The pflow ecosystem maintains two implementations:
 | **Solver** | `solver/tsit5.go` | `petri-solver.js` |
 | **Petri net model** | `petri/` package | `petri-sim.js` |
 | **Runs in** | Server, CLI | Browser |
-| **Used by** | go-pflow, petri-pilot | pflow.xyz editor |
+| **Used by** | go-pflow, sim.pflow.xyz | pflow.xyz editor |
 
 Both implementations parse the same JSON-LD format. Both implement the same Tsit5 ODE solver. Both use the same mass-action kinetics for transition rates. The claim: given identical input (model + initial state + rates + time span), they produce identical output (final state within numerical tolerance).
 
@@ -223,7 +223,7 @@ JSON-LD Model (source of truth)
     |
     +-- go-pflow (Go)  --  ODE simulation, reachability, analysis
     |
-    +-- petri-pilot (Go)  --  Code generation, event sourcing
+    +-- sim.pflow.xyz (Go)  --  Hosted what-if simulation, verification
     |
     +-- pflow-polyglot  --  20+ implementations, one golden trace
     |
