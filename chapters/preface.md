@@ -63,3 +63,7 @@ The editor and the library share the same JSON-LD model format, and go-pflow con
 This book grew from blog posts, documentation, and working code written over two years. The pflow ecosystem is open source, and the ideas draw on sixty years of Petri net theory — from Carl Adam Petri's 1962 dissertation through the process mining work of Wil van der Aalst and the categorical semantics of Meseguer, Montanari and Sassone.
 
 The best way to learn is to build. Open pflow.xyz in a browser, draw a net, and press play. The mathematics follows.
+
+## License
+
+To the extent possible under law, the author has dedicated this book to the public domain under the [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/) dedication. You may copy, modify, translate, redistribute and build on it for any purpose, with no permission and no attribution required. The Go code that builds the book and the site is separate and is released under the MIT license; see the repository.
