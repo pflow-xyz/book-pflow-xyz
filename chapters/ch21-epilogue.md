@@ -2,7 +2,7 @@
 
 **Learning objective**: Name the layered architecture this book actually built, see the six applications through the lens of net types, and identify the open problems worth pursuing.
 
-The [preface](preface.md#what-this-book-claims-and-what-it-does-not) fenced this book's claim to composition: among notations for systems built from parts, the open Petri net is one structure that all of them can carry without loss. Chapter 13 placed that structure in a larger architecture, where the Petri net is one layer of a stack rather than its foundation. The result there that reaches furthest — that a game's strategic ranking can be read off graph connectivity, with no training data, no domain knowledge and no use of firing semantics — sits underneath the formalism the book is named for. This chapter starts from that result.
+The [preface](preface.md#what-this-book-claims-and-what-it-does-not) limited this book's claim to composition: among notations for systems built from parts, the open Petri net is one structure that all of them can carry without loss. Chapter 13 placed that structure in a larger architecture, where the Petri net is one layer of a stack rather than its foundation. The result there that reaches furthest — that a game's strategic ranking can be read off graph connectivity, with no training data, no domain knowledge and no use of firing semantics — sits underneath the formalism the book is named for. This chapter starts from that result.
 
 ## The Four-Layer Stack
 
@@ -55,11 +55,11 @@ In each row the defining property is a property of the wiring. The coffee shop c
 
 ## What the Book Argued
 
-Alongside the composition claim the preface fences, three claims run from Chapter 1 to Chapter 20. They are argued from the worked examples rather than proved in general:
+Alongside the composition claim set out in the preface, three claims run from Chapter 1 to Chapter 20. They are argued from the worked examples rather than proved in general:
 
 **Small models beat black boxes.** Every application in this book is inspectable. You can look at the tic-tac-toe topology and count win lines. You can read the stoichiometry matrix and see the differential equations. You can read the generated code and the constraint system it compiles to. At no point did you need to trust a model you couldn't read. This is the opposite of the machine learning approach, where the knowledge is in the weights and the weights are opaque. The cost is that Petri net models require a human to design the topology. The benefit is that the topology is the explanation.
 
-**One formalism, multiple tools.** The JSON-LD model format (Chapter 16) is read by the visual editor (Chapter 17), the Go library (Chapter 19) and the ZK compiler (Chapter 12), and go-pflow converts it into the model sim.pflow.xyz runs (Chapter 18). Dual implementation (Chapter 20) checks that independent implementations agree, and `pflow-polyglot` extends the check to thirty-nine programs in ten languages, all held to one golden trace, [`parity/trace.golden`](https://github.com/stackdump/pflow-polyglot/blob/main/parity/trace.golden). `make parity` fails the build when any of its twenty Go, Rust, Python and JavaScript programs diverges, and `make parity-native` checks the rest against the same file. The agreement is a test that runs.
+**One format, multiple tools.** The JSON-LD model format (Chapter 16) is read by the visual editor (Chapter 17), the Go library (Chapter 19) and the ZK compiler (Chapter 12), and go-pflow converts it into the model sim.pflow.xyz runs (Chapter 18). Dual implementation (Chapter 20) checks that independent implementations agree, and `pflow-polyglot` extends the check to thirty-nine programs in ten languages, all held to one golden trace, [`parity/trace.golden`](https://github.com/stackdump/pflow-polyglot/blob/main/parity/trace.golden). `make parity` fails the build when any of its twenty Go, Rust, Python and JavaScript programs diverges, and `make parity-native` checks the rest against the same file. The agreement is a test that runs.
 
 **Topology is primary, rates are secondary.** Change the rate constants and the system's quantitative behavior shifts; change the topology and it becomes a different system. The book observed this across its six applications rather than proving it, and Chapters 6 and 13 give it its sharpest form: a ranking read from incidence counts that the ODE reproduces. Chapter 6 also marks its limit. A forced block whose margin is thin can flip with the detector rates, so "secondary" means secondary for the ranking, not irrelevant.
 
@@ -87,7 +87,7 @@ The recipe is the same in each case: declare the structure, derive the rest.
 
 ## The Structure Underneath
 
-The four-layer stack describes the book's architecture. Underneath it is one structure that explains *why* edge-matching composition works — why two models glued at a shared place need no glue code, and which properties of the parts survive into the whole.
+The four-layer stack describes the book's architecture. Underneath it is one structure that explains *why* firing composes — why transitions chain and run side by side without interfering — and, read one level up, why two models glued at a shared place need no glue code and which properties of the parts survive into the whole.
 
 That structure is the **symmetric monoidal category** (SMC).
 
@@ -103,7 +103,7 @@ The objects are multisets of places — markings, elements of the free commutati
 
 ### Two Kinds of Composition
 
-Every category has composition of morphisms. A monoidal category adds a second operation: the monoidal product. Throughout this book, these are the two ways transitions combine inside a single net. Composing whole nets, by gluing along a shared place or by fusing transitions with an EventLink, is the subject of the preface's claim and returns under *Typed composition refines* below.
+Every category has composition of morphisms. A monoidal category adds a second operation: the monoidal product. Inside a single net these are the two ways transitions combine, and that is the level this section works at: the objects are markings and the morphisms are firings. Whole nets compose one level up, in the category of open nets, where a net is itself a morphism between boundary multisets of places ([Appendix E](appendix-e-categorical-foundations.md#net-types-as-sub-smcs)). There $\otimes$ is still how two unlinked nets sit side by side. Nets that share something are glued instead. Gluing along a shared place is the subject of the preface's claim; fusing transitions with an EventLink is the second kind of composition the preface names. Both return under *Typed composition refines* below.
 
 **Sequential composition** ($f \mathbin{;} g$): the output places of transition $f$ become the input places of transition $g$. Tokens flow through. This is ordinary morphism composition — the Texas Hold'em phase sequence (Chapter 10), the workflow cursor in a WorkflowNet (Chapter 4).
 
@@ -121,7 +121,7 @@ This theorem has been silently at work in every chapter:
 
 - **The poker ODE decouples** (Chapter 13) because the analysis net is a parallel composition. Each hand category's equation $\dot{x}_H = k(1 - n_H x_H)$ involves only its own value place, since the categories share no place for information to pass through.
 
-- **Typed composition refines** (Chapter 4). Adding an unlinked schema to a CompositeNet is adding a new object to the category, and the monoidal product guarantees it can't affect existing schemas — that much is monotonic. Adding a *link* is not: it identifies transitions or places, which is a quotient rather than a product, and quotients remove behavior. What the structure buys is refinement — every composite trace projects to a valid component trace — which preserves safety properties and not liveness.
+- **Typed composition refines** (Chapter 4). Adding an unlinked schema to a CompositeNet adds a new tensor factor at the level of open nets, and the monoidal product guarantees it can't affect existing schemas — that much is monotonic. Adding a *link* is not: it identifies transitions or places, which is a quotient rather than a product, and quotients remove behavior. What the structure buys is refinement — every composite trace projects to a valid component trace — which preserves safety properties and not liveness.
 
 ### What the Category Doesn't See
 
@@ -154,4 +154,4 @@ Petri nets fix this by making structure explicit. Places hold state. Transitions
 
 The deeper lesson is that what made all of this possible is not specific to Petri nets: **the model is a value, not a program.** A net is a document: four primitives — place, transition, arc, guard — and a marking. It can be hashed, diffed, composed by matching edges, and handed to a stranger in another language who can check it without trusting us. The derived artifacts of Part IV, the invariants of Part I and the domains above all depend on that. In the systems this book modeled, topology determined more about behavior than parameter tuning did, and it could be *read* only because it was written down as data.
 
-That is the practice the preface named Metamodel, built on the composition claim and circled by the chapters since: a small, fixed alphabet whose local composition rules generate an unbounded space of specific, checkable systems. The palette is small on purpose, and its smallness is what lets it travel.
+The preface called the practice built on that lesson Metamodel. Its alphabet is small and fixed, and local composition rules generate an unbounded space of specific, checkable systems. The palette is small on purpose, and its smallness is what lets it travel.

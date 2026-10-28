@@ -205,7 +205,7 @@
 
 - The four-layer stack: graph theory → Petri net semantics → ODE dynamics → ZK verification
 - Six applications, five types — retrospective taxonomy table (Coffee Shop=ResourceNet, TTT=GameNet, Sudoku=ClassificationNet, Knapsack=ComputationNet, Enzyme=ComputationNet, Hold'em=GameNet)
-- What the book proved: small models beat black boxes, one formalism / multiple tools, topology is primary
+- What the book proved: small models beat black boxes, one format / multiple tools, topology is primary
 - What the book didn't solve: multi-hop connectivity, weighted targets, dynamic rates, circuit scaling, composition verification
 - The structure underneath: transitions as morphisms in a symmetric monoidal category, two composition modes (sequential and parallel), the SMC as the reason techniques transfer across chapters
 - The premise revisited: the Petri net is a layer, not the foundation — the topology was always there
