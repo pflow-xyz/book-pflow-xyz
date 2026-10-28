@@ -2,13 +2,15 @@
 
 > A Practitioner's Guide to Modeling with pflow — a technical book arguing
 > that the open Petri net (places, transitions, arcs, and a boundary of places
-> left open for gluing) is a canonical carrier for systems built from parts:
-> it has a faithful presentation as a cospan, a string diagram, ZX-style
-> spiders, an operad wiring diagram and the pair of input/output incidence
-> matrices, and gluing two nets along a shared place gives the same net in
-> each. The preface says which parts of that are checked by machine (two
-> implementations agree on the glued nets) and which are not. The claim is about composition, not computation: ordinary P/T nets are
-> not Turing-complete, inhibitor arcs and guards fall outside it, and
+> left open for gluing) is a canonical carrier for systems built from parts.
+> The claim is that it has a faithful presentation as a cospan, a string
+> diagram, ZX-style spiders, an operad wiring diagram and the pair of
+> input/output incidence matrices, and that gluing two nets along a shared
+> place gives the same net in each. The preface says how much of that is
+> checked by machine: two implementations agree on the glued nets, while
+> faithfulness and agreement across notations are not tested. The claim is
+> about composition, not computation: ordinary P/T nets are not
+> Turing-complete, inhibitor arcs and guards fall outside it, and
 > composition preserves safety but not liveness. Every chapter pairs the math
 > with working models from the pflow ecosystem: the browser editor
 > (pflow.xyz), the Go library (go-pflow), and the hosted simulation service /
