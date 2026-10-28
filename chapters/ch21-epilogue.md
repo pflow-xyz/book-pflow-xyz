@@ -2,7 +2,7 @@
 
 **Learning objective**: Name the layered architecture this book actually built, see the six applications through the lens of net types, and identify the open problems worth pursuing.
 
-This book promised a universal abstraction, and in Chapter 13 the promise shifted: the Petri net turned out to be one layer of a stack rather than its foundation. The result there that reaches furthest — that a game's strategic ranking can be read off graph connectivity, with no training data, no domain knowledge and no use of firing semantics — sits underneath the formalism the book is named for. This chapter starts from that result.
+The [preface](preface.md#what-this-book-claims-and-what-it-does-not) fenced this book's claim to composition: among notations for systems built from parts, the open Petri net is one structure that all of them can carry without loss. Chapter 13 placed that structure in a larger architecture, where the Petri net is one layer of a stack rather than its foundation. The result there that reaches furthest — that a game's strategic ranking can be read off graph connectivity, with no training data, no domain knowledge and no use of firing semantics — sits underneath the formalism the book is named for. This chapter starts from that result.
 
 ## The Four-Layer Stack
 
@@ -55,7 +55,7 @@ In each row the defining property is a property of the wiring. The coffee shop c
 
 ## What the Book Argued
 
-Three claims run from Chapter 1 to Chapter 20. They are argued from the worked examples rather than proved in general:
+Alongside the composition claim the preface fences, three claims run from Chapter 1 to Chapter 20. They are argued from the worked examples rather than proved in general:
 
 **Small models beat black boxes.** Every application in this book is inspectable. You can look at the tic-tac-toe topology and count win lines. You can read the stoichiometry matrix and see the differential equations. You can read the generated code and the constraint system it compiles to. At no point did you need to trust a model you couldn't read. This is the opposite of the machine learning approach, where the knowledge is in the weights and the weights are opaque. The cost is that Petri net models require a human to design the topology. The benefit is that the topology is the explanation.
 
@@ -87,7 +87,7 @@ The recipe is the same in each case: declare the structure, derive the rest.
 
 ## The Structure Underneath
 
-The four-layer stack describes the book's architecture. Underneath it is one structure that explains *why* edge-matching composition works — why two models glued at a shared place need no glue code, and why what is true of the parts stays true of the whole.
+The four-layer stack describes the book's architecture. Underneath it is one structure that explains *why* edge-matching composition works — why two models glued at a shared place need no glue code, and which properties of the parts survive into the whole.
 
 That structure is the **symmetric monoidal category** (SMC).
 
@@ -103,7 +103,7 @@ The objects are multisets of places — markings, elements of the free commutati
 
 ### Two Kinds of Composition
 
-Every category has composition of morphisms. A monoidal category adds a second operation: the monoidal product. These correspond exactly to the two ways we composed nets throughout this book.
+Every category has composition of morphisms. A monoidal category adds a second operation: the monoidal product. Throughout this book, these are the two ways transitions combine inside a single net. Composing whole nets, by gluing along a shared place or by fusing transitions with an EventLink, is the subject of the preface's claim and returns under *Typed composition refines* below.
 
 **Sequential composition** ($f \mathbin{;} g$): the output places of transition $f$ become the input places of transition $g$. Tokens flow through. This is ordinary morphism composition — the Texas Hold'em phase sequence (Chapter 10), the workflow cursor in a WorkflowNet (Chapter 4).
 
@@ -154,4 +154,4 @@ Petri nets fix this by making structure explicit. Places hold state. Transitions
 
 The deeper lesson is that what made all of this possible is not specific to Petri nets: **the model is a value, not a program.** A net is a document: four primitives — place, transition, arc, guard — and a marking. It can be hashed, diffed, composed by matching edges, and handed to a stranger in another language who can check it without trusting us. The derived artifacts of Part IV, the invariants of Part I and the domains above all depend on that. In the systems this book modeled, topology determined more about behavior than parameter tuning did, and it could be *read* only because it was written down as data.
 
-That is the claim this book has been circling, and the name for it is Metamodel: a small, fixed alphabet whose local composition rules generate an unbounded space of specific, checkable systems. The palette is small on purpose, and its smallness is what lets it travel.
+That is the practice the preface named Metamodel, built on the composition claim and circled by the chapters since: a small, fixed alphabet whose local composition rules generate an unbounded space of specific, checkable systems. The palette is small on purpose, and its smallness is what lets it travel.

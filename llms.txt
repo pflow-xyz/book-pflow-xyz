@@ -1,11 +1,17 @@
 # Petri Nets as a Universal Abstraction
 
 > A Practitioner's Guide to Modeling with pflow — a technical book arguing
-> that Petri nets (places, transitions, arcs, tokens) are one formalism for
-> state machines, workflows, resource flows, games, chemical kinetics, ZK
-> circuits, and token standards. Every chapter pairs the math with working
-> models from the pflow ecosystem: the browser editor (pflow.xyz), the Go
-> library (go-pflow), and the hosted simulation service / MCP server (sim.pflow.xyz).
+> that the open Petri net (places, transitions, arcs, and a boundary of places
+> left open for gluing) is a canonical carrier for systems built from parts:
+> it has a faithful presentation as a cospan, a string diagram, ZX-style
+> spiders, an operad wiring diagram and the pair of input/output incidence
+> matrices, and gluing two nets along a shared place means the same thing in
+> each. The claim is about composition, not computation: ordinary P/T nets are
+> not Turing-complete, inhibitor arcs and guards fall outside it, and
+> composition preserves safety but not liveness. Every chapter pairs the math
+> with working models from the pflow ecosystem: the browser editor
+> (pflow.xyz), the Go library (go-pflow), and the hosted simulation service /
+> MCP server (sim.pflow.xyz).
 > Models are JSON-LD (`@context: https://pflow.xyz/schema`); the same model
 > runs as a discrete net, as a mass-action ODE system, and as a verified
 > application.
