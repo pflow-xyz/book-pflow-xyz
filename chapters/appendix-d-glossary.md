@@ -13,7 +13,7 @@
 : A hash-based identifier for content-addressed data. In the pflow ecosystem, CIDs identify JSON-LD models deterministically — the same model always produces the same CID regardless of where or when it's computed (Chapter 16).
 
 **Compression ratio ($\rho$)**
-: For a transition, tokens consumed divided by tokens produced. $\rho = 1$ is the core; $\rho > 1$ is an observer that destroys state to produce a verdict. A property of the incidence matrix column, so every analysis of $C$ can see it. See *Core–observer boundary*.
+: For a transition, tokens consumed divided by tokens produced. $\rho = 1$ is the core; $\rho > 1$ is an algebraic observer that destroys state to produce a verdict. It is read from the transition's input and output arc weights, its columns of $\mathbf{C}^-$ and $\mathbf{C}^+$, so it lies inside the incidence structure, where every analysis of $C$ can see it. See *Core–observer boundary*.
 
 **Conservation law**
 : An equation $\mathbf{y}^T \mathbf{C} = \mathbf{0}$ where $\mathbf{y}$ is a vector of weights and $\mathbf{C}$ is the incidence matrix. Conservation laws prove that weighted sums of token counts remain constant across all firings. Example: in an SIR model, $S + I + R = N$ for all time.
@@ -28,7 +28,7 @@
 : Two distinct boundaries that older material treated as one. The *algebraic* boundary ($\rho$) lies inside $C$ and separates transitions the tropical eigenvalue and uniform R1CS can handle from those they cannot; it does not affect composition. The *contextual* boundary (read/inhibitor arcs) lies outside $C$ and breaks free composition; it does not affect $\rho$. Canonical statement in Appendix E.
 
 **Deadlock**
-: A marking where no transition is enabled. The system is stuck — no further computation is possible. Deadlock detection is a key analysis performed by the reachability package.
+: A marking where no transition is enabled. The system is stuck — no further computation is possible. go-pflow's `reachability` analyzer reports every such marking it explores as `DeadMarkings`; its narrower `Deadlocks` list is a heuristic for "stuck, not finished" that skips a marking which drained to empty ([`reachability/analyzer.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/analyzer.go)).
 
 **Enabled**
 : A transition is enabled at a marking $\mathbf{m}$ if every input place has at least as many tokens as the corresponding arc weight: $\mathbf{m}(p) \geq W(p, t)$ for all input places $p$. An enabled transition may fire; a disabled one cannot.
@@ -43,10 +43,10 @@
 : The execution semantics of Petri nets. When a transition fires, it atomically removes tokens from input places and adds tokens to output places according to arc weights. The new marking is $\mathbf{m}' = \mathbf{m} + \mathbf{C} \cdot \mathbf{e}_t$ where $\mathbf{e}_t$ is the unit vector for transition $t$.
 
 **Groth16**
-: A zero-knowledge proof system used in pflow for verifying Petri net transitions without revealing state. Produces constant-size proofs with fast verification, at the cost of a per-circuit trusted setup (Chapter 12).
+: A zero-knowledge proof system used in pflow to prove one Petri net firing between two committed markings. Proofs are constant-size — 128 bytes on BN254, two compressed G1 points and one G2 — and verify in constant time, at the cost of a per-circuit trusted setup (Chapter 12).
 
 **Guard**
-: A boolean expression attached to a transition that must evaluate to true for the transition to be enabled, in addition to the standard token requirements. Guards extend the firing rule with data-dependent conditions.
+: A boolean expression attached to a transition that must evaluate to true for the transition to be enabled, in addition to the standard token requirements. Guards extend the firing rule with data-dependent conditions. A guard reads the marking without changing it, so, like a contextual arc, it has no entry in $\mathbf{C}$ and takes the transition outside the free structure of Appendix E; it is recomputed from the marking on every step and stored nowhere.
 
 **Incidence matrix**
 : The matrix $\mathbf{C} = \mathbf{C}^+ - \mathbf{C}^-$ where $\mathbf{C}^+$ is the output matrix (tokens produced) and $\mathbf{C}^-$ is the input matrix (tokens consumed). Each column represents a transition; each row represents a place. The entry $\mathbf{C}_{ij}$ is the net change in place $i$ when transition $j$ fires (Chapter 2).
@@ -58,7 +58,7 @@
 : JSON for Linked Data. The pflow ecosystem uses JSON-LD as its model interchange format, with `@context: "https://pflow.xyz/schema"`. JSON-LD makes models self-describing and content-addressable (Chapter 16).
 
 **Liveness**
-: A transition is live if it can eventually fire from every reachable marking (possibly after other transitions fire first). A net is live if all transitions are live. Liveness means the system never permanently loses capability.
+: A transition is live if it can eventually fire from every reachable marking (possibly after other transitions fire first). A net is live if all transitions are live. Liveness means the system never permanently loses capability. go-pflow reports this as `Live`, and the weaker *quasi-liveness* — every transition fires in some reachable marking — as `QuasiLive`; a quasi-live net can still deadlock ([`reachability/analyzer.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/analyzer.go)).
 
 **Marking**
 : The distribution of tokens across all places at a given moment; the state of the Petri net. Written as a vector $\mathbf{m}$ where $\mathbf{m}(p)$ is the token count at place $p$. The initial marking $\mathbf{m}_0$ is the starting state.
@@ -66,8 +66,8 @@
 **Mass-action kinetics**
 : A rate law from chemistry where the rate of a reaction is proportional to the product of reactant concentrations. As go-pflow implements it, the continuous firing rate of transition $t$ is $r_t \prod_{p \in \text{inputs}(t)} m(p)$, where $r_t$ is the rate constant: first order in every input place, whatever the arc weight. The weight $w(p,t)$ enters only the stoichiometry, so place $p$ drains at $w(p,t)$ times the flux ([`solver/ode.go`](https://github.com/pflow-xyz/go-pflow/blob/main/solver/ode.go); Chapter 3).
 
-**MiMC (Minimum Multiplicative Complexity)**
-: A hash function designed for efficiency inside arithmetic circuits. Used in pflow's zero-knowledge proofs to hash Petri net markings with minimal constraint count (Chapter 12).
+**MiMC (Minimal Multiplicative Complexity)**
+: A hash function designed for efficiency inside arithmetic circuits. Used in pflow's zero-knowledge proofs to hash Petri net markings into state roots. In gnark's BN254 implementation it costs 330 constraints per field element (110 rounds of three multiplications — derived from the code in Chapter 12, not measured).
 
 **Monotonic expansion**
 : The discipline of a schema that only grows: new facts can be added, existing facts are never retracted, so learning more never invalidates what was already known (Chapter 16). The history places of Chapters 6 and 7 follow the same discipline at the level of a single net. See *Write-once place*.
@@ -97,7 +97,7 @@
 : The algebraic relation $\mathbf{m}' = \mathbf{m}_0 + \mathbf{C} \cdot \boldsymbol{\sigma}$ where $\boldsymbol{\sigma}$ is the firing count vector (how many times each transition has fired). A necessary but not sufficient condition for reachability — the actual firing sequence must also be valid.
 
 **State root**
-: A hash of the simulation output used for cross-implementation verification. If the Go server and JavaScript browser produce the same state root from the same model, the implementations agree (Chapter 20).
+: A hash that stands for a state. The book uses the term in two senses. In the ZK circuits of Chapters 12 and 14 it is the MiMC hash of a marking, a public commitment to a private state; it carries no salt, so it hides the marking only when the candidate markings are too many to enumerate. In Chapter 20 it is a hash of a simulation trajectory: if the Go server and JavaScript browser produce the same one from the same model, the implementations agree. Chapter 20 describes that comparison but does not yet link the test that runs it.
 
 **Token**
 : A marker in a place. Tokens represent the presence of a resource, the truth of a condition, or a unit of something being processed. In the discrete model, tokens are non-negative integers. In the continuous relaxation, they become non-negative real numbers.
@@ -106,16 +106,16 @@
 : A node in a Petri net representing an event, action, or chemical reaction. Transitions consume tokens from input places and produce tokens in output places. Drawn as rectangles. In the continuous relaxation, transitions have firing rates.
 
 **Tsit5**
-: Tsitouras 5th-order Runge-Kutta method with embedded 4th-order error estimator. The default ODE solver in go-pflow and pflow.xyz. Uses adaptive step size control for automatic accuracy management (Appendix A).
+: Tsitouras 5th-order Runge-Kutta method with embedded 4th-order error estimator. The default ODE solver in go-pflow (`solver.Solve` uses it when no method is given, [`solver/ode.go`](https://github.com/pflow-xyz/go-pflow/blob/main/solver/ode.go)) and in pflow.xyz (`petri-solver.js`). Steps adaptively, rejecting a step whose embedded error estimate exceeds the `Abstol`/`Reltol` tolerance (Appendix A).
 
 **URDNA2015**
-: Universal RDF Dataset Normalization Algorithm 2015. Used in pflow to canonicalize JSON-LD models before hashing, ensuring that semantically equivalent documents produce identical content identifiers regardless of key order or formatting (Chapter 16).
+: Universal RDF Dataset Normalization Algorithm 2015. Used in pflow to canonicalize JSON-LD models before hashing, so that, under the same `@context`, documents asserting the same RDF graph produce identical content identifiers regardless of key order or formatting (`SealJSONLD` in [`internal/seal/seal.go`](https://github.com/pflow-xyz/pflow-xyz/blob/main/internal/seal/seal.go); Chapter 16).
 
 **Weight**
 : The number of tokens consumed or produced by an arc when its transition fires. A weight of $k$ on an input arc means the transition requires at least $k$ tokens in the source place and removes $k$ tokens when firing. Default weight is 1.
 
 **Zero-knowledge proof**
-: A cryptographic protocol where a prover convinces a verifier that a statement is true without revealing any information beyond the truth of the statement. In pflow, ZK proofs verify that a Petri net transition was validly fired without revealing the marking (Chapter 12).
+: A cryptographic protocol where a prover convinces a verifier that a statement is true without revealing any information beyond the truth of the statement. In pflow, a proof shows that one named transition fired validly between two committed markings. The transition ID is public; the marking stays hidden only as far as the verifier cannot reconstruct it from public data (Chapter 12, "What ZK Doesn't Hide").
 
 ---
 
@@ -126,7 +126,7 @@ Terms coined in this book and the blog it grew from, rather than inherited from 
 **Core–observer boundary** — see the entry above; introduced in *Earned Compression*.
 
 **Declare, then derive**
-: The Metamodel working discipline. The model is declared once as data; analysis, the running application, proofs and, in this ecosystem's own deployment tooling, the infrastructure that serves it are computed from that document. Nothing downstream is hand-written to agree with the model, so nothing downstream can disagree with it (Chapter 21; *The Model Is the App*).
+: The Metamodel working discipline. The model is declared once as data; analysis, the running application, proofs and, in this ecosystem's own deployment tooling, the infrastructure that serves it are computed from that document. Nothing downstream is hand-written to agree with the model, so a downstream artifact that disagrees with it has gone stale or been edited by hand, and re-deriving it exposes the difference (see *Drift*; Chapter 21; *The Model Is the App*).
 
 **Drift**
 : Disagreement between a declared artifact and the world it describes — a manifest and a host, a vendored module and its upstream, two implementations of one net. Metamodel does not prevent drift; it makes drift detectable by comparing two values: a manifest against a host, a vendored file against its lockfile, a trace against the golden trace (Chapters 20, 21).
@@ -135,7 +135,7 @@ Terms coined in this book and the blog it grew from, rather than inherited from 
 : Two nets compose by sharing a place, the way two tiles meet because their edges agree. No glue code is written to make them fit; the shared place *is* the interface. Invariants carry across in a specific sense: if a P-invariant of each component agrees with the other on the shared places, together they define a P-invariant of the composite — the theorem `invariant_lift`, kernel-checked in Lean ([`proofs/PflowProofs/InvariantLift.lean`](https://github.com/pflow-xyz/book-pflow-xyz/blob/main/proofs/PflowProofs/InvariantLift.lean)). A component's invariant extended by zeros is not in general an invariant of the composite, and liveness does not carry across at all (Appendix E; Chapters 4, 21; *A Tiling for Computation*).
 
 **Golden trace**
-: A canonical firing sequence and its resulting markings, checked byte-for-byte against every implementation of a model. `pflow-polyglot/parity/trace.golden` holds thirty-nine programs in ten languages to one six-line trace. `make parity` runs the twenty Go, Rust, Python and JavaScript programs under Bazel and fails the build on any divergence; `make parity-native` checks the rest against the same file (Chapter 20).
+: A canonical firing sequence and its resulting markings, compared byte-for-byte with each implementation's output. `pflow-polyglot/parity/trace.golden` is one six-line trace for thirty-nine programs in ten languages. `make parity` runs the twenty Go, Rust, Python and JavaScript programs under Bazel and fails the build on any divergence; `make parity-native` checks the Ruby, Julia, Haskell, Bash and Lean programs against the same file, skipping any toolchain that is not installed. The two Solidity programs are in neither gate (`pflow-polyglot/README.md`; Chapter 20).
 
 **Internal DSL (as a failure mode)**
 : A model expressed as *code in a host language* that constructs a net — Rust macros, Python calls, Solidity structs. Five such ports of an early version of this work claimed to encode the same thing and could not prove it, because the specification existed only as five programs. The fix was to make the model a document (Chapter 21; book `ROADMAP.md` §Lineage).
@@ -150,7 +150,7 @@ Terms coined in this book and the blog it grew from, rather than inherited from 
 : Capitalised: a model for making models — the cross-cutting claim of this book. A small, fixed alphabet — place, transition, arc, guard — whose local composition rules generate an unbounded space of specific, checkable systems, because a model written in it is a value rather than a program. Lowercase `metamodel`, in code font, is a Go package implementing one instance of the vocabulary (Chapter 21; *A Tiling for Computation*).
 
 **Model is a value, not a program**
-: The single fact Metamodel rests on. A value can be hashed, diffed, composed and checked by a machine that has never seen any of our runtimes; a program can only be run. Content addressing (Chapter 16), dual implementation (Chapter 20) and the golden trace all depend on it.
+: The single fact Metamodel rests on. A value can be hashed, diffed, composed and checked by a machine that has never seen any of our runtimes; what a program does can, in general, only be found by running it. Content addressing (Chapter 16), dual implementation (Chapter 20) and the golden trace all depend on it.
 
 **Polyglot forms**
 : The five shapes an implementation of one model can take — *interpreter* (a generic engine reads the document), *lambda* (the net as a pure step function), *generated* (source emitted from the document), *contract* (on-chain), *proof* (the program checks its claims over every reachable marking before it prints anything; in Lean the check is a theorem the kernel accepts at compile time) — all held to one golden trace (*The Proof Form*; `pflow-polyglot/FORMS.md`).
