@@ -40,9 +40,9 @@ Neither hand is a flush or a straight, so both are compared card by card, and th
 
 ### Why Linear Weights Fail
 
-Naive linear weights (A=13, K=12, Q=11, ...) break dominance. A hand with {A, K, 5, 4, 3} scores $13 + 12 + 5 + 4 + 3 = 37$. A hand with {A, Q, J, T, 9} scores $13 + 11 + 10 + 9 + 8 = 51$. Linear scoring says the second hand wins; poker says the King beats the Queen, so the first hand wins.
+Naive linear weights (A=13, K=12, Q=11, down to 2=1) break dominance. A hand with {A, K, 5, 4, 3} scores $13 + 12 + 4 + 3 + 2 = 34$. A hand with {A, Q, J, T, 9} scores $13 + 11 + 10 + 9 + 8 = 51$. Linear scoring says the second hand wins; poker says the King beats the Queen, so the first hand wins.
 
-With rank powers the King's 2048 exceeds the 2047 that every lower rank together can contribute, so the first hand outscores any hand whose second-highest card is a Queen.
+Rank powers give $4096 + 2048 + 8 + 4 + 2 = 6158$ against $4096 + 1024 + 512 + 256 + 128 = 6016$. The King's 2048 exceeds the 2047 that every lower rank together can contribute, so the first hand outscores any hand whose second-highest card is a Queen.
 
 ## The Score Is the State
 
@@ -59,7 +59,7 @@ T = 2^8  = 256
 Sum = 2313
 ```
 
-Now write 2313 in binary: `100100001001`. Each bit position maps to a rank: the bits are the places of a thirteen-place rank vector and the 1s are its tokens. The binary representation of the score is that marking.
+Now write 2313 in binary, padded to thirteen digits: `0100100001001`. Each bit position maps to a rank, Ace in the leading position and Two in the last: the bits are the places of a thirteen-place rank vector and the 1s are its tokens. The binary representation of the score is that marking.
 
 A Petri net marking is a vector of token counts across places. When every place holds 0 or 1 tokens, that vector is a bit string, and a bit string is a binary number, so the accumulated score, the bit string and the marking carry exactly the same information.
 
@@ -90,7 +90,7 @@ Kicker scoring has no such structure. The `kicker_score` place just accumulates 
 
 That is bookkeeping bolted onto the side of the model, not modeling.
 
-A Petri net model should be self-describing: the structure of places, transitions, and arcs encodes the rules. If you need a decoder ring to read meaning out of a token count, you're not modeling the domain in the net — you're using the net as a storage medium for an external computation. The 52 extra transitions and 104 extra arcs (one input and one output per transition) added complexity without adding behavioral insight.
+A Petri net model should be self-describing: the structure of places, transitions, and arcs encodes the rules. If you need a decoder ring to read meaning out of a token count, the net has become a storage medium for an external computation. The 52 extra transitions and their arcs added complexity without adding behavior.
 
 The model that remains carries a smaller instance of the same pattern. Eight `score_*` transitions deposit weights 2 through 9 into a `hand_strength` place, and no arc leads out of it. By the test at the end of this chapter, `hand_strength` is bookkeeping too.
 
@@ -114,20 +114,20 @@ The encoding is valuable when the consumer is **external** and the Petri net is 
 
 ### When They Don't Belong
 
-The encoding fails when the net itself needs to read the result. If no transition depends on the accumulated score, no guard references it, and its meaning has to be decoded outside the net, then the encoding adds structural complexity (more transitions, more arcs) without adding behavioral capability. The net is no more powerful with the encoding than without it.
+The encoding fails when the net itself needs to read the result. If no transition depends on the accumulated score, no guard references it, and its meaning has to be decoded outside the net, then the encoding adds structural complexity (more transitions, more arcs) without adding behavioral capability.
 
 ## The General Principle
 
-The poker experiment reveals a design heuristic for Petri net modeling:
+The poker experiment suggests a design heuristic for Petri net modeling:
 
 **Ask: does any transition use this information?**
 
 If the answer is yes, because a place's token count enables, disables or influences a transition, then encode it in the net.
 
-If the answer is no, because the information is only consumed by external systems, then the net is the wrong place for the computation. Let the net generate the raw events and the external system do the interpretation, rather than adding 52 transitions and 104 arcs to encode something that a simple function could compute from the event stream.
+If the answer is no, because the information is only consumed by external systems, then the net is the wrong place for the computation. Let the net generate the raw events and the external system do the interpretation, rather than adding 52 transitions and their arcs to encode something that a simple function could compute from the event stream.
 
 This boundary applies beyond exponential weights. Any time you're tempted to add net structure that doesn't participate in the net's behavior, such as logging places, summary counters or encoding tricks, ask whether the information is being *modeled* or merely *stored*.
 
 The exponential encoding itself is useful: with one power of two per item it maps sets to integers, and with rank powers on distinct items it orders them lexicographically, so two results compare with one integer comparison. The mistake was embedding it in the net instead of applying it at the boundary where the net's output meets the world.
 
-There is, however, a way to derive poker hand rankings *from* net topology rather than bolting them on. The integer reduction technique in [Chapter 13: Topology-Driven Verification](ch13-topology-driven-verification.md) builds a hand analysis net in which each hand category gets a number of drain transitions that grows with its combinatorial frequency (log-scaled, from 1 drain for straight flush to 32 for high card). At ODE equilibrium each value place settles at $1/\text{drains}$, so rare hands hold more tokens; scaled so that high card = 1, straight flush = 32, four of a kind = 16, and so on down. That equilibrium is a closed-form consequence of the rate law, and the drain transitions are the mechanism that produces the ranking rather than bookkeeping beside it. See "Poker Hand Ranking: Integer Reduction" in Chapter 13 for the construction.
+There is, however, a way to put the poker hand ranking into the net's dynamics rather than bolting it on. The integer reduction technique in [Chapter 13: Topology-Driven Verification](ch13-topology-driven-verification.md) builds a hand analysis net in which each hand category gets a number of drain transitions, chosen by hand to rise with its combinatorial frequency (from 1 drain for straight flush to 32 for high card). At ODE equilibrium each value place settles at $1/\text{drains}$, so rare hands hold more tokens; scaled so that high card = 1, straight flush = 32, four of a kind = 16, and so on down. That equilibrium is a closed-form consequence of the rate law. The ranking goes in with the drain counts rather than being discovered, but the drain transitions are the mechanism that produces the values rather than bookkeeping beside them. The construction orders hand categories only: two high-card hands settle on the same value, so kicker comparison stays outside the net. See "Poker Hand Ranking: Integer Reduction" in Chapter 13 for the construction.
