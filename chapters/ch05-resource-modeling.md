@@ -22,7 +22,7 @@ Starting inventory: 1,000g beans, 5,000ml milk, 10,000ml water, 500 pumps of syr
 
 The questions are straightforward. Which ingredient runs out first? How many drinks can we serve before something depletes? If we increase latte production, what's the knock-on effect on bean consumption?
 
-You could answer these with a spreadsheet. But a spreadsheet gives you static arithmetic — multiply rates by time. A Petri net gives you *dynamics* — rates that change as resources deplete, multiple transitions competing for the same inputs, bottlenecks emerging from structure rather than being hard-coded.
+A spreadsheet answers them with static arithmetic, multiplying rates by time, and the linear estimates later in this chapter are exactly that arithmetic. The net adds dynamics: rates that change as resources deplete, and several transitions competing for the same inputs.
 
 ## Defining the Net
 
@@ -60,7 +60,7 @@ make_mocha
 
 ![Coffee shop Petri net — ingredients flow through recipes into tracking places](../figures/ch05-coffee-shop.svg)
 
-The bipartite structure is clean: ingredient places connect to transitions (input arcs), and transitions connect to tracking places (output arcs). No place connects to another place. No transition connects to another transition. The Petri net enforces this separation by construction.
+The structure is bipartite: ingredient places connect to transitions (input arcs), and transitions connect to tracking places (output arcs). No place connects to another place. No transition connects to another transition. The Petri net enforces this separation by construction.
 
 ### In Code
 
@@ -122,7 +122,7 @@ net.AddArc("make_latte", "milk_used", 180, false)
 net.AddArc("make_latte", "cups_used", 1, false)
 ```
 
-The arc weight from `milk` to `make_latte` is 180. This means `make_latte` is enabled only when $M(\text{milk}) \geq 180$. Each firing consumes 180 tokens from milk and produces 180 tokens in milk_used. The recipe *is* the arc structure — no separate configuration needed.
+The arc weight from `milk` to `make_latte` is 180. This means `make_latte` is enabled only when $M(\text{milk}) \geq 180$. Each firing consumes 180 tokens from milk and produces 180 tokens in milk_used. Inside the net, the recipe is the arc structure. The example also keeps a separate `Recipes` map in `inventory.go`, which `CanMakeDrink` reads instead of the arcs, so the same numbers exist twice there and have to be kept in step by hand.
 
 ### The Incidence Matrix
 
@@ -172,7 +172,7 @@ go-pflow's solver ([`solver/ode.go`](https://github.com/pflow-xyz/go-pflow/blob/
 
 <div>$$\frac{dM(\text{milk})}{dt} = -180\,v(\text{make\_latte}) - 120\,v(\text{make\_cappuccino}) - 150\,v(\text{make\_mocha})$$</div>
 
-The weight 18 on the bean arc does not become an 18th power; chemistry's mass-action law would raise each input to its stoichiometric coefficient, and go-pflow deliberately does not.
+The weight 18 on the bean arc does not become an 18th power. Chemistry's mass-action law would raise each input to its stoichiometric coefficient; go-pflow's solver, which its own comments call simplified mass action, puts the weight in the stoichiometry only.
 
 ### Scaling for Stability
 
@@ -213,7 +213,7 @@ Which stock goes first follows from how much of each stock a single drink takes.
 
 Cups are the smallest number, so intuition says they go first. They do not, because the weights decide it: a latte takes 180 tokens of milk and one token of cups.
 
-Under product kinetics no place reaches exactly zero. Each stock decays toward zero and every transition that reads it slows down with it, so "goes first" here means "falls fastest". The minute figures above are linear estimates. A committed ODE run that gives the same order, with its own clock, is not yet part of the example.
+Under product kinetics no place reaches exactly zero. Each stock decays toward zero and every transition that reads it slows down with it, so "goes first" here means "falls fastest". The minute figures above are linear estimates. A committed ODE run that gives the same order, with its own clock, is not yet part of the example: `TestSimulateInventoryDynamics` in [`coffeeshop_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/examples/coffeeshop/coffeeshop_test.go) runs the ODE but checks only that some beans were used.
 
 The conservation laws hold at every point of an ODE trajectory, because the solver adds $18v$ to `beans_used` for every $18v$ it takes from `coffee_beans`:
 
@@ -223,7 +223,7 @@ Checking this sum in the solver output is a quick test that the arcs were wired 
 
 ### Predicting Runout
 
-Rather than running the full ODE, we can estimate depletion times from the rates and arc weights, reading each rate constant as drinks per minute. This is a condensed version of `PredictRunout` in `simulation.go`, which also covers the iced latte, water and sugar:
+Rather than running the full ODE, we can estimate depletion times from the rates and arc weights, reading each rate constant as drinks per minute. This is a condensed version of `PredictRunout` in `simulation.go`, which also covers the iced latte and sugar packets:
 
 ```go
 consumptionRates := map[string]float64{
@@ -235,6 +235,11 @@ consumptionRates := map[string]float64{
     "milk": 180*rates["make_latte"] +
             120*rates["make_cappuccino"] +
             150*rates["make_mocha"],
+    "water": 30*(rates["make_espresso"] +
+                 rates["make_latte"] +
+                 rates["make_cappuccino"] +
+                 rates["make_mocha"]) +
+             200*rates["make_americano"],
     "cups": rates["make_espresso"] +
             rates["make_americano"] +
             rates["make_latte"] +
@@ -249,7 +254,7 @@ for ingredient, rate := range consumptionRates {
 }
 ```
 
-With the baseline rates the arithmetic can be checked by hand:
+With the baseline rates the arithmetic can be checked by hand. The table below was derived that way; the example's `TestPredictRunout` checks only that every runout time is positive, so no test pins these values:
 
 | Ingredient | Draw per minute | Stock | Linear runout |
 |---|---|---|---|
@@ -293,7 +298,7 @@ rates["make_latte"] = 2.4  // 144/hr
 ```
 Milk was already the first bottleneck; now it is a sharper one. Consumption rises to about 510ml per minute, so 5,000ml lasts roughly 10 minutes on the linear estimate. Beans deplete sooner too — every extra latte costs 18g, and the other drinks keep their own (unchanged) rates — down from about 25 minutes to about 15.
 
-Each scenario is the same net with different rate constants. The structure — places, arcs, weights — stays the same. Only the dynamics change.
+Each scenario is the same net with different rate constants; places, arcs and weights are unchanged.
 
 ### Sensitivity Analysis
 
@@ -373,11 +378,11 @@ The guard checks not just whether there's enough for *this* drink, but whether s
 
 ### A Caveat About the ODE
 
-Everything in this chapter so far ran on the continuous relaxation from Chapter 3. The net built here qualifies for it. Its places declare no capacities (the third argument to every `AddPlace` is `nil`), and it has no read arcs, inhibitors or guards, so none of the four constructs that Chapter 3's "When the Relaxation Doesn't Apply" lists is present.
+The analysis so far assumes the continuous relaxation from Chapter 3 applies, and the net built here qualifies for it. Its places declare no capacities (the third argument to every `AddPlace` is `nil`), and it has no read arcs, inhibitors or guards, so none of the four constructs that Chapter 3's "When the Relaxation Doesn't Apply" lists is present.
 
 Two small changes would remove it from that safe ground. Adding the precautionary guard above is one. Turning the `Max…` constants into real shelf capacities on the ingredient places is the other: `refill_beans` can then push `coffee_beans` against its bound, which is a **reachable** capacity rather than a bound that is declared and never approached. The café model in sim.pflow.xyz's catalog ([its JSON](https://sim.pflow.xyz/api/models/3ab9e15cde5c02b463c31354)), which the live demo at the end of this chapter runs, has exactly this shape: its pantry places declare a `capacity` (4,000 g of beans, for example) and its restock transitions add to them. go-pflow's `stochastic.Forecast`, the continuous engine in its `stochastic` package, checks `Model.Gating()` and refuses such a model, because mass action has no firing instant at which to ask "did this refill just hit the cap?" The discrete engine, `stochastic.Simulate`, fires one event at a time and can check the bound when it matters.
 
-Population size matters too, even without gating. A thousand grams of beans drawn down 18 at a time is the large-population case the ODE is built for, and there the average is the useful number. A shop that stocks four shots' worth of beans overnight and wants to know how often it runs dry before the morning delivery is asking a different question: how much a single night varies. That calls for `stochastic.Simulate`, run across enough realizations to see the spread, rather than one solver run. The net and the recipes stay the same, and only the question changes. As Chapter 3 notes, the two engines also handle an arc weight above 1 differently. The ODE takes $M(\text{beans})$ once into the flux of an 18g espresso, while the discrete engine's propensity counts the ways to draw 18 tokens, so they will not agree quantitatively on this recipe.
+Population size matters too, even without gating. A thousand grams of beans drawn down 18 at a time is the large-population case the ODE is built for, and there the average is the useful number. A shop that stocks four shots' worth of beans overnight and wants to know how often it runs dry before the morning delivery is asking a different question: how much a single night varies. That calls for `stochastic.Simulate`, run across enough realizations to see the spread, rather than one solver run. As Chapter 3 notes, the two engines also handle an arc weight above 1 differently. The ODE takes $M(\text{beans})$ once into the flux of an 18g espresso, while the discrete engine's propensity counts the ways to draw 18 tokens, so they will not agree quantitatively on this recipe.
 
 ## Full Day Simulation
 
@@ -428,10 +433,10 @@ The coffee shop model demonstrates a development pattern that recurs throughout 
 4. **Analyze bottlenecks** — read the depletion order and sensitivity rankings
 5. **Build the application** — use the verified model as the backend for operational decisions
 
-The net serves as the system's specification rather than as an approximation of it: the arc weights are the recipes and the conservation laws are the accounting rules. A change to the model is a change to the system it specifies.
+The aim is for the net to be the system's specification rather than an approximation of it: the arc weights are the recipes and the conservation laws are the accounting rules. The go-pflow example falls short of this in one place, the duplicate `Recipes` map noted under "Weighted Arcs as Recipes", which a change to an arc weight would leave stale.
 
-This is the ResourceNet pattern: tokens count fungible things, arc weights specify recipes, conservation laws guarantee integrity, and ODE simulation answers capacity questions for large, ungated stocks. The same pattern applies wherever a system counts things, such as inventory, budgets, resource schedules and supply chains.
+This is the ResourceNet pattern: tokens count fungible things, arc weights specify recipes, conservation laws check the accounting, and ODE simulation answers capacity questions for large, ungated stocks. The same pattern applies wherever a system counts things, such as inventory, budgets, resource schedules and supply chains.
 
 > **Try it live:** The [Café model](https://sim.pflow.xyz/whatif/?id=3ab9e15cde5c02b463c31354) at sim.pflow.xyz is a coffee shop with three drinks, an order-to-serve workflow with walkouts, staff as a shared resource, and capped pantry stock with restock transitions. It is a different net from the five-drink one in this chapter, so its numbers will differ.
 
-The next chapter applies a different pattern — the GameNet — to tic-tac-toe, where tokens encode board positions and turn order, and the hypothesis evaluator finds optimal moves.
+The next chapter applies a different pattern — the GameNet — to tic-tac-toe, where tokens encode board positions and turn order, and an ODE run from each candidate move scores it.
