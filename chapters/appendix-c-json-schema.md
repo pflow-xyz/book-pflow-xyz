@@ -2,7 +2,7 @@
 
 This appendix documents the JSON model format of go-pflow's `metamodel.Model` ([`metamodel/schema.go`](https://github.com/pflow-xyz/go-pflow/blob/v0.33.0/metamodel/schema.go), at v0.33.0). It is the format sim.pflow.xyz stores and runs (Chapter 18), and the one go-pflow's simulators and verifier read. The format defines what a valid Petri net model looks like: places, transitions and arcs, plus optional blocks for constraints, presentation intent (`view`, `views`), declared parameters and simulation.
 
-A JSON Schema file for the format, `petri-model.schema.json`, exists, but it was written when the format's main reader was an application generator, and it is not published. The Go types decide what is accepted, and where the schema file and the types disagree, this appendix follows the types and says so. The disagreements are transition `bindings` and `rate`, arc `type` and `kinetic`, and the schema file's application-generator blocks and form-style `views`, which go-pflow's types no longer have (see the end of [Top-Level Structure](#top-level-structure)). They were found by reading the Go types against the schema file.
+A JSON Schema file for the format, `petri-model.schema.json`, exists, but it was written when the format's main reader was an application generator, and it is not published. The Go types decide what is accepted, and where the schema file and the types disagree, this appendix follows the types and says so. The schema file lacks transition `rate`, arc `type` and `kinetic`, place `capacity`, and the top-level `view` and `parameters`; it gives transition `bindings` a different shape and a player's `maximizes` a different default; and it still carries application-generator blocks and a form-style `views`, which go-pflow's types no longer have (see the end of [Top-Level Structure](#top-level-structure)). These differences were found by reading the Go types against the schema file.
 
 The types are also strict where it matters: sim.pflow.xyz refuses a model that carries a key `metamodel.Model` does not define, naming each unknown key with its path and the key it most likely meant, rather than letting Go's decoder drop it silently.
 
@@ -69,7 +69,7 @@ A place holds state — either token counts (classic Petri net) or structured da
 | `initial_value` | No | any | — | Initial value for data places |
 | `exported` | No | boolean | `false` | Whether externally visible |
 | `persisted` | No | boolean | `false` | Whether persisted in event store |
-| `capacity` | No | integer | — | Upper bound on the token count, enforced after each firing by the discrete engine |
+| `capacity` | No | integer | `0` | Upper bound on the token count: the discrete firing rule disables a transition whose firing would leave the place above it. `0` means unbounded (in the Go type, not in the schema file) |
 
 ### Data Types
 
@@ -81,6 +81,7 @@ For `kind: "data"` places, the `type` field specifies the data type:
 | `int64` | 64-bit integer |
 | `float64` | 64-bit floating point |
 | `bool` | Boolean |
+| `time.Time` | Timestamp (listed in `schema.go`, not in the schema file) |
 | `map[string]int64` | Map from string keys to integer values |
 | `map[string]string` | Map from string keys to string values |
 | `map[string]map[string]int64` | Nested map (e.g., per-user balances by asset) |
@@ -118,7 +119,7 @@ The schema file is stale on `bindings`: it describes the field as an object mapp
 
 ### Guard Syntax
 
-Guards are boolean expressions evaluated against the current state. The table describes the guard DSL that sim.pflow.xyz evaluates (its `pkg/dsl`; sim's source is not public). Its lexer accepts strings in single or double quotes. go-pflow's `tokenmodel/guard` is a second implementation whose aggregate functions differ; Appendix B compares the two.
+Guards are boolean expressions evaluated against the current state. The table describes go-pflow's guard DSL, [`tokenmodel/guard`](https://github.com/pflow-xyz/go-pflow/tree/v0.34.0/tokenmodel/guard) at v0.34.0, which is the evaluator sim.pflow.xyz imports for guards and objectives. Its lexer accepts strings in single or double quotes. Appendix B gives the grammar.
 
 | Operator | Meaning | Example |
 |----------|---------|---------|
@@ -197,7 +198,7 @@ An invariant that must always hold.
 | `transitions` | No | array of strings | Transitions the screen may fire (empty means all) |
 | `links` | No | array of strings | IDs of the views reachable from this one |
 
-Nothing executes `view` or a view's `prompt`; they are read by whoever writes the application. The references are checkable, though: a view that names a place or transition the model does not have is an error. Both fields are part of the model's content hash, so the same net presented as a game and as a dashboard is two models. Chapter 18 shows where a published application built from them is served.
+Nothing executes `view` or a view's `prompt`; they are read by whoever writes the application. The references are checkable, though. go-pflow's types do not check them, but sim.pflow.xyz refuses to store a model in which a view names a place, transition or linked view that does not exist, repeats a view `id`, or gives a `role` outside the six listed above. Both fields are part of the model's content hash, so the same net presented as a game and as a dashboard is two models. Chapter 18 shows where a published application built from them is served.
 
 ## Simulation
 
@@ -229,25 +230,29 @@ ODE simulation configuration for AI move evaluation.
 }
 ```
 
+In the Go type a player's `maximizes` has no default: when the key is absent it decodes as `false` and the player minimizes, whereas the schema file declares a default of `true`. Write it out for every player.
+
 ### Objective Functions
 
-The `objective` field is a numeric guard-DSL expression, using arithmetic and the aggregate functions below. The same functions are available to guards and constraints. Except for `tokens`, each function takes a place-ID **prefix**: over token places it ranges over every place whose ID starts with the argument, and over a map data place of that name it ranges over the map's values. The definitions are `MakeAggregates` and `MakeAggregatesWithData` in sim.pflow.xyz's guard DSL (`pkg/dsl/guard.go`).
+The `objective` field is a numeric guard-DSL expression, using arithmetic and the aggregate functions below. The same functions are available to guards and constraints. Except for `tokens`, each function takes a place-ID **prefix** and ranges over every token place whose ID starts with the argument. The definitions are `MakeAggregates` in go-pflow's [`tokenmodel/guard/aggregate.go`](https://github.com/pflow-xyz/go-pflow/blob/v0.34.0/tokenmodel/guard/aggregate.go), which also accepts `min` and `max` as names for `minOf` and `maxOf`. The same file's `MakeAggregatesWithData` extends the four prefix functions to a map-valued data place, ranging over the map's values, but sim.pflow.xyz's evaluators bind the marking-only `MakeAggregates`.
 
 | Function | Description | Example |
 |----------|-------------|---------|
 | `tokens('place')` | Token count at exactly that place | `tokens('goal')` |
-| `sum('prefix')` | Total tokens across matching places, or the sum of a map's values | `sum('score')` |
-| `count('prefix')` | Matching places holding at least one token, or map entries with a positive value | `count('inventory')` |
-| `minOf('prefix')` | Smallest count among matching places, or smallest map value | `minOf('health')` |
-| `maxOf('prefix')` | Largest count among matching places, or largest map value | `maxOf('score')` |
+| `sum('prefix')` | Total tokens across matching places | `sum('score')` |
+| `count('prefix')` | Number of matching places holding at least one token | `count('inventory')` |
+| `minOf('prefix')` | Smallest count among matching places (0 if none match) | `minOf('health')` |
+| `maxOf('prefix')` | Largest count among matching places (0 if none match) | `maxOf('score')` |
 
 ### Solver Configuration
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `tspan` | `[number, number]` | `[0, 10]` | Simulation time span |
-| `dt` | number | `0.01` | Initial time step |
-| `rates` | object | all `1.0` | Per-transition firing rates |
+| `tspan` | `[number, number]` | `[0, 10]` | Time-span hint |
+| `dt` | number | `0.01` | Time-step hint |
+| `rates` | object | each transition's `rate`, else `1.0` | Per-transition firing rates |
+
+The `tspan` and `dt` defaults are the schema file's. go-pflow's `SolverConfig` documents both fields as hints for clients that read them. Its `stochastic` package uses `rates` but takes the horizon and sample grid from its own options, not from these fields.
 
 ## Minimal Example
 
