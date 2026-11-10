@@ -4,7 +4,7 @@
 
 The previous chapters built models, analyzed them, and even proved their transitions in zero knowledge. But how do those models travel between systems? How does a Petri net created in the browser editor reach the Go solver? How does a model saved before the schema grew remain valid after it?
 
-The answer is JSON-LD — a serialization format that is purely declarative and monotonically expansive. These two properties, more than any feature list, make it reliable infrastructure for composable systems. This chapter explains why, using the three vocabularies the pflow ecosystem uses.
+The answer is JSON-LD — a serialization format that is purely declarative and monotonically expansive. This chapter argues that these two properties are what let independent tools share one file, using the three vocabularies the pflow ecosystem uses.
 
 ## Three Contexts, One Discipline
 
@@ -55,7 +55,7 @@ The pflow ecosystem uses three JSON-LD vocabularies. Each serves a different pur
 }
 ```
 
-Each snippet is self-describing. Each links to a vocabulary that defines its terms. And none of them contain instructions — they are pure assertions.
+Each snippet names, in its `@context`, the vocabulary that defines its terms, and none of them contains instructions: they are assertions.
 
 ## Purely Declarative
 
@@ -68,7 +68,7 @@ This matters for interoperability. The same `.jsonld` Petri net file is read by 
 
 They are independent readers. They do not coordinate at runtime; the file is assertions, not a protocol. What keeps the readers in agreement is a shared contract rather than a conversation: go-pflow pins its reading of the editor format to the goldens in [`parser/testdata/editor-shape/`](https://github.com/pflow-xyz/go-pflow/tree/main/parser/testdata/editor-shape) ([`editor_shape_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/parser/editor_shape_test.go)), and other readers replay the same inputs. Neither runs a JSON-LD processor on the file. Each reads the fields it understands and ignores the rest: the Go simulator doesn't care about `x`/`y` layout coordinates or `parents` lineage. The RDF reading of the file matters at one point, sealing, described below.
 
-Declarative data degrades gracefully by design. Contrast this with imperative serialization — formats where the order of fields implies a processing sequence, or where consumers must execute embedded logic to reconstruct the data. JSON-LD sidesteps all of that. The `@context` fixes what each term means; each consumer decides what to do with it.
+Declarative data lets a reader skip what it does not use. In a format where the order of fields implies a processing sequence, or where consumers must execute embedded logic to reconstruct the data, skipping a step changes the result. Here the `@context` fixes what each term means, and each consumer decides what to do with it.
 
 ## Monotonic Expansion
 
@@ -82,9 +82,9 @@ The pflow.xyz context, served at `https://pflow.xyz/schema` from [`public/schema
 
 Each change added terms. The file's git history shows no term removed or redefined; the only deleted lines, on 2026-02-14, were comments that had made the file invalid JSON. A model that uses only the October 2025 terms is still valid under the current context, and the reason is structural: the context only grows.
 
-This is **monotonic expansion**: new facts can be added, but existing facts are never retracted. It's the same discipline that makes append-only logs reliable and RDF graphs composable — and the same property the history places of Chapter 6 have. A schema that only grows is a past-tense object, like an event log or a write-once place: once absorbed, a fact never changes. In a monotonic system, learning more never invalidates what we already know.
+This is **monotonic expansion**: new facts can be added, but existing facts are never retracted. It's the same discipline that makes append-only logs reliable and RDF graphs composable — and the same property the history places of Chapter 6 have. A schema that only grows is a past-tense object, like an event log or a write-once place: once absorbed, a fact never changes.
 
-Practically, adding terms cannot break an old model. A net saved before `CompositeNet` existed still loads in an editor that understands composition; the editor sees a net that composes with nothing — a valid state. The additions needed no migration scripts, no version negotiation, no "this file was created with an older version" warnings. What *can* break an old model is a change to a reader, and that is what the editor-shape goldens above guard against. Backwards compatibility comes from the structure of the schema, not from a policy.
+Practically, adding terms cannot break an old model. A net saved before `CompositeNet` existed still loads in an editor that understands composition; the editor sees a net that composes with nothing — a valid state. The additions needed no migration scripts, no version negotiation, no "this file was created with an older version" warnings. What *can* break an old model is a change to a reader, and that is what the editor-shape goldens above guard against. The schema's structure keeps old models meaningful; the goldens keep the readers reading them the same way.
 
 ## Content Addressing via Canonicalization
 
@@ -111,9 +111,9 @@ The resulting CID becomes the model's `@id` — a self-certifying identifier. Th
 
 What counts as content is decided by the context. `x`, `y` and `parents` are terms in the sealing context, so layout and lineage are assertions too: moving a place on the canvas changes the CID, and so does adding a parent or reversing the order of two. Reordering keys or whitespace does not.
 
-These properties are tested in pflow-xyz, not just argued. [`cid_consistency_test.go`](https://github.com/pflow-xyz/pflow-xyz/blob/main/internal/seal/cid_consistency_test.go) seals one net with its keys in two different orders, and again after re-marshaling through Go's `encoding/json`, and requires a single CID. In [`parity_test.go`](https://github.com/pflow-xyz/pflow-xyz/blob/main/internal/seal/parity_test.go), `TestSealIgnoresTopLevelID` requires that adding or changing `@id` leaves the CID alone, and `TestParentsLineageContract` requires that `parents`, and their order, change it. The layout half of the previous paragraph follows from `x` and `y` being in the context; no test pins it. Finally, the browser's sealer ([`public/seal-cid.mjs`](https://github.com/pflow-xyz/pflow-xyz/blob/main/public/seal-cid.mjs)) and the Go sealer must both reproduce the CIDs recorded for five fixtures in [`parity/golden.json`](https://github.com/pflow-xyz/pflow-xyz/blob/main/parity/golden.json); the coffee-shop fixture, for instance, seals to `z4EBG9jDsuUdvVN4bUXRHxoDG3p274FfhcJd8BiruRcE1jLCHi8` in both languages. `make test-parity` runs both sides. We have not re-run these tests for this chapter.
+These properties are tested in pflow-xyz, not just argued. [`cid_consistency_test.go`](https://github.com/pflow-xyz/pflow-xyz/blob/main/internal/seal/cid_consistency_test.go) seals one net with its keys in two different orders, and again after re-marshaling through Go's `encoding/json`, and requires a single CID. In [`parity_test.go`](https://github.com/pflow-xyz/pflow-xyz/blob/main/internal/seal/parity_test.go), `TestSealIgnoresTopLevelID` requires that adding or changing `@id` leaves the CID alone, and `TestParentsLineageContract` requires that `parents`, and their order, change it. The layout half of the previous paragraph follows from `x` and `y` being in the context; no test pins it. Finally, the browser's sealer ([`public/seal-cid.mjs`](https://github.com/pflow-xyz/pflow-xyz/blob/main/public/seal-cid.mjs)) and the Go sealer must both reproduce the CIDs recorded for six fixtures in [`parity/golden.json`](https://github.com/pflow-xyz/pflow-xyz/blob/main/parity/golden.json); the coffee-shop fixture, for instance, seals to `z4EBG9jDsuUdvVN4bUXRHxoDG3p274FfhcJd8BiruRcE1jLCHi8` in both languages. `make test-parity` runs both sides. We have not re-run these tests for this chapter.
 
-This property is what makes seals trustworthy: a seal is a commitment to a specific graph, and any party can verify it by re-canonicalizing and re-hashing.
+This is what makes a seal checkable: a seal is a commitment to a specific graph, and any party can verify it by re-canonicalizing and re-hashing.
 
 ### The Pipeline
 
@@ -127,7 +127,7 @@ JSON-LD document
 Content-addressed identifier
 ```
 
-Every step is deterministic. Two parties processing the same assertions — even serialized differently — arrive at the same CID, which is what the JS/Go golden check above demonstrates on five fixtures.
+Every step is deterministic. Two parties processing the same assertions — even serialized differently — arrive at the same CID, which is what the JS/Go golden check above demonstrates on six fixtures.
 
 ## The Categorical View
 
@@ -162,7 +162,7 @@ A model created in the pflow.xyz visual editor (JavaScript) can be:
 2. Loaded by go-pflow for ODE simulation and analysis
 3. Converted by go-pflow's `parser.ModelFromJSON` into the `metamodel.Model` that sim.pflow.xyz stores and runs (Chapter 18)
 4. Sealed with a content-addressed CID for immutable reference
-5. Shared via URL, embedded in a page as a `<petri-view>` element, or stored under its CID (the top-level example nets in pflow-xyz's `examples/` directory are stored under file names that are their CIDs)
+5. Shared via URL, embedded in a page as a `<petri-view>` element, or stored under its CID (the three example nets in pflow-xyz's [`examples/`](https://github.com/pflow-xyz/pflow-xyz/tree/main/examples) directory are stored under file names that are their CIDs, the same values `parity/golden.json` records for the coffee-shop, net-a and net-b fixtures)
 
 Nobody converts the file between steps. Each tool converts it into its own internal form on read, but the file that travels is the same file, with the same assertions, consumed by different tools for different purposes.
 
@@ -187,14 +187,14 @@ A pflow.xyz file can use schema.org terms without listing a second context. The 
 }
 ```
 
-`PetriNet` is defined by the pflow.xyz context; `author`, `Person` and `name` are not, and fall through `@vocab` to schema.org. (The context compiled into the two sealers sets `@vocab` to `https://pflow.xyz/schema#` instead, so inside a CID's preimage these terms land in the pflow namespace. Identity is unaffected, since every sealer uses the same fixed context, but the served and sealing contexts do not agree on these terms.)
+`PetriNet` is defined by the pflow.xyz context; `author`, `Person` and `name` are not, and fall through `@vocab` to schema.org. (The context compiled into the two sealers sets `@vocab` to `https://pflow.xyz/schema#` instead, so inside a CID's preimage these terms land in the pflow namespace. Identity is unaffected, since every sealer uses the same fixed context, but the served and sealing contexts do not agree on these terms. Nor do they agree on `transitions`, `arcs`, `source` and `target`: the sealing context defines them in the pflow namespace, while the served context leaves them to `@vocab` as well.)
 
 Listing both contexts explicitly, as `["https://pflow.xyz/schema", "https://schema.org"]`, would be a mistake. schema.org's context defines `Place`; as the later definition it would win, and every place in the net would expand to schema.org's geographic `Place`. Order matters when contexts are combined, which is the ordered override described in the categorical section above.
 
 ## Infrastructure, Not a Feature
 
-JSON-LD serves the pflow ecosystem as infrastructure, and it works because it does less: it asserts, it expands, it canonicalizes. Everything else is the consumer's problem.
+JSON-LD works as infrastructure for the pflow ecosystem because its job is narrow. The file states assertions and the context fixes what its terms mean; what to do with them is left to each consumer.
 
-That division of responsibility is what lets the tools compose. The model format doesn't know about editors, solvers, code generators, or blockchain bridges. It describes a Petri net — places, transitions, arcs — and each consumer takes what it needs.
+That division is what lets independent tools share one file. The model format does not know about editors, solvers or code generators; it describes a Petri net, and each consumer reads the places, transitions and arcs it needs.
 
 The book's argument about Petri nets — a small set of primitives that combine to model a wide range of systems — applies to their serialization as well. Three JSON-LD keywords (`@context`, `@type`, `@id`) carry the self-description, the typing and the content address of a pflow model; the complexity lives in the applications.
