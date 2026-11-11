@@ -12,7 +12,7 @@ For small nets this works fine. But as systems grow, three problems compound:
 
 **Event volume scales with population.** A hospital ER with 10 patients might generate 50 events (arrivals, triages, consultations, discharges). The same ER with 10,000 patients generates 500,000 events. Each event must be processed sequentially — check which transitions are enabled, choose one, fire it, update the marking, record the event. The cost scales linearly with the number of tokens moving through the system.
 
-**State space explodes.** The reachability set $R(M_0)$ grows combinatorially with the number of tokens and places. A net with 10 places and 100 total tokens can have astronomical numbers of reachable markings. Enumerating them becomes infeasible long before the model is "large" by real-world standards.
+**State space explodes.** The reachability set $R(M_0)$ grows combinatorially with the number of tokens and places. If a net's transitions can spread 100 tokens over 10 places in every possible way, there are $\binom{109}{9} \approx 4.3 \times 10^{12}$ reachable markings (a stars-and-bars count, derived by hand rather than enumerated). Enumerating them becomes infeasible long before the model is "large" by real-world standards.
 
 **Individual identity is usually irrelevant.** Discrete simulation tracks which specific token moved where. But for capacity planning, bottleneck analysis, or throughput estimation, you don't care about Patient 47. You care about how many patients are waiting, on average, and how fast the queue drains. Tracking individuals is expensive bookkeeping for information you don't need.
 
@@ -91,7 +91,7 @@ Because the system is linear, it has a closed form, which we derived by hand rat
 
 $$M(p_1, t) = 10\, e^{-0.2t}, \qquad M(p_2, t) = \frac{10\, k_1}{k_2 - k_1}\left(e^{-k_1 t} - e^{-k_2 t}\right) = 20\left(e^{-0.1t} - e^{-0.2t}\right)$$
 
-and $M(p_3, t) = 10 - M(p_1, t) - M(p_2, t)$. Tokens drain from $p_1$ exponentially; $p_2$ fills, peaks at $t = \ln(k_1/k_2)/(k_1 - k_2) = \ln 2 / 0.1 \approx 6.9$ with exactly 5 tokens, then drains into $p_3$, which approaches 10. The figure plots these formulas. go-pflow checks its own solver against the same kind of closed form: `TestConsistencyLinearChain` in [`stochastic/consistency_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/stochastic/consistency_test.go) runs a three-place chain (100 tokens, rates 1 and 0.5) and requires the ODE to stay within 0.1 token of $100e^{-t}$, $200(e^{-t/2} - e^{-t})$ and their complement.
+and $M(p_3, t) = 10 - M(p_1, t) - M(p_2, t)$. Tokens drain from $p_1$ exponentially; $p_2$ fills, peaks at $t = \ln(k_1/k_2)/(k_1 - k_2) = \ln 2 / 0.1 \approx 6.9$ with exactly 5 tokens, then drains into $p_3$, which approaches 10. The figure plots these formulas. go-pflow checks its own solver against the same kind of closed form: `TestConsistencyLinearChain` in [`stochastic/consistency_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/stochastic/consistency_test.go) runs a three-place chain (100 tokens, rates 1 and 0.5) and requires a tight-tolerance ODE solve (`AccurateOptions` with `Dtmax` lowered to 0.01) to stay within 0.1 token of $100e^{-t}$, $200(e^{-t/2} - e^{-t})$ and their complement, and the discrete engine's mean over 400 runs to stay within 1 token.
 
 The conservation law still holds — $M(p_1) + M(p_2) + M(p_3) = 10$ for all time — because $[1, 1, 1] \cdot C = [0, 0]$. Tokens aren't created or destroyed, just redistributed continuously.
 
@@ -109,7 +109,7 @@ What you lose is individual identity. Token 47 no longer exists. You have 4.3 to
 
 ## Numerical Integration
 
-Most ODE systems can't be solved analytically. Even the three-place chain above has a closed-form solution only because it's linear. Add a synchronization transition (two inputs) and the system becomes nonlinear — the rate depends on the product of two state variables. Analytical solutions vanish.
+Most ODE systems can't be solved analytically. Even the three-place chain above has a closed-form solution only because it's linear. Add a synchronization transition (two inputs) and the system becomes nonlinear — the rate depends on the product of two state variables, and closed forms are generally no longer available.
 
 Instead, we solve numerically: start at the initial marking, compute the derivatives, step forward in time, repeat.
 
@@ -136,11 +136,11 @@ The default solver in go-pflow is **Tsit5** — a 5th-order Runge-Kutta method p
 This error estimate enables **adaptive timestep control**. In go-pflow's `Solve` ([`solver/ode.go`](https://github.com/pflow-xyz/go-pflow/blob/main/solver/ode.go)) each step goes like this:
 
 1. Compute both the 5th-order and 4th-order solutions
-2. Scale each place's error estimate by $\text{Abstol} + \text{Reltol} \cdot |M(p)|$ and take the largest: $\varepsilon = \max_p |M_5(p) - M_4(p)| \,/\, (\text{Abstol} + \text{Reltol} \cdot |M(p)|)$
-3. If $\varepsilon \le 1$: accept the step and grow the next one by $0.9\,\varepsilon^{-1/6}$, at most fivefold and never past `Dtmax`
+2. Scale each place's error estimate by $s_p = \text{Abstol} + \text{Reltol} \cdot \max(|M_n(p)|, |M_{n+1}(p)|)$, the larger of its values before and after the step, and take the largest: $\varepsilon = \max_p |M_5(p) - M_4(p)| \,/\, s_p$
+3. If $\varepsilon \le 1$: accept the step and grow the next one by $0.9\,\varepsilon^{-1/6}$, at most fivefold and never past `Dtmax` (0.1 under `DefaultOptions`)
 4. If $\varepsilon > 1$: reject the step and retry with a smaller one (a step already at `Dtmin` is accepted regardless)
 
-The solver takes large steps where the solution is smooth and small steps where it changes rapidly. You specify the error tolerance, not the timestep, so one solver covers both a slow-draining reservoir and fast kinetics without hand-tuning the step.
+The solver takes large steps where the solution is smooth and small steps where it changes rapidly. You specify the error tolerance, not the timestep, so one solver covers both a slow-draining reservoir and fast kinetics without hand-tuning the step, provided the system is not stiff. Tsit5 is an explicit method, so time scales that differ by orders of magnitude force it into very small steps; for that case [`solver/implicit.go`](https://github.com/pflow-xyz/go-pflow/blob/main/solver/implicit.go) provides the implicit methods `ImplicitEuler` and `TRBDF2`, which default to `StiffOptions`.
 
 In code, the three-place chain above:
 
@@ -167,11 +167,11 @@ go-pflow provides several Runge-Kutta methods for different use cases:
 
 | Solver | Order | Use Case |
 |--------|-------|----------|
-| `Tsit5()` | 5(4) | Default — best balance of speed and accuracy |
+| `Tsit5()` | 5(4) | Default — Tsitouras's 5(4) pair |
 | `RK45()` | 5(4) | Dormand-Prince — the classic MATLAB `ode45` |
 | `BS32()` | 3(2) | Bogacki-Shampine — faster per step, less accurate |
 | `RK4()` | 4 | Classic fixed-step — no adaptive control |
-| `Euler()` | 1 | Forward Euler — educational only |
+| `Euler()` | 1 | Forward Euler — teaching and debugging |
 
 For most Petri net simulations, Tsit5 is the right choice. On a simple decay, go-pflow's `TestSolverMethodsProduceSimilarResults` ([`solver/solver_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/solver/solver_test.go)) requires Tsit5, RK45 and BS32 to agree within 5%. `RK4()` and `Euler()` carry no error estimator, so under adaptive options they run at a fixed step of `Dt`. The lower-order methods exist for comparison and for systems where function evaluations are extremely expensive.
 
@@ -183,8 +183,10 @@ Rather than manually tuning tolerances, go-pflow provides presets for common sce
 solver.DefaultOptions()    // General purpose (Dt=0.01, Reltol=1e-3)
 solver.FastOptions()       // Game AI, interactive (Dt=0.1, Reltol=1e-2)
 solver.AccurateOptions()   // Research, publishing (Dt=0.001, Reltol=1e-6)
-solver.JSParityOptions()   // Match pflow.xyz JS solver exactly
+solver.JSParityOptions()   // As Default, but Dtmax=1.0; mirrored in pflow.xyz's petri-learn.js
 ```
+
+`DefaultOptions()` has the same values as the defaults of pflow.xyz's browser solver ([`public/petri-solver.js`](https://github.com/pflow-xyz/pflow-xyz/blob/main/public/petri-solver.js)), so it is the preset that reproduces an editor plot. `JSParityOptions()` differs from it only in a larger `Dtmax` and matches `jsParityOptions()` in [`public/petri-learn.js`](https://github.com/pflow-xyz/pflow-xyz/blob/main/public/petri-learn.js); [Appendix A: Solver Parameter Reference](appendix-a-solver-reference.md) tabulates every preset.
 
 The `FastOptions` preset trades precision for speed, for game AI where you need many evaluations per second; its doc comment in `solver/ode.go` estimates a tenfold speedup, and `TestFastOptionsSpeed` checks only that it takes fewer steps than `AccurateOptions` on an SIR net. `AccurateOptions` tightens tolerances for publication-quality results. `ode.go` defines further presets (`StiffOptions`, `EpidemicOptions`, `WorkflowOptions` and others).
 
@@ -247,13 +249,13 @@ solver.FastEquilibriumOptions()     // Tolerance 1e-4, 3 checks, every 5 steps
 solver.StrictEquilibriumOptions()   // Tolerance 1e-9, 10 checks, every step
 ```
 
-`TestSolveUntilEquilibrium` in `solver/solver_test.go` exercises this on a single decaying place and requires equilibrium to be declared before the end of the time span.
+`TestSolveUntilEquilibrium` in `solver/solver_test.go` exercises this on a single decaying place, with its own looser settings (tolerance $10^{-4}$, 3 checks every 5 steps), and requires equilibrium to be declared before the end of the time span.
 
 ## When the Relaxation Doesn't Apply
 
 Everything above rests on one assumption: that a transition's firing rate is a smooth function of the current marking. That assumption is false for four common modeling constructs.
 
-**Read arcs, inhibitor arcs, reachable capacities, and guards all depend on a firing instant** — a specific moment where the marking is checked against a threshold. Mass action has no such moment. It treats every input as a continuous flow, all the time, so there is no point at which it can ask "is this inhibitor's threshold exceeded right now?" or "did this firing just hit the capacity bound?" go-pflow's `stochastic.Forecast`, the continuous engine in its `stochastic` package, calls `Model.Gating()` ([`metamodel/firing.go`](https://github.com/pflow-xyz/go-pflow/blob/main/metamodel/firing.go)) first. `Gating()` names these four, plus two rarer constructs (non-kinetic input arcs and fixed delays), and a capacity counts only if some transition can raise its place. When the list is not empty, `Forecast` refuses rather than guess ([`stochastic/stochastic.go`](https://github.com/pflow-xyz/go-pflow/blob/main/stochastic/stochastic.go)):
+Read arcs, inhibitor arcs, reachable capacities, and guards all depend on a firing instant — a specific moment where the marking is checked against a threshold. Mass action has no such moment. It treats every input as a continuous flow, all the time, so there is no point at which it can ask "is this inhibitor's threshold exceeded right now?" or "did this firing just hit the capacity bound?" go-pflow's `stochastic.Forecast`, the continuous engine in its `stochastic` package, calls `Model.Gating()` ([`metamodel/firing.go`](https://github.com/pflow-xyz/go-pflow/blob/main/metamodel/firing.go)) first. `Gating()` names these four, plus three rarer constructs (non-kinetic input arcs, fixed delays, and multi-stage durations that have not been expanded into a chain), and a capacity counts only if some transition can raise its place. When the list is not empty, `Forecast` refuses rather than guess; it refuses a model with rate schedules the same way ([`stochastic/stochastic.go`](https://github.com/pflow-xyz/go-pflow/blob/main/stochastic/stochastic.go)):
 
 ```go
 result, err := stochastic.Forecast(model, marking, stochastic.Options{})
@@ -264,11 +266,11 @@ result, err := stochastic.Forecast(model, marking, stochastic.Options{})
 
 The refusal is deliberate: the ODE has no instant at which to ask the question. A model with a capacity that the net's own transitions can actually reach needs the discrete engine, `stochastic.Simulate`, which fires one event at a time and can check the bound at the instant it matters. Chapter 5 shows both sides of this line. The go-pflow coffee shop net built there declares no capacities and no guards, so the relaxation applies to it; the café model in sim.pflow.xyz's catalog, which declares pantry capacities that its restock transitions can reach, is the kind `Forecast` refuses (Chapter 18 shows the refusal). Chapter 5's "A Caveat About the ODE" works through the difference.
 
-**Below the four gating constructs, a second and separate question is population size.** On an ungated net whose input arcs all have weight 1, the discrete engine's *average* over many runs follows the ODE: exactly when every transition has a single input (the chain), and approximately when a transition multiplies two inputs together, with the gap shrinking as the population grows. go-pflow's [`stochastic/consistency_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/stochastic/consistency_test.go) checks both: the linear chain against its closed form, and an SIR epidemic at 1,000 and 10,000 individuals, where the relative gap must fall below 2% and shrink with size. A thousand customers served one at a time behave like a smooth curve; the discreteness averages out. Three baristas and a milk supply that runs dry five orders into a rush are a different regime. There, the *variance* is the answer you're after — how often does the shop actually run dry, not what it does on average — and the ODE has no ran-dry event to count. The rule of thumb: large populations and you want the average, use the ODE; small counts and you want the distribution of outcomes, or "how often does X happen," run the discrete engine and look at the spread across realizations.
+Below the gating constructs, a second and separate question is population size. On an ungated net whose input arcs all have weight 1, the discrete engine's *average* over many runs follows the ODE: exactly when every transition has a single input (the chain), and approximately when a transition multiplies two inputs together, with the gap shrinking as the population grows. go-pflow's [`stochastic/consistency_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/stochastic/consistency_test.go) checks both: the linear chain against its closed form, and an SIR epidemic at 1,000 and 10,000 individuals, where the gap between the discrete mean and the ODE must stay within 5% of the population at 1,000, within 2% at 10,000, and be smaller at the larger size. A thousand customers served one at a time behave like a smooth curve; the discreteness averages out. Three baristas and a milk supply that runs dry five orders into a rush are a different regime. There, the *variance* is the answer you're after — how often does the shop actually run dry, not what it does on average — and the ODE has no ran-dry event to count. The rule of thumb: large populations and you want the average, use the ODE; small counts and you want the distribution of outcomes, or "how often does X happen," run the discrete engine and look at the spread across realizations.
 
-**An arc weight above 1 is not the same law, more or less precisely computed, in the two engines.** The ODE's mass-action rate multiplies the input place's concentration into the flux once per input arc, no matter the weight — a transition that consumes 20g of beans per firing still contributes $M(\text{beans})$ to the rate, not $M(\text{beans})^{20}$ or any combinatorial term in 20. The discrete engine's propensity, by contrast, uses the full combinatorial count, $k \cdot \prod_p \binom{M(p)}{w_p}$ — the number of distinct ways to draw 20 indistinguishable tokens from however many are on hand, which is the stochastic (Gillespie) form of chemical mass action (the package comment at the top of [`stochastic/stochastic.go`](https://github.com/pflow-xyz/go-pflow/blob/main/stochastic/stochastic.go) states both laws). The two conventions coincide exactly at weight 1, where there's only one way to draw one token, and diverge for any recipe that consumes more than a single unit of an ingredient per firing. Neither is wrong — "what does the concentration do on average" and "how many indistinguishable tokens can I draw" are different questions once more than one token is consumed per firing — but don't expect a weight-20 arc to produce quantitatively matching numbers from both engines, even on a net the ODE doesn't refuse. go-pflow pins this disagreement in a test: on the dimerisation $2A \to B$ with 200 tokens of $A$, `TestConsistencyPreconditionIsHonest` requires the discrete mean and the ODE to differ by more than one token.
+An arc weight above 1 gives the two engines different rate laws, not one law computed with different precision. The ODE's mass-action rate multiplies the input place's concentration into the flux once per input arc, no matter the weight — a transition that consumes 20g of beans per firing still contributes $M(\text{beans})$ to the rate, not $M(\text{beans})^{20}$ or any combinatorial term in 20. The discrete engine's propensity, by contrast, uses the full combinatorial count, $k \cdot \prod_p \binom{M(p)}{w_p}$ — the number of distinct ways to draw 20 indistinguishable tokens from however many are on hand, which is the stochastic (Gillespie) form of chemical mass action (the package comment at the top of [`stochastic/stochastic.go`](https://github.com/pflow-xyz/go-pflow/blob/main/stochastic/stochastic.go) states both laws). The two conventions coincide exactly at weight 1, where there's only one way to draw one token, and diverge for any recipe that consumes more than a single unit of an ingredient per firing. Neither is wrong — "what does the concentration do on average" and "how many indistinguishable tokens can I draw" are different questions once more than one token is consumed per firing — but don't expect a weight-20 arc to produce quantitatively matching numbers from both engines, even on a net the ODE doesn't refuse. go-pflow pins this disagreement in a test: on the dimerisation $2A \to B$ with 200 tokens of $A$, `TestConsistencyPreconditionIsHonest` requires the discrete mean and the ODE to differ by more than one token.
 
-**A third engine sits between the two.** The chemical Langevin equation — a stochastic differential equation built from the same propensities the discrete engine uses, but with continuous state — gives *intrinsic* firing noise: a variance band, cheap enough to sweep like the ODE because its cost does not grow with the population. go-pflow implements it as `stochastic.SimulateSDE` ([`stochastic/sde.go`](https://github.com/pflow-xyz/go-pflow/blob/main/stochastic/sde.go)), and like `Forecast` it refuses a gated net. That is a different thing from layering exogenous volatility, such as geometric Brownian motion, onto chosen "volatile" places on top of the ODE — the right tool for a DeFi price feed or an external demand shock, but noise imposed from outside the model rather than noise the net's own structure produces. Use the SDE path when the population is too large for the discrete engine's per-firing cost to be worth paying, but small enough that the ODE's zero-variance answer would be misleading, and the model has no gating for the ODE to refuse over in the first place.
+A third engine sits between the two. The chemical Langevin equation — a stochastic differential equation built from the same propensities the discrete engine uses, but with continuous state — gives *intrinsic* firing noise: a variance band, cheap enough to sweep like the ODE because its cost does not grow with the population. go-pflow implements it as `stochastic.SimulateSDE` ([`stochastic/sde.go`](https://github.com/pflow-xyz/go-pflow/blob/main/stochastic/sde.go)), and like `Forecast` it refuses a gated net. That is a different thing from layering exogenous volatility, such as geometric Brownian motion, onto chosen "volatile" places on top of the ODE — the right tool for a DeFi price feed or an external demand shock, but noise imposed from outside the model rather than noise the net's own structure produces. Use the SDE path when the population is too large for the discrete engine's per-firing cost to be worth paying, but small enough that the ODE's zero-variance answer would be misleading, and the model has no gating for the ODE to refuse over in the first place.
 
 ### Choosing an Engine
 
@@ -280,8 +282,6 @@ The refusal is deliberate: the ODE has no instant at which to ask the question. 
 | any input arc with weight > 1 | expect the two engines to disagree quantitatively — decide which rate law your model actually means |
 | exogenous continuous uncertainty (price, demand) on top of the ODE | the volatility layer, not the relaxation itself |
 | intrinsic firing noise, cheap enough to sweep | the chemical Langevin SDE |
-
-Discrete, stochastic and continuous engines answer three different questions about the same net, and a model that answers one honestly may have nothing to say about another.
 
 ## The Full Picture
 
