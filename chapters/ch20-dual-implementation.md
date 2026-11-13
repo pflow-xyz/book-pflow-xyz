@@ -2,103 +2,101 @@
 
 **Learning objective**: Achieve specification parity between Go and JavaScript implementations.
 
-Every tool in the pflow ecosystem processes the same JSON-LD models. The Go library runs ODE simulations on the server. The JavaScript solver runs them in the browser. If they produce different results from the same input, the specification is ambiguous — and any downstream analysis, proof, or decision based on those results is suspect.
+Every tool in the pflow ecosystem processes the same JSON-LD models. The Go library runs ODE simulations on the server. The JavaScript solver runs them in the browser. If they produce different results from the same input, either one of them has a bug or the specification is ambiguous, and any downstream analysis, proof, or decision based on those results is suspect.
 
-This chapter covers the dual-implementation discipline: why both Go and JavaScript implementations exist, how parity is verified, and how event sourcing ties them together.
+This chapter covers the dual-implementation discipline: why both Go and JavaScript implementations exist, how parity is checked, and how event sourcing ties them together.
 
 ## Why Two Implementations?
 
-A specification written in prose is ambiguous. A specification implemented in one language might contain bugs that look like features. But a specification implemented in two independent languages — and verified to produce identical output — is trustworthy in a way that neither implementation alone can be.
+A specification written in prose is ambiguous. A specification implemented in one language might contain bugs that look like features. A specification implemented twice, in two languages, and checked to produce the same output gives a reader more to trust: wherever the two disagree, at least one is wrong, and the comparison says where.
 
 The pflow ecosystem maintains two implementations:
 
-| | Go | JavaScript |
+| | Go (go-pflow) | JavaScript (pflow-xyz) |
 |-|---|------------|
 | **Role** | Authoritative backend | Browser verification |
-| **Solver** | `solver/tsit5.go` | `petri-solver.js` |
-| **Petri net model** | `petri/` package | `petri-sim.js` |
+| **ODE solver** | [`solver/tsit5.go`](https://github.com/pflow-xyz/go-pflow/blob/main/solver/tsit5.go) (tableau), [`solver/ode.go`](https://github.com/pflow-xyz/go-pflow/blob/main/solver/ode.go) (`Solve`) | [`public/petri-solver.js`](https://github.com/pflow-xyz/pflow-xyz/blob/main/public/petri-solver.js) (`Tsit5`, `solve`) |
+| **Discrete firing** | `reachability/` engine over the `petri/` net | [`public/petri-sim.js`](https://github.com/pflow-xyz/pflow-xyz/blob/main/public/petri-sim.js) |
 | **Runs in** | Server, CLI | Browser |
-| **Used by** | go-pflow, sim.pflow.xyz | pflow.xyz editor |
+| **Used by** | Go programs built on go-pflow, sim.pflow.xyz | pflow.xyz editor |
 
-Both implementations parse the same JSON-LD format. Both implement the same Tsit5 ODE solver. Both use the same mass-action kinetics for transition rates. The claim: given identical input (model + initial state + rates + time span), they produce identical output (final state within numerical tolerance).
+Both implementations parse the same JSON-LD format. Both implement the same Tsit5 ODE solver. Both use the same mass-action rate law: a transition's flux is its rate times the product of its input places' token counts, and arc weights scale how much is consumed, not the rate (Chapter 3). The claim: given identical input (model, initial state, rates, time span), they produce the same output within a stated numerical tolerance.
 
-## State Root Parity
+## What the Parity Tests Compare
 
-The strongest form of verification: compute a hash of the simulation output and compare. If the Go server and the JavaScript browser produce the same hash from the same model, the implementations agree.
+Three tests in the pflow-xyz repository check the claim, and they compare different things because the outputs differ in kind.
 
-```
-JSON-LD Model
-    |
-    v
-Go Solver    ->  State trajectory  ->  Hash  --+
-                                                +--  Equal?
-JS Solver    ->  State trajectory  ->  Hash  --+
-```
+**The model's identity is compared exactly.** A model's CID is a hash of its canonical form (Chapter 16), and `make test-parity` computes it with both the Go sealer (`internal/seal`) and the browser's `seal-cid.mjs`, against the shared fixtures in `parity/golden.json`. Any divergence fails the build. A hash comparison works here because canonicalization is exact: either both sides produce the same bytes or they do not.
 
-This is the same principle as content addressing (Chapter 16), applied to simulation results. The hash doesn't prove the simulation is correct in some absolute sense — it proves the two implementations agree. And agreement between independent implementations, written in different languages by different code paths, is strong evidence of correctness.
+**ODE trajectories are compared within a tolerance.** Floating-point output does not hash reliably, so [`parity/ode/ode_parity_test.go`](https://github.com/pflow-xyz/pflow-xyz/blob/main/parity/ode/ode_parity_test.go) integrates the ten fixture models in `parity/ode/fixtures.json` (among them an SIR model, a closed cycle, a weighted chain, competing transitions and several multi-color nets) with both solvers under the shared default options, and requires every place's final value to agree within $|js - go| / (1 + |js|) \le 10^{-6}$. For the two closed fixtures, `sir` and `cycle`, it also checks that each solver's final total is within 0.1% of the initial total. The file's comment records the measured agreement as about $10^{-15}$: the two solvers share a tableau, a step-size controller and defaults, so they take the same steps, and the bound leaves nine orders of magnitude of headroom.
 
-### What Gets Compared
+A second pair of tests pins both sides to a recorded trajectory, `parity/ode/expected.json`, generated by go-pflow. `TestODEGoMatchesExpected` in the same Go file requires the same number of accepted steps and the same value at every step, bit for bit where the generator found the fixture bit-stable and within $10^{-12}$ otherwise (Go's randomized map iteration can change the order in which a place's flux terms are summed). [`parity/ode/ode_expected_test.ts`](https://github.com/pflow-xyz/pflow-xyz/blob/main/parity/ode/ode_expected_test.ts) replays the browser solver against the same record, with exact step counts and a relative bound of $10^{-12}$; its comment attributes the residual to Go's `math.Pow` and V8's `Math.pow` differing by one or two units in the last place.
 
-The comparison operates at the level of the state trajectory:
+**Discrete firing is compared step by step.** [`parity/sim/sim_parity_test.go`](https://github.com/pflow-xyz/pflow-xyz/blob/main/parity/sim/sim_parity_test.go) generates 200 seeded random models, covering arc weights above 1, inhibitor arcs, place capacities and two-color tokens, and walks each one for up to 40 steps through `petri-sim.js` and go-pflow's reachability engine in lockstep. At every step both engines must report the same enabled set and the same marking. The walk always fires the lexicographically smallest enabled transition, so no randomness crosses the language boundary and any divergence is a semantic difference between the engines.
 
-1. **Time points** — Both solvers use adaptive stepping, so they may choose different time points. The comparison evaluates at fixed checkpoints.
-2. **Token counts** — For each place at each checkpoint, the token count must match within tolerance (typically 1e-6).
-3. **Final state** — The most important check: do both solvers arrive at the same equilibrium?
-
-The tolerance accounts for floating-point differences between Go and JavaScript — different rounding behavior, different intermediate precision. The tolerance is tight enough to catch algorithmic errors but loose enough to accommodate platform differences.
+The ODE and discrete tests run under `make test-parity-behavior` and need `node`; none of these tests was re-run for this chapter.
 
 ## The Tsit5 Algorithm — Twice
 
-Both implementations use the Tsitouras 5th-order Runge-Kutta method (Tsit5). The algorithm is well-documented in the numerical methods literature, and the coefficients are published constants. But implementing it correctly requires getting many details right:
+Both implementations use the Tsitouras 5th-order Runge-Kutta method (Tsit5). The coefficients are published constants, and the two files carry the same digits: seven stages, the same `c`, `a` and `b` arrays, and the same error-weight vector. The integration loop is where an implementation can quietly differ, so here is the error estimate and step-size control from each, copied from the source.
 
 ### Go Implementation
 
 ```go
-// solver/tsit5.go
-func (m Tsit5Method) Step(f ODEFunction, t float64, y []float64, dt float64) ([]float64, float64) {
-    // 7 stages with Tsitouras coefficients
-    k1 := f(t, y)
-    k2 := f(t + c2*dt, addVec(y, scaleVec(dt*a21, k1)))
-    // ... 5 more stages
-    // 5th-order solution
-    yNew := addVec(y, scaleVec(dt, linComb(b1, k1, b2, k2, ...)))
-    // 4th-order embedded solution for error estimation
-    yErr := addVec(y, scaleVec(dt, linComb(e1, k1, e2, k2, ...)))
-    // Adaptive step size control
-    err := errorNorm(yNew, yErr)
-    return yNew, err
+// go-pflow solver/ode.go, inside Solve (excerpt)
+for i := 0; i < n; i++ {
+    errest := 0.0
+    for j := 0; j < len(solver.Bhat); j++ {
+        errest += dtcur * solver.Bhat[j] * k[j][i]
+    }
+    uc := ucur[i]
+    un := unext[i]
+    scale := abstol + reltol*math.Max(math.Abs(uc), math.Abs(un))
+    if scale == 0 {
+        scale = abstol
+    }
+    val := math.Abs(errest) / scale
+    if val > err {
+        err = val
+    }
 }
+// ... on an accepted step:
+factor := 0.9 * math.Pow(1.0/err, 1.0/float64(solver.Order+1))
+factor = math.Min(factor, 5.0)
+dtcur = math.Min(dtmax, math.Max(dtmin, dtcur*factor))
 ```
 
 ### JavaScript Implementation
 
 ```javascript
-// petri-solver.js
-function tsit5Step(f, t, y, dt) {
-    // Same 7 stages, same coefficients
-    const k1 = f(t, y);
-    const k2 = f(t + c2*dt, addVec(y, scaleVec(dt*a21, k1)));
-    // ... 5 more stages
-    // Same 5th-order solution
-    const yNew = addVec(y, scaleVec(dt, linComb(b1, k1, b2, k2, ...)));
-    // Same error estimation and step control
-    const err = errorNorm(yNew, yErr);
-    return [yNew, err];
+// pflow-xyz public/petri-solver.js, inside solve (excerpt)
+for (const key of stateLabels) {
+  let errest = 0;
+  for (let j = 0; j < solver.bhat.length; j++) {
+    errest += dtcur * solver.bhat[j] * k[j][key];
+  }
+  const scale = abstol + reltol * Math.max(Math.abs(ucur[key]), Math.abs(unext[key]));
+  err = Math.max(err, Math.abs(errest) / scale);
 }
+// ... on an accepted step:
+const factor = 0.9 * Math.pow(1.0 / err, 1.0 / (solver.order + 1));
+dtcur = Math.min(dtmax, Math.max(dtmin, dtcur * Math.min(factor, 5.0)));
 ```
 
-The algorithms are structurally identical. The coefficients are the same published constants. The adaptive step size control uses the same formula. The only differences are syntactic — Go vs JavaScript — and numerical — 64-bit floats in both, but with platform-specific rounding.
+The error is the largest scaled per-place estimate, and the next step grows by at most a factor of 5. A rejected step shrinks by at most a factor of 10 in both files. The differences are representational: Go holds the state as a dense vector indexed by place and skips zero tableau entries, JavaScript holds it as an object keyed by place name, and Go's `scale == 0` fallback only matters when `abstol` is zero.
+
+Parity has a limit that this pair illustrates. Both files' comments record that the last entry of the error-weight vector once had the wrong sign, $+1/66$ instead of $-1/66$, which made the error estimate first order: go-pflow's comment says the step count grew about tenfold per decade of `reltol` instead of about $10^{1/5}$-fold. A bug both implementations share is one that agreement between them cannot reveal. What pins it now are invariants checked on each side separately: `TestTsit5BhatSumsToZero` and `TestTsit5StepControlIsFifthOrder` in [`solver/tsit5_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/solver/tsit5_test.go), and the matching assertion in pflow-xyz's `public/petri-solver_test.ts`.
 
 ### Parameters Must Match
 
-Both solvers use identical default parameters:
+Agreement also depends on the options. go-pflow's `DefaultOptions()` and the defaults of the browser's `solve` are the same values:
 
 - Adaptive stepping with Tsit5
-- Default `dt = 0.01`
-- Relative tolerance `reltol = 1e-3`
-- Same time span from the model
+- `dt = 0.01`, `dtmin = 1e-6`, `dtmax = 0.1`
+- `abstol = 1e-6`, `reltol = 1e-3`, `maxiters = 100000`
+- The time span from the model
 
-When a model behaves differently in the browser versus the Go backend, it's a bug. The outputs should match. This invariant is tested and maintained across both implementations.
+These are the options the ODE parity test uses on both sides. go-pflow's `JSParityOptions()` differs from them only in `Dtmax = 1.0`, matching `petri-learn.js` rather than the editor's plots ([Appendix A: Solver Parameter Reference](appendix-a-solver-reference.md) tabulates every preset).
 
 ## Event Sourcing
 
@@ -110,29 +108,29 @@ State is not stored directly. Instead, the system stores an immutable log of eve
 
 ### Events as Transition Firings
 
-In Petri net terms, an event is a transition firing:
+In Petri net terms, an event is a transition firing. go-pflow's `eventsource` package ([`eventsource/event.go`](https://github.com/pflow-xyz/go-pflow/blob/main/eventsource/event.go)) defines the record; serialized, an event has this shape (the values are illustrative):
 
 ```json
 {
-  "event_type": "brew",
-  "aggregate_id": "coffeeshop-1",
-  "timestamp": "2024-01-19T10:30:00Z",
+  "id": "evt-0042",
+  "stream_id": "coffeeshop-1",
+  "type": "brew",
   "version": 42,
-  "data": {
-    "beans_used": 2,
-    "water_used": 3
-  }
+  "timestamp": "2024-01-19T10:30:00Z",
+  "data": { "beans_used": 2, "water_used": 3 }
 }
 ```
 
-The event records which transition fired, when, and with what data. The state change (tokens removed from input places, tokens added to output places) is deterministic given the event and the current marking.
+The event records which transition fired, on which stream, at which position in that stream, and with what data. The state change (tokens removed from input places, tokens added to output places) is determined by the event and the net.
+
+In [`eventsource/aggregate.go`](https://github.com/pflow-xyz/go-pflow/blob/main/eventsource/aggregate.go), the firing rule is split across two methods. `StateMachine.Fire` checks enablement (input tokens, inhibitor and read thresholds, and an optional guard), refuses a transition the net does not declare, and returns an event without changing the marking. `StateMachine.Apply` is the `apply` of the fold: it subtracts the transition's inputs and adds its outputs, and it does not re-check enablement. Replay therefore trusts the log; the check happened once, when the event was created. Read arcs are deliberately absent from `Apply`, because applying a read on every replayed event would decrement a place that a read never consumes.
 
 ### Replay Equivalence
 
-If both Go and JavaScript replay the same event log against the same model, they must arrive at the same final state. This is a stronger guarantee than ODE parity because it covers discrete-event execution, not just continuous simulation.
+If both Go and JavaScript replay the same firing sequence against the same model, they must arrive at the same marking. This is a separate guarantee from ODE parity, because it covers discrete-event execution rather than continuous simulation.
 
 ```
-Event log: [brew, brew, restock, brew]
+Firing sequence: [brew, brew, restock, brew]
 
 Go replay:   fold(apply, initial, events)  ->  State A
 JS replay:   fold(apply, initial, events)  ->  State B
@@ -140,81 +138,55 @@ JS replay:   fold(apply, initial, events)  ->  State B
 State A == State B  (must hold)
 ```
 
-The `apply` function is the Petri net firing rule: check enabledness, subtract input tokens, add output tokens. Because the firing rule is deterministic and both implementations follow the same rule, replay produces identical states.
+The check that exists today is the lockstep walk described above: `sim_parity_test.go` drives `petri-sim.js` and go-pflow's reachability engine through the same firing sequences and compares markings after every firing. No test yet replays a stored `eventsource` log through a JavaScript fold; that would extend the check from the firing rule to the event format.
 
 ### Why Event Sourcing Fits
 
-Event sourcing and Petri nets are natural partners:
-
-1. **Events are transitions.** Every transition firing is an event. The event log is the execution trace of the Petri net.
-
-2. **State is the marking.** The current marking (token counts across all places) is the state. It's computed by applying the firing rule for each event in sequence.
-
-3. **Replay is re-execution.** Given the initial marking and the event log, you can reconstruct the state at any point in history. This enables auditing, debugging, and time-travel queries.
-
-4. **The model is the schema.** The Petri net topology defines what events are valid (which transitions exist, what their pre- and post-conditions are). The model constrains the event log — you can't have a `brew` event if the net has no `brew` transition.
+Event sourcing and Petri nets fit together because each concept of one has a counterpart in the other. Every transition firing is an event, so the event log is the net's execution trace. The current marking is the state, computed by applying the firing rule once per event, and replaying the log from the initial marking reconstructs the state at any earlier point, which is what auditing, debugging and time-travel queries need. The net's topology plays the part of a schema: it says which events are valid, and `Fire` refuses a `brew` if the net has no `brew` transition or if `brew` is not enabled.
 
 ## The Verification Loop
 
-In production, the verification works as a loop:
+The parity tests compare the two implementations offline, in CI. The same comparison can be run live, with the browser acting as a verifier of the server:
 
-1. **Client** (browser, JavaScript) fires a transition and computes the new state locally
-2. **Client** sends the transition firing to the server
-3. **Server** (Go) independently computes the new state
-4. **Server** stores the event and returns the new state
-5. **Client** compares its locally computed state with the server's response
-6. **If they match**: continue — both implementations agree
-7. **If they don't match**: flag a discrepancy — investigation needed
+1. The client (JavaScript) fires a transition, computes the new marking locally, and sends the firing to the server.
+2. The server (Go) computes the new marking independently, stores the event and returns the marking.
+3. The client compares the two. A match means the implementations agree on that step; a mismatch is a discrepancy to investigate.
 
-This is the same pattern used in the ZK tic-tac-toe protocol (Chapter 12), except without the cryptographic proofs. The browser is a verifier: it independently computes what the server claims and checks the result.
+This is a design sketch, not a description of a running service: the pflow.xyz server stores and renders models but has no endpoint that fires transitions, and the editor fires them locally. The pattern is the one the ZK tic-tac-toe protocol of Chapter 12 uses with cryptographic proofs, where the opponent checks each move rather than trusting the party that made it.
 
 ### Trust Model
 
-The verification loop establishes a trust model:
-
-- The **server** is authoritative — its state is the canonical state
-- The **client** is a verifier — it checks the server's work
-- **Discrepancies** indicate a bug in one or both implementations
-- **Agreement** increases confidence that the specification is unambiguous
-
-No single implementation is trusted absolutely. Trust comes from agreement between independent implementations. This is the dual-implementation guarantee.
+In such a loop the server is authoritative, and its state is the canonical one; the client checks the server's work rather than replacing it. A discrepancy shows a bug in one or both implementations, and agreement raises confidence that the specification has one reading. Neither implementation is trusted on its own account; the confidence comes from their agreement, with the limit already noted: a shared bug agrees with itself.
 
 ## Token Model Equivalence
 
-The `tokenmodel` package in go-pflow extends dual implementation to the schema level. Token models can be defined in three equivalent ways:
+The `tokenmodel` package in go-pflow carries the same idea to the schema level. A token model can be written as JSON (the interchange format), as Go struct tags, or in the S-expression DSL of Chapter 4.
 
-1. **JSON** — the interchange format
-2. **Go struct tags** — embedded in Go code
-3. **S-expression DSL** — the human-readable format from Chapter 4
-
-All three produce the same Petri net. The tokenmodel package includes tests verifying that parsing each format and building the net produces structurally identical results. This is isomorphism at the schema level — three notations, one mathematical object.
+What the tests check is a round trip between notations. `TestTagsRoundTrip` in [`tokenmodel/dsl/tags_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/dsl/tags_test.go) converts a tagged struct to the DSL's syntax tree, prints it as an S-expression, parses it back, and compares the name and the number of states and actions. `TestBuilder_RoundTrip` in [`tokenmodel/dsl/builder_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/dsl/builder_test.go) does the same for the fluent builder, comparing name, version and the counts of states, actions and arcs. Those checks would catch a notation that drops an element; they compare counts, not structure, so they do not show that the three notations produce the same net. A test that builds one model in all three notations and compares the resulting nets element by element is not yet written.
 
 ## What Parity Proves
 
-Dual implementation doesn't prove the specification is correct in some absolute sense. It proves the specification is **unambiguous** — two independent teams, reading the same spec, implementing in different languages, arrive at the same behavior.
+Dual implementation does not prove the specification correct. It shows that two implementations, written separately in different languages from the same specification, arrive at the same behavior on the inputs tested, which is evidence that the specification has one reading.
 
-For Petri nets, unambiguous means:
+For Petri nets, the tests above cover four parts of that reading. Both engines agree on when a transition is enabled and on the marking after it fires, at every step of 200 random walks. Both solvers produce the same trajectories within $10^{-6}$ on ten fixtures, with a measured agreement near $10^{-15}$. Both sealers compute the same CID for the shared fixtures. Event replay is covered at the level of the firing rule, not yet at the level of a stored log.
 
-- The **firing rule** is clear — both implementations agree on when a transition is enabled
-- The **state update** is deterministic — both implementations produce the same marking after firing
-- The **ODE dynamics** are correct — both solvers produce the same trajectories within numerical tolerance
-- The **event sourcing** is faithful — replaying the same events produces the same state
-
-These are exactly the properties you need for a formal modeling system. The mathematics works only if the implementation matches the theory. Dual implementation is how you check.
+These are the properties a formal modeling system needs if its mathematics is to describe what its code does, and a second implementation is one way to check them. It is not the only check needed, as the error-weight bug showed.
 
 ## From Two to Twenty
 
-Two implementations prove a specification is unambiguous. They do not prove it is *portable* — that a stranger in a third language could read the document and arrive at the same behavior. And the history of this project holds a warning about what happens when there is no document to arrive at.
+Two implementations show a specification can be read one way. They do not show it is *portable*, that a stranger in a third language could read the document and arrive at the same behavior. The history of this project includes what happens when there is no document to arrive at.
 
-An early version of this work was ported five times — Rust, Python, Lua, TypeScript, Solidity — and each port was an *internal DSL*: you wrote code, in that language, that built a net. All five claimed to encode the same thing. None could prove it, because the specification lived only in five separate programs that agreed by intention. They drifted apart quietly over about two years, and nothing noticed, because nothing was checking.
+Five ports of an early version of this work (Rust, Python, Lua, TypeScript and Solidity) were each an *internal DSL*: you wrote code, in that language, that built a net. All five claimed to encode the same thing. None could show it, because the specification lived only in five separate programs that agreed by intention. They went quiet independently over about two years, and nothing noticed, because nothing was checking (the account is from the blog post *A Tiling for Computation*).
 
-`pflow-polyglot` is the structural fix. One `model.json`. Twenty-plus implementations across Go, Rust, Python and JavaScript, in five *forms* — an interpreter that reads the document, a pure step function, generated source, an on-chain contract, and a kernel-checked proof — every one held to a single golden trace (`parity/trace.golden`) and a golden reachability set. The check is byte-for-byte and it fails the build. Not "we tried to keep these in sync": a model that stopped being a program repeated five times and became a document checked twenty times.
+[`pflow-polyglot`](https://github.com/stackdump/pflow-polyglot) is the structural fix. One `model.json`, a ten-place coffee machine, is implemented thirty-nine times across ten languages, in five *forms*: an interpreter that reads the net as data, pure state-to-state functions, source generated from `model.json`, a contract API, and a proof form that checks every reachable marking before it runs. Every program must print the six-line trace in [`parity/trace.golden`](https://github.com/stackdump/pflow-polyglot/blob/main/parity/trace.golden). `make parity` builds the twenty Go, Rust, Python and JavaScript programs under hermetic toolchains and diffs each one's output against the golden byte for byte; any drift fails the build. `make parity-native` holds the Ruby, Julia, Haskell, Bash and Lean programs to the same golden, skipping a language whose toolchain is missing and saying so. The two Solidity programs are in neither gate. A second golden, `parity/reachability.golden`, records the full reachable state space (16 markings, 26 edges, one terminal marking) and is checked against the trace golden.
 
-This is the dual-implementation discipline at its limit, and it is also the point at which the discipline stops being about Go and JavaScript. State-root parity between two runtimes is the smallest case of a general fact: when the model is a value, agreement is a comparison, and disagreement is a diff.
+The proof form is kernel-checked only in Lean. There, `lean/proof.lean` is generated from `model.json` and the theorems (1-safety, the structural P-invariants, a unique terminal marking) are decided inside the kernel, so an unsafe net fails to compile ([PROOF-ROADMAP](https://github.com/pflow-xyz/book-pflow-xyz/blob/main/PROOF-ROADMAP.md), item P1). In Go, Rust, Python, JavaScript and Bash the proof form is an exhaustive model check that runs at startup.
+
+Here the discipline stops being about Go and JavaScript. Parity between two runtimes is the smallest case of a general point: when the model is a value, agreement between implementations can be checked by comparing outputs, and a disagreement shows up as a diff.
 
 ## The Ecosystem View
 
-Dual implementation is not just a testing technique — it's an architectural principle. Every tool in the ecosystem can verify every other tool's work:
+Each tool in the ecosystem reads the same model format, which is what makes cross-checking between tools possible:
 
 ```
 JSON-LD Model (source of truth)
@@ -225,11 +197,11 @@ JSON-LD Model (source of truth)
     |
     +-- sim.pflow.xyz (Go)  --  Hosted what-if simulation, verification
     |
-    +-- pflow-polyglot  --  20+ implementations, one golden trace
+    +-- pflow-polyglot  --  39 implementations, one golden trace
     |
     +-- Lean / gnark  --  Kernel-checked theorems, ZK circuits
 ```
 
-The JSON-LD model is the shared contract. Each tool processes it independently. Each tool can verify its results against any other tool processing the same model. The model format is declarative (Chapter 16), so there's no ambiguity about what it means — only about how each tool computes from it. And dual implementation resolves that ambiguity.
+The JSON-LD model is the shared contract, and each tool processes it independently. Where a parity test exists, as between pflow.xyz and go-pflow or across pflow-polyglot's implementations, agreement is checked by machine; between other pairs it is possible in principle but not yet tested. The model format is declarative (Chapter 16), so what remains open is how each tool computes from it, and that is what a parity test checks.
 
-This is what treating the model as data pays for in practice: the two runtimes read the JSON-LD model, twenty ports and a kernel-checked proof are held to `pflow-polyglot`'s one `model.json`, and whether they agree is checked by machine. The [preface](preface.md) reports the same discipline applied across notations for composition, where three independent tools check one net in several presentations and emit agreeing receipts. That prototype is not yet published, so the preface reports its result rather than offering one to rerun. Here the agreement is a test that runs. The mathematics provides the theory. Dual implementation provides the confidence that the code matches the mathematics.
+This is what treating the model as data pays for in practice: the two runtimes read the JSON-LD model, thirty-nine programs and a kernel-checked proof are held to `pflow-polyglot`'s one `model.json`, and whether they agree is checked by machine. The [preface](preface.md) reports the same discipline applied across notations for composition, where three independent tools check one net in several presentations and emit agreeing receipts. That prototype is not yet published, so the preface reports its result rather than offering one to rerun. Here the agreement is a test that runs, and it complements the mathematics without replacing it: agreement shows the implementations read the specification the same way, and only checks against the mathematics show that reading is the right one.
