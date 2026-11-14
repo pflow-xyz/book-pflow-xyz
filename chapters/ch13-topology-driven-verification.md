@@ -2,7 +2,7 @@
 
 **Learning objective**: Generate ZK proof circuits automatically from Petri net topology, and verify execution on-chain.
 
-Chapter 12 built ZK circuits by hand — defining the `PetriTransitionCircuit` step by step, wiring up MiMC hashes and delta computations manually. That was instructive, but nobody should write ZK circuits by hand for every new model. This chapter closes the loop: given a Petri net JSON model, go-pflow's [`petrigen`](https://github.com/pflow-xyz/go-pflow/tree/main/zkcompile/petrigen) package generates the gnark circuits, the witness generator and their tests, and the compiled circuit can then be exported as a Solidity verifier. The topology becomes constant arrays in the circuit, so changing the model and regenerating gives a new proof system.
+Chapter 12 built ZK circuits by hand — defining the `PetriTransitionCircuit` step by step, wiring up MiMC hashes and delta computations manually. That was instructive, but it is not something to repeat for every new model. This chapter closes the loop: given a Petri net JSON model, go-pflow's [`petrigen`](https://github.com/pflow-xyz/go-pflow/tree/main/zkcompile/petrigen) package generates the gnark circuits, the witness generator and their tests, and the compiled circuit can then be exported as a Solidity verifier. The topology becomes constant arrays in the circuit, so changing the model and regenerating gives a new proof system.
 
 Along the way, graph connectivity turns out to carry strategic value as well as circuit structure. Once the modeler says which transitions are moves and which are goals, rate constants for the ODE can be read off the bipartite graph, with no training data and no manual tuning, and counting win-line connections reproduces the classic tic-tac-toe heuristic (center > corner > edge). The derived rates are the constants of the ZK ODE circuit built for this game.
 
@@ -181,7 +181,7 @@ The `FireTransition` function checks enabledness before generating a witness. Bu
 
 Chapter 3 introduced mass-action kinetics with hand-tuned rate constants, and Chapter 6 ran the tic-tac-toe heatmaps with uniform rates. But where do rate constants come from?
 
-For chemical reactions, rates encode physical properties — activation energies, temperature dependence, catalytic effects. You measure them in a lab. For games and workflows, there's no lab. The rate constants encode strategic value, and that value can be derived from the graph itself.
+For chemical reactions, rates encode physical properties — activation energies, temperature dependence, catalytic effects. You measure them in a lab. For games and workflows, there's no lab. The rate constants encode strategic value, and once the modeler has said which transitions are moves and which are goals, that value can be read off the graph.
 
 ### The Algorithm
 
@@ -192,11 +192,11 @@ The rate auto-derivation algorithm operates on the bipartite directed graph of t
 3. Count how many target transitions take those unique places as inputs
 4. That count is the rate constant
 
-The implementation is `deriveRatesFromTopology` in the ZK ODE circuit generator, `zk-ode/codegen/context.go` (not public). Candidates and targets are given as globs over transition names (`x_play_*`, `x_win_*`), so the move/goal split is the modeler's input, not something the graph decides. Two details of the code: a count of 0 or 1 leaves the default rate of 1, and a rate written explicitly in the model is kept rather than derived.
+The implementation is `deriveRatesFromTopology` in the ZK ODE circuit generator, `zk-ode/codegen/context.go` in the petri-pilot repository (not public). Candidates and targets are given as globs over transition names (`x_play_*`, `x_win_*`), so the move/goal split is the modeler's input, not something the graph decides. Two details of the code: a count of 0 or 1 leaves the default rate of 1, and a rate other than the default 1 written in the model is kept rather than derived.
 
 ### Tic-Tac-Toe: Strategy from Topology
 
-The ZK variant of the TTT Petri net from [Chapter 6](ch06-game-mechanics.md) (the one Chapter 12 compiles; 33 places and 35 transitions, against Chapter 6's 30 and 34) is the model used here, `services/tic-tac-toe.json` in sim.pflow.xyz's source (not public). Each play transition (like `x_play_11`) produces a piece at a position (like `x11`). Each win transition (like `x_win_diag`) requires three specific pieces as inputs.
+The ZK variant of the TTT Petri net from [Chapter 6](ch06-game-mechanics.md) (the one Chapter 12 compiles; 33 places and 35 transitions, against Chapter 6's 30 and 34) is the model used here, `services/tic-tac-toe.json`. petri-pilot and sim.pflow.xyz's source (neither public) each hold a copy with the same places, transitions and arcs, and the test cited below loads petri-pilot's. Each play transition (like `x_play_11`) produces a piece at a position (like `x11`). Each win transition (like `x_win_diag`) requires three specific pieces as inputs.
 
 Apply the algorithm to the center position:
 
@@ -244,7 +244,7 @@ Win transitions with x01 as input:
 Rate for x_play_01 = 2  (edge: 2 win lines)
 ```
 
-Counting connections ranks center above corner above edge, the classic opening heuristic, without game-tree search or training data. The generator's cross-validation test, `zk-ode/codegen/crossvalidate_test.go`, loads the JSON model with play transitions of both players as candidates and win transitions of both as targets, and checks that every derived rate equals the hand-coded table in `zk-ode/ttt_topology.go` (center 4, corners 3, edges 2); it was not re-run for this chapter.
+Counting connections ranks center above corner above edge, the classic opening heuristic, without game-tree search or training data. The generator's cross-validation test, `TestCrossValidate_TTTTopology` in petri-pilot's `zk-ode/codegen/crossvalidate_test.go`, loads the JSON model with play transitions of both players as candidates and win transitions of both as targets, and checks that every derived rate equals the hand-coded table in `zk-ode/ttt_topology.go` (center 4, corners 3, edges 2, all win transitions 1); it was not re-run for this chapter.
 
 ### Filtering Shared Places
 
@@ -254,7 +254,7 @@ Every `x_play_*` transition produces three output places: the piece (e.g., `x00`
 
 The problem: `o_turn` is an input to every `x_win_*` transition (win detection happens on the opponent's turn). If you include `o_turn` in the connectivity count, every candidate connects to all 8 win targets through it, giving every position rate=8. The heatmap collapses to a flat field — center, corner, and edge become indistinguishable.
 
-The fix: exclude any output place produced by more than one candidate. A shared place carries no discriminative signal — it's the DC component that shifts every candidate equally. Only places unique to a single candidate can distinguish one candidate from another. This is analogous to mean-centering features before computing distances: the shared component must be subtracted before differences become meaningful.
+The fix: exclude any output place produced by more than one candidate. A shared place connects every candidate that produces it to the same targets, and because each target is counted once, it saturates the count at the same value for all of them. Only places unique to a single candidate can distinguish one candidate from another.
 
 ### Graph Theory First
 
@@ -265,9 +265,9 @@ The algorithm is structurally similar to a single message-passing step in a grap
 - **GNN**: `node_embedding = aggregate(neighbor_features)`
 - **Petri net**: `rate[candidate] = count(reachable_targets through unique_outputs)`
 
-The difference: GNNs learn the aggregation function from data. The Petri net version uses a fixed, interpretable aggregation (count of target connections). No training needed.
+The resemblance is one of shape: a GNN learns its aggregation function from data, while the rate derivation uses a fixed one, a count of target connections, so there is nothing to train.
 
-What the Petri net formalism adds sits above the rate derivation. Firing semantics make transitions consume and produce tokens atomically, which gives state machines that graph connectivity alone cannot express. The mass-action rate law, $v[t] = k[t] \times \prod M[\text{inputs}[t]]$ (first power in every input place, as in go-pflow's solver), couples the topology-derived constants to the current marking. P-invariants constrain the state space in ways centrality cannot. And the pre- and post-place lists of each transition, which are the incidence matrix with unit weights, define the gnark circuit's constraints. The rate derivation says how much each candidate matters; the net's semantics say what happens when one fires.
+What the Petri net formalism adds sits above the rate derivation. Firing semantics make transitions consume and produce tokens atomically, which gives state machines that graph connectivity alone cannot express. The mass-action rate law, $v[t] = k[t] \times \prod M[\text{inputs}[t]]$ (first power in every input place, as in go-pflow's solver), couples the topology-derived constants to the current marking. P-invariants constrain the state space in ways centrality cannot. And the pre- and post-place lists of each transition define the gnark circuit's constraints: their difference, the incidence matrix with unit weights, gives the marking change, and the pre-places alone give the enabledness check. The rate derivation says how much each candidate matters; the net's semantics say what happens when one fires.
 
 ### Poker Hand Ranking: Integer Reduction
 
@@ -326,7 +326,7 @@ In tic-tac-toe, more connections to win transitions means *higher* strategic val
 
 In poker, fewer drain connections means *higher* hand value. The raw concentration of `val_H` rises as the drain count falls, so the straight flush, with one sink, holds the most.
 
-Both cases read a ranking back from token flow, exactly as $1/\text{num\_drains}$ for poker and approximately (within a few percent, per Chapter 6) as 4 : 3 : 2 for tic-tac-toe. In both, differential outflow creates differential accumulation.
+Both cases read a ranking back from token flow, exactly as $1/\text{num\_drains}$ for poker and approximately (within a few percent, per Chapter 6) as 4 : 3 : 2 for tic-tac-toe. The routes differ: a tic-tac-toe move that feeds more win collectors sends more flow toward the win place, while a poker value place with fewer drains keeps more of its inflow.
 
 This bears on the modeling-scope boundary of [Chapter 15](ch15-exponential-weights.md), where 52 detection transitions produced a score that nothing in the net read. Here the drain transitions take part in the dynamics: they are what makes each value place settle where it does. The scoring is still a design choice, moved from the multipliers into the drain counts, but it is now in a form the net computes with rather than one it merely stores.
 
