@@ -35,6 +35,8 @@ A schema definition has the form:
 
 The `<name>` and `<version>` are symbols, so `v1.0.0` is written without quotes; a quoted string in either position is a parse error. The parser requires none of the clauses: `(schema Test (version v1.0.0))` is a complete schema in `TestParser_MinimalSchema`. Clauses may appear in any order, and a repeated clause replaces the earlier one. The conventional order is version, states, actions, arcs, constraints.
 
+Two lenient cases follow from `parser.go` and `lexer.go`; no test covers them. The lexer returns a character it does not recognize, such as `@` or `#`, as an end-of-input token. Inside a clause the result is a parse error, but between clauses it ends the schema without an error and every later clause is silently dropped. The parser also returns as soon as it reaches the `)` that closes `(schema ...)`, or the end of the input, so neither a missing final `)` nor trailing text after it is reported.
+
 ## States
 
 The `states` clause defines places in the Petri net:
@@ -49,7 +51,7 @@ The `states` clause defines places in the Petri net:
 | Keyword | Value | Default | Description |
 |---------|-------|---------|-------------|
 | `:type` | symbol | (none) | Data type, stored as written and not checked by the parser or by validation. go-pflow's tests use `uint256`, `map[address]uint256` and `map[address]map[address]uint256` |
-| `:kind` | `token` or `data` | `data` | Whether the place holds a token count or structured data |
+| `:kind` | `token` or `data` | `data` | Whether the place holds a token count or structured data. The parser accepts any symbol here, and `Interpret` treats anything other than `token` as `data` |
 | `:initial` | integer, string, `nil`, `(map)` or `(list)` | (none) | Initial value; `(map)` and `(list)` are an empty map and an empty list |
 | `:exported` | (no value) | false | Flag; an exported state can be bound across schemas |
 
@@ -164,12 +166,11 @@ Guard expressions (used in both `:guard` and `constraint`) support:
 | Map access | `name[key]` | `balances[from]` |
 | Aggregates | see below | `sum("balances_") == totalSupply` |
 
-The DSL parser does not read guard expressions. The lexer captures everything between `{` and the matching `}` as a single token, and the parser stores it as a string. Evaluation happens later, through whatever guard evaluator the runtime is given, and the expression language has two implementations whose operators agree but whose aggregate functions do not:
+The DSL parser does not read guard expressions. The lexer captures everything between `{` and the matching `}` as a single token, and the parser stores it as a string. Evaluation happens later, in go-pflow's [`tokenmodel/guard`](https://github.com/pflow-xyz/go-pflow/tree/main/tokenmodel/guard) package, which sim.pflow.xyz also uses.
 
-- go-pflow's [`tokenmodel/guard`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/guard/aggregate.go) provides `sum`, `count`, `tokens`, `min` and `max`. Each takes a place ID or ID prefix as a string: `sum("balances_")` adds the token counts of every place whose ID starts with `balances_` (`guard_test.go` checks it equals 600 on its test marking).
-- sim.pflow.xyz's guard DSL (`pkg/dsl/guard.go`; sim's source is not public) names the last two `minOf` and `maxOf`, and its `sum`, `count`, `minOf` and `maxOf` also accept a data state's map, so `sum(balances)` totals the values in the `balances` map.
+The aggregates are defined in [`aggregate.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/guard/aggregate.go): `sum`, `count`, `tokens`, `minOf` and `maxOf`, with `min` and `max` accepted as aliases for the last two. Called with two arguments whose first is not a string, `min(a, b)` and `max(a, b)` are the ordinary two-number minimum and maximum instead. Each aggregate takes a place ID or ID prefix as a string and reads the token marking: `sum("balances_")` adds the token counts of every place whose ID starts with `balances_`, and `TestAggregatesWithStringLiterals` in [`guard_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/guard/guard_test.go) checks that it equals 600 on a marking of 100, 200 and 300. `TestMinMaxBothForms` in [`numbers_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/guard/numbers_test.go) checks both forms of `min` and `max`.
 
-The constraint `sum(balances) == total_supply` used in this appendix is written for sim.pflow.xyz's evaluator. Under go-pflow's it fails to evaluate, because `balances` is a bare name rather than a string and is not a token place.
+To evaluate an invariant over data states, go-pflow provides `EvaluateInvariantWithData` in [`invariant.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/guard/invariant.go). It binds each data state by name, so `points[member]` reads the map, and the aggregates then total a map passed directly or named by a string: `TestEvaluateInvariantWithDataAndObjective` checks `sum(points) == 7.5` for the map `{ann: 3, bob: 4.5}`. The constraint `sum(balances) == total_supply` used in this appendix needs that entry point. `tokenmodel.Runtime` does not use it: its `GuardEvaluator.EvaluateConstraint` receives only the token counts, so the runtime's after-each-action check cannot see the `balances` map.
 
 ## Complete Examples
 
