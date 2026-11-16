@@ -212,7 +212,7 @@
 <h3 id="part-iii-advanced-topics"><a class="header" href="#part-iii-advanced-topics">Part III: Advanced Topics</a></h3>
 <p>Chapters 11-14 push the formalism further. Process mining discovers nets from event logs. Zero-knowledge proofs verify transitions without revealing state. Exponential weights encode scoring systems. JSON-LD makes nets self-describing and content-addressable.</p>
 <h3 id="part-iv-building-with-pflow"><a class="header" href="#part-iv-building-with-pflow">Part IV: Building with pflow</a></h3>
-<p>Chapters 15-18 cover the ecosystem tools. The visual editor for designing nets interactively. The code generator that turns models into full-stack applications. The Go library’s API and package structure. And the dual-implementation discipline that keeps Go and JavaScript in sync.</p>
+<p>Chapters 15-18 cover the ecosystem tools. The visual editor for designing nets interactively. The hosted service that runs a stored model as seeded what-ifs and checks it. The Go library’s API and package structure. And the dual-implementation discipline that keeps Go and JavaScript in sync.</p>
 <h2 id="the-pflow-ecosystem"><a class="header" href="#the-pflow-ecosystem">The pflow Ecosystem</a></h2>
 <p>The projects referenced throughout this book form a unified ecosystem:</p>
 <div class="table-wrapper">
@@ -223,11 +223,11 @@
 <tbody>
 <tr><td><strong>go-pflow</strong></td><td>Core library — ODE simulation, reachability, process mining</td><td>github.com/pflow-xyz/go-pflow</td></tr>
 <tr><td><strong>pflow.xyz</strong></td><td>Visual browser-based editor for designing nets</td><td>pflow.xyz</td></tr>
-<tr><td><strong>petri-pilot</strong></td><td>Code generator — turns net models into running applications</td><td>pilot.pflow.xyz</td></tr>
+<tr><td><strong>sim.pflow.xyz</strong></td><td>Hosted what-if simulation and verification of stored models, with an MCP server</td><td>sim.pflow.xyz</td></tr>
 </tbody>
 </table>
 </div>
-<p>All three share the same JSON-LD model format. A net designed in the editor can be simulated by the library and compiled by the code generator without format conversion. The model is the source of truth.</p>
+<p>The editor and the library share the same JSON-LD model format, and go-pflow converts it into the model format sim.pflow.xyz stores and runs. A net designed in the editor can be simulated by the library without format conversion. The model is the source of truth.</p>
 <h2 id="conventions"><a class="header" href="#conventions">Conventions</a></h2>
 <ul>
 <li><strong>Code examples</strong> appear inline for short snippets and in separate files for longer programs</li>

@@ -42,9 +42,9 @@ A Petri net has exactly four kinds of things:
 
 **Arcs** are arrows connecting places to transitions and transitions to places. An arc from a place to a transition means "this transition needs a token from this place." An arc from a transition to a place means "this transition produces a token in this place." Arcs define the flow — who needs what, and who produces what.
 
-That is the whole vocabulary of an ordinary Petri net. A traffic light, a biochemical pathway and a poker game are all built from these four elements.
+That is the whole vocabulary of an ordinary Petri net. A traffic light, a biochemical pathway and a poker game are all built from these four elements, and so is anything else that decomposes into parts with local state and shared resources, the scope the Preface sets.
 
-One distinction is worth fixing now, because the rest of the book leans on it. Places, transitions and arcs are **structure** — they are what a model *is*. Tokens are **state** — the marking is what a model is *doing* right now, and it changes on every firing while the structure does not. The alphabet this book builds with is therefore three structural terms plus one more that arrives in Chapter 4: the **guard**, a condition on when a transition may fire. Place, transition, arc, guard — four primitives, and no fifth. Everything else, from `balances` to `brew` to the tic-tac-toe move `X00`, is what a domain sounds like once it has been written in them. The guard is not on the same footing as the other three, though. The incidence matrix of Chapter 2 records places, transitions and arcs; a guard is a predicate on the marking that the matrix does not see, so a property that depends on a guard is checked by exploring states rather than by linear algebra. [Appendix E](appendix-e-categorical-foundations.md#where-the-free-structure-stops-two-boundaries) states exactly where that line falls.
+One distinction is worth fixing now, because the rest of the book leans on it. Places, transitions and arcs are **structure** — they are what a model *is*. Tokens are **state** — the marking is what a model is *doing* right now, and it changes on every firing while the structure does not. Structure is what composes: leave some places open as a boundary and two nets can be glued along them, which is the operation every compositional notation in the Preface agrees on. The alphabet this book builds with is therefore three structural terms plus one more that arrives in Chapter 4: the **guard**, a condition on when a transition may fire. Place, transition, arc, guard — four primitives, and no fifth. Everything else, from `balances` to `brew` to the tic-tac-toe move `X00`, is what a domain sounds like once it has been written in them. The guard is not on the same footing as the other three, though. The incidence matrix of Chapter 2 records places, transitions and arcs; a guard is a predicate on the marking that the matrix does not see, so a property that depends on a guard is checked by exploring states rather than by linear algebra, and a guarded net leaves the structure that makes composition well behaved. [Appendix E](appendix-e-categorical-foundations.md#where-the-free-structure-stops-two-boundaries) states exactly where that line falls.
 
 ### The Firing Rule
 
@@ -108,7 +108,7 @@ This pattern — a shared resource place controlling access — models mutexes, 
 
 Say "model" in a meeting today and most people hear "large language model": billions of parameters, opaque weights, probabilistic outputs. Petri nets are a different kind of model, small and executable, and inspectable all the way down.
 
-A coffee shop with five ingredients and five recipes is ten places and five transitions ([Chapter 5](ch05-resource-modeling.md)). petri-pilot's Texas Hold'em model, a simplified five-player table with all four betting rounds, has 18 places and 32 transitions ([`services/texas-holdem.json`](https://github.com/pflow-xyz/petri-pilot/blob/main/services/texas-holdem.json)). A Sudoku solver is larger but still finite and fully visible.
+A coffee shop with five ingredients and five recipes is ten places and five transitions ([Chapter 5](ch05-resource-modeling.md)). The tutorial Texas Hold'em model of [Chapter 10](ch10-complex-state-machines.md), a simplified five-player table with all four betting rounds, has 18 places and 32 transitions. A Sudoku solver is larger but still finite and fully visible.
 
 Small models offer properties that large models cannot:
 
@@ -130,6 +130,8 @@ A Petri net model lets you answer questions before writing implementation code:
 
 These are questions about the model's state space, so they can be asked before the implementation exists. They are answered in two different ways. Invariants come from the incidence matrix by linear algebra and hold for any initial marking. Reachability, boundedness and deadlock are decided by exploring the reachable markings ([`reachability/graph.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/graph.go)), which finishes for a bounded net of modest size and is cut off at a configurable state limit otherwise; an unbounded net is caught instead by a finite witness, a firing sequence that strictly grows the marking (the Karp–Miller criterion; [`reachability/coverability.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/coverability.go)).
 
+Exploring states is a decision procedure only in principle. Reachability for ordinary nets is decidable but Ackermann-complete in the worst case, so for a net of real size the state limit, not the theory, is what ends the search. An inhibitor arc or a data guard removes even the in-principle guarantee (Chapter 4).
+
 ### Models as Specification
 
 Here's the workflow this book advocates:
@@ -145,4 +147,4 @@ In most software the code is the model, and the specification, if there is one, 
 
 The rest of this book shows what this looks like in practice — from a coffee shop inventory system to a running application, a kernel-checked theorem and a zero-knowledge proof of a game move — all derived from the same four primitives: places, transitions, arcs, and guards.
 
-> **Try it live:** See the [Stoplight](https://pilot.pflow.xyz/stoplight/) for a cyclic state machine or the [Dining Philosophers](https://pilot.pflow.xyz/dining-philosophers/) for mutual exclusion — both generated from Petri net models at [pilot.pflow.xyz](https://pilot.pflow.xyz/). The live stoplight is petri-pilot's [`services/stoplight.json`](https://github.com/pflow-xyz/petri-pilot/blob/main/services/stoplight.json): the same three-place cycle, starting in red, with transitions named `go`, `slow` and `stop`.
+> **Try it live:** The [what-if console](https://sim.pflow.xyz/whatif/) at sim.pflow.xyz runs any stored Petri net model on a seeded simulator, and its [catalog](https://sim.pflow.xyz/) lists the models it holds, from a [vet clinic](https://sim.pflow.xyz/whatif/?id=ae6ab5aeb95dd994bc561479) to [tic-tac-toe](https://sim.pflow.xyz/whatif/?id=5a08c67862a2eb55799f5229).

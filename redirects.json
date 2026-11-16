@@ -1,1 +1,9 @@
-{}
+{
+  "/ch13-exponential-weights.html": "/ch15-exponential-weights.html",
+  "/ch14-declarative-infrastructure.html": "/ch16-declarative-infrastructure.html",
+  "/ch15-visual-editor.html": "/ch17-visual-editor.html",
+  "/ch16-code-generation.html": "/ch18-code-generation.html",
+  "/ch17-go-pflow-library.html": "/ch19-go-pflow-library.html",
+  "/ch18-dual-implementation.html": "/ch20-dual-implementation.html",
+  "/ch19-epilogue.html": "/ch21-epilogue.html"
+}

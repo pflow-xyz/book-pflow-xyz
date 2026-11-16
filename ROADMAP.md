@@ -110,7 +110,7 @@ least expected instance — this ecosystem's own devops (the private operations 
       as evidence.
 - [x] **Add `sim-pflow-xyz` to the book's source list.** *(Done 2026-08-23; the
       operations tooling is private and is cited only generically.)* `CLAUDE.md`'s "Source Material" table only names
-      blog-stackdump-com, petri-pilot, go-pflow — the two strongest recent
+      blog-stackdump-com, go-pflow and the code generator sim-pflow-xyz was forked from — the two strongest recent
       instances of the thesis (`model-is-the-app`, the operations tooling as the infra
       instance) live in repos the book doesn't draw from yet.
 - [x] **Cite journeys in the book as a shipped Metamodel instance** *(Done 2026-08-23: ch21 inventory table, glossary.)*,

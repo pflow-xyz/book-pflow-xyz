@@ -1,14 +1,14 @@
 # Constraint Satisfaction — Sudoku
 
-**Learning objective**: Express constraints as token conservation and solve via continuous relaxation.
+**Learning objective**: Express a puzzle's constraints as net structure, and test whether a continuous relaxation of that net can rank candidate moves.
 
-Chapters 5 and 6 applied Petri nets to resource management and game mechanics. This chapter applies them to a different problem class: **constraint satisfaction**. Sudoku is a puzzle where you fill a grid such that every row, column, and block contains each digit exactly once. There's no optimization, no adversary, no time — just constraints.
+Chapters 5 and 6 applied Petri nets to resource management and game mechanics. This chapter applies them to a different problem class: **constraint satisfaction**. Sudoku is a puzzle where you fill a grid such that every row, column, and block contains each digit exactly once; there is no optimization and no opponent, only the constraints.
 
-The Petri net encoding follows the same three-layer pattern from tic-tac-toe: cells as places, digit placements as transitions, and constraint collectors that fire when a row, column, or block is complete. The ODE simulation ranks candidate moves by how much flow they direct toward the `solved` place — no backtracking search required.
+The encoding follows the three-layer pattern of [Chapter 6: Game Mechanics — Tic-Tac-Toe](ch06-game-mechanics.md): cells as places, digit placements as transitions that leave a history token, and constraint collectors that feed a `solved` place. The method carried over from tic-tac-toe is to rank candidate moves by how much ODE flow each directs toward `solved`. The model is go-pflow's Sudoku example: the generator is `createODENet` in [`examples/sudoku/cmd/model.go`](https://github.com/pflow-xyz/go-pflow/blob/main/examples/sudoku/cmd/model.go), and the nets it produced are committed beside it as [`sudoku-4x4-ode.jsonld`](https://github.com/pflow-xyz/go-pflow/blob/main/examples/sudoku/sudoku-4x4-ode.jsonld) and [`sudoku-9x9-ode.jsonld`](https://github.com/pflow-xyz/go-pflow/blob/main/examples/sudoku/sudoku-9x9-ode.jsonld). Read against that code, the collectors as built can never fire, so the ranking is not yet demonstrated. This chapter describes what the code builds, shows why the ranking fails, and ends on what a collector would have to express for it to work.
 
 ## The Puzzle
 
-We'll use a 4×4 mini-Sudoku to keep things comprehensible:
+We'll use a 4×4 mini-Sudoku to keep things comprehensible. It is the sample puzzle in `getSamplePuzzle` in [`examples/sudoku/cmd/main.go`](https://github.com/pflow-xyz/go-pflow/blob/main/examples/sudoku/cmd/main.go):
 
 ```
   Initial:            Solution:
@@ -27,6 +27,8 @@ Constraints: each row, column, and 2×2 block must contain digits 1–4 exactly 
 
 ## Cell Places and Digit Transitions
 
+Node names in this chapter are the ones in the committed `sudoku-4x4-ode.jsonld` (`P01`, `D2_01`, `_D2_01`, `Block00_Complete`). The current generator writes them with a separator between row and column (`P0_1`, `D2_0_1`, `_D2_0_1`, `Block0_0_Complete`); the structure is the same.
+
 ### Layer 1: Cell Places
 
 Each cell in the grid is a place. A token means "this cell is empty":
@@ -38,11 +40,11 @@ P20: 1  P21: 0  P22: 1  P23: 1
 P30: 1  P31: 1  P32: 1  P33: 0
 ```
 
-Given cells (1 at position 00, 2 at position 12, 3 at position 21, 4 at position 33) have no token — they're already filled.
+Given cells (1 at position 00, 2 at position 12, 3 at position 21, 4 at position 33) have no token — they're already filled. Instead, the history place for the clue starts marked: `_D1_00` holds a token from the beginning because the puzzle gives a 1 at (0,0), while `_D2_00`, `_D3_00` and `_D4_00` start at 0.
 
 ### Layer 2: Digit Transitions and History
 
-For each cell × digit combination, a transition represents "write this digit in this cell":
+For each empty cell × digit combination, a transition represents "write this digit in this cell":
 
 ```
 Transition D2_01:             History place _D2_01:
@@ -54,26 +56,26 @@ P01 --| D2   |---> _D2_01
       +------+
 ```
 
-Firing consumes the cell token (cell is now filled) and produces a history token (recording which digit was placed). This is identical to the tic-tac-toe pattern: `P_ij → PlayX_ij → X_ij`.
+Firing consumes the cell token (cell is now filled) and produces a history token (recording which digit was placed). This is the tic-tac-toe pattern: `P_ij → PlayX_ij → X_ij`.
 
-For a 4×4 grid: 16 cells × 4 digits = **64 digit transitions** and **64 history places**. Most of these transitions will be irrelevant for any given puzzle (you can't place a 1 in a row that already has a 1), but the ODE simulation handles this naturally — conflicting placements produce zero flow.
+The generator makes digit transitions only for empty cells, so the 4×4 puzzle has 12 empty cells × 4 digits = **48 digit transitions**, while history places exist for every cell, 16 × 4 = **64 history places**. A digit transition has exactly one input arc, from its cell, and one output arc, to its history place. Nothing from the cell's row, column or block touches it, so the net does not stop a second 1 being written into row 0: `D1_01` is exactly as enabled as `D2_01`. Whatever constraint the model carries has to live in the collectors.
 
 ### Layer 3: Constraint Collectors
 
-When all required digits appear in a row, column, or block, a **constraint collector** transition fires and deposits a token in the `solved` place:
+There are 12 **constraint collectors** — 4 rows (`Row0_Complete` …), 4 columns (`Col0_Complete` …) and 4 blocks (`Block00_Complete` …) — each with one output arc into `solved`, whose capacity is 12. The intent is that `Row0_Complete` fires when row 0 contains 1, 2, 3 and 4. The generator wires it to every history place in the row, 4 digits × 4 cells = 16 input arcs:
 
 ```
-_D1_00 --> Row0_Complete --> solved
-_D2_01 -->
-_D3_02 -->
-_D4_03 -->
+_D1_00  _D2_00  _D3_00  _D4_00  -->
+_D1_01  _D2_01  _D3_01  _D4_01  -->  Row0_Complete --> solved
+_D1_02  _D2_02  _D3_02  _D4_02  -->
+_D1_03  _D2_03  _D3_03  _D4_03  -->
 ```
 
-The `Row0_Complete` transition requires history tokens for all four digits in row 0. When all four are present — meaning row 0 has digits 1, 2, 3, and 4 — the collector fires.
+A transition is enabled only when every input place holds a token, so this collector asks for every cell of the row to hold every digit at once. A cell has one token to give, so on any legal fill exactly 4 of the 16 places are marked, and the collector stays disabled. As built, `solved` cannot leave 0.
 
-For the 4×4 grid: 4 row collectors + 4 column collectors + 4 block collectors = **12 constraint collectors**. Maximum tokens in `solved` = 12. A fully solved puzzle has all 12 constraints satisfied.
+The counts check against the committed net: 81 places (16 cells, 64 history places, `solved`), 60 transitions (48 digit moves, 12 collectors) and 300 arcs (2 per digit transition, 16 into and 1 out of each collector).
 
-This is a direct generalization of the tic-tac-toe pattern collectors. In tic-tac-toe, collectors watched for three-in-a-row. In Sudoku, collectors watch for complete rows, columns, and blocks. Same mechanism, different patterns.
+The tic-tac-toe collectors of Chapter 6 don't have this problem because a win line is a plain conjunction — X at three named cells, three input arcs. "Row 0 is complete" is a conjunction over digits of a *disjunction* over cells: 1 is in some cell of the row, and 2 is, and so on. A single transition's enabling rule is a conjunction over its inputs, and wiring every (digit, cell) pair as an input is how the generator ended up asking for all 16.
 
 ## How the Model Works
 
@@ -81,19 +83,19 @@ Step-by-step for cell (0,1) — currently empty:
 
 1. **Initial**: `P01 = 1` (cell is empty, available for placement)
 
-2. **Consider digit 2**: Transition `D2_01` is enabled because `P01` has a token
+2. **Consider digit 2**: Transition `D2_01` is enabled because `P01` has a token — and so are `D1_01`, `D3_01` and `D4_01`, by the same arc
 
 3. **Fire `D2_01`**:
    - `P01`: 1 → 0 (cell now filled)
    - `_D2_01`: 0 → 1 (history records "digit 2 at position (0,1)")
 
-4. **Constraint progress**: When row 0 eventually has all four digits placed, `Row0_Complete` fires and `solved` gets +1 token
+4. **Constraint progress**: `Row0_Complete` is still disabled. It also needs `_D1_01`, `_D3_01` and `_D4_01`, which can no longer be marked because `P01`'s token is spent, and `_D2_00`, `_D3_00` and `_D4_00`, which no transition writes, because (0,0) is a given
 
-The model doesn't encode *which* digit goes where — that's the puzzle's job. It encodes *what constitutes a valid solution*: all constraint collectors firing. The ODE simulation explores the space of possible placements and measures how much flow reaches `solved`.
+The net encodes what a digit placement is. It does not yet encode what a valid solution is.
 
 ## ODE Prediction for Move Ordering
 
-The same hypothesis evaluation from tic-tac-toe applies:
+The tic-tac-toe method scores each candidate by simulating the net from the marking the move would leave. As a procedure (a sketch; nothing in the repository implements it for Sudoku):
 
 ```
 For each candidate move:
@@ -103,77 +105,81 @@ For each candidate move:
   4. Higher flow = move more likely leads to solution
 ```
 
-### Why This Works
+### What the Net Computes
 
-The constraint collectors create asymmetric flow in the ODE. A digit placement that satisfies constraints in multiple directions (its row, column, and block) creates more flow toward `solved` than one that only helps one constraint. The mass-action kinetics amplify this: more enabled collectors means higher aggregate flow rate.
+On the committed net this procedure gives every candidate the same score, zero. go-pflow's rate law sets a transition's flux to its rate times the product of its input places' token counts, and to 0 outright if any input is at or below 0 ([`solver/ode.go`](https://github.com/pflow-xyz/go-pflow/blob/main/solver/ode.go)). Every row, column and block of the sample puzzle contains one given cell. A given cell has no digit transitions, so three of its four history places are 0 for all $t$, and every collector over that row, column or block has those places among its inputs. Every collector's flux is therefore 0 from the first step, whichever move was tried.
 
-A placement that creates a conflict — placing a 2 in a row that already has a 2 — produces zero flow through the corresponding row collector. The ODE naturally penalizes conflicts without any explicit "conflict detection" logic.
+The history layer cannot separate the candidates either. The four digit transitions out of an empty cell share one input and one rate (`SetRates` gives every transition 1.0 unless overridden, [`petri/net.go`](https://github.com/pflow-xyz/go-pflow/blob/main/petri/net.go)), so the ODE splits the cell's token evenly among its four history places. With the collectors inert, nothing connects one cell to another, and placing a 2 or a 4 at (0,1) leaves the rest of the trajectory unchanged.
+
+We derived this by reading the generator and the solver against the committed net; the simulation was not re-run.
 
 ### Move Ranking Example
 
-For cell (0,1) in the 4×4 puzzle, evaluating each digit:
+For cell (0,1), reasoning from the puzzle rules out two digits and leaves two:
 
-```
-Digit 2: solved flow = 0.31  <-- Correct answer
-Digit 3: solved flow = 0.28
-Digit 4: solved flow = 0.15
-Digit 1: blocked (conflict -- row 0 already has 1)
-```
+| Digit | The rules | The net | Score on the committed net |
+|-------|-----------|---------|----------------------------|
+| 1 | excluded: row 0 has the 1 at (0,0) | `D1_01` enabled | 0 |
+| 2 | candidate (the solution's digit) | `D2_01` enabled | 0 |
+| 3 | excluded: column 1 has the 3 at (2,1) | `D3_01` enabled | 0 |
+| 4 | candidate | `D4_01` enabled | 0 |
 
-The ODE ranks digit 2 highest because it enables the most downstream constraint satisfaction. Digit 1 is blocked because its row collector can never fire (the history token for "1 in row 0" already exists from the given cell).
+The scores are derived from the argument above, not from a run. The exclusions in the second column are the reader's reasoning; neither shows up in the net, where all four transitions are enabled by the same token. For the method to work, the ODE would have to score 2 above 4 and give 1 and 3 zero flow. No run in the repository demonstrates either.
 
 ## Tuning for Speed
 
-A naive ODE simulation of the full model is slow. But we don't need precision — we need **ranking**. Two moves scored at 0.31 and 0.28 will maintain their relative order whether we simulate to t=3.0 or t=10.0.
+A full-precision solve of the 9×9 net is slow, so the benchmark in [`sudoku_bench_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/examples/sudoku/cmd/sudoku_bench_test.go) runs the Tsit5 solver with looser settings than `solver.DefaultOptions()`:
 
-This enables aggressive tuning:
-
-| Parameter | Default | Tuned | Why |
-|-----------|---------|-------|-----|
-| Time horizon | t=10.0 | t=3.0 | Only need relative rankings |
+| Parameter | `DefaultOptions()` | Benchmark | Why |
+|-----------|--------------------|-----------|-----|
+| Time horizon | passed with the problem (tic-tac-toe used t=10.0) | t=3.0 | Only relative rankings are needed |
 | Abstol | 1e-6 | 1e-4 | Looser tolerance, faster solve |
-| Step size (dt) | 0.01 | 0.2 | Larger steps, fewer iterations |
-| Max iterations | 100000 | 1000 | Early termination OK |
+| Reltol | 1e-3 | 1e-3 | Unchanged |
+| Initial step (dt) | 0.01 | 0.2 | Larger first step; the solver is adaptive and `Dtmax` stays 0.1 |
+| Max iterations | 100000 | 100000 | Left at the default |
 
-The performance impact:
+Cutting the horizon assumes that ranking needs candidates in the right order rather than converged token counts, and that a move ahead at t=3.0 is still ahead at t=10.0. Nothing in the repository tests that assumption for Sudoku, and with every score at 0 there is nothing yet to order. The same cut was made first in the tic-tac-toe example, whose [README](https://github.com/pflow-xyz/go-pflow/blob/main/examples/tictactoe/README.md) reports a 21× speedup and about 0.04 s per move evaluation.
 
-| Model | Naive | Tuned | Speedup |
-|-------|-------|-------|---------|
-| 4×4 (64 transitions) | 0.8s | 0.04s | 20× |
-| 9×9 (729 transitions) | ~60s | ~3s | 20× |
+[`benchmark_results.txt`](https://github.com/pflow-xyz/go-pflow/blob/main/examples/sudoku/benchmark_results.txt) records one run on an Apple M4 Max:
 
-This makes interactive analysis feasible — evaluating all candidates for a cell takes seconds, not minutes.
+| Benchmark | Time per evaluation |
+|-----------|---------------------|
+| 4×4, benchmark settings | 0.067 s |
+| 4×4, tighter tolerance | 14.8 s |
+| 9×9, benchmark settings | 4.58 s |
+
+That file names benchmarks (`…SingleEvaluation`, `…WithTighterTolerance`) that the current test file no longer has; it now has `BenchmarkSudoku4x4ODE`, `BenchmarkSudoku9x9ODE` and `BenchmarkSudoku16x16ODE`. The settings behind the 14.8 s row are therefore not in the repository, and the roughly 220× gap between the two 4×4 rows is against settings we cannot name. At the recorded speeds, scoring the four candidates for a 4×4 cell takes about a quarter of a second, and the nine for a 9×9 cell about forty seconds. From the go-pflow root, `go test -run '^$' -bench Sudoku4x4ODE ./examples/sudoku/cmd` re-times the 4×4 solve; it discards the result, so nothing in the repository yet reads `solved` from a solution or ranks a move. (The analyzer's `--analyze` flag does not call the solver either: `runODESimulationOnNet` in `main.go` prints a description of the method and returns.) Not re-run for this chapter.
 
 ## Scaling from 4×4 to 9×9
 
-The same pattern scales without structural changes:
+The same generator builds the 9×9 net:
 
 | Component | 4×4 | 9×9 |
 |-----------|-----|-----|
 | Cell places | 16 | 81 |
 | Digits | 4 | 9 |
 | History places | 64 | 729 |
-| Digit transitions | 64 | 729 |
-| Row collectors | 4 | 9 |
-| Column collectors | 4 | 9 |
-| Block collectors | 4 | 9 |
-| **Max solved tokens** | **12** | **27** |
+| Digit transitions (sample puzzle) | 48 | 459 |
+| Digit transitions (empty grid) | 64 | 729 |
+| Row / column / block collectors | 4 / 4 / 4 | 9 / 9 / 9 |
+| Inputs per collector | 16 | 81 |
+| **`solved` capacity** | **12** | **27** |
 
-The 9×9 model has 729 transitions — one for each cell × digit combination. The constraint collectors expand from 12 to 27 (9 rows + 9 columns + 9 blocks). The structure is identical; only the dimensions change.
+The 9×9 sample is the 30-clue puzzle in `getSamplePuzzle`, so 51 empty cells and 459 digit transitions; the committed `sudoku-9x9-ode.jsonld` has 486 transitions, which is 459 plus the 27 collectors. Every row, column and block of that puzzle also contains a given, so the 9×9 collectors are starved the same way the 4×4 ones are.
 
-The ODE simulation time grows with the number of transitions (729 vs. 64), but the tuned solver still handles it in seconds. The ODE is not solving Sudoku here; it is ranking candidate moves, and the ranking guides a discrete solver (backtracking, constraint propagation) toward the solution faster.
+The intended use was for the ranking to order the choices of a discrete solver (backtracking, constraint propagation) rather than to solve the puzzle itself. No such solver is wired to it in the repository.
 
 ## Constraint Satisfaction as Token Flow
 
-The Sudoku model reveals a general pattern for constraint satisfaction problems:
+The Sudoku model suggests a layering for constraint satisfaction problems:
 
 1. **Variables** become places (cells that can be filled)
-2. **Domain values** become transitions (digits that can be placed)
+2. **Domain values** become transitions (digits that can be placed), each leaving a history token
 3. **Constraints** become collector transitions (patterns that must be completed)
 4. **Solution** is a state where all collectors have fired
 
-This pattern works for any CSP. An N-queens problem would have N² cell places, N queen transitions per column, and collectors for row uniqueness, column uniqueness, and diagonal uniqueness. A graph coloring problem would have vertex places, color transitions, and collectors for each edge (ensuring adjacent vertices have different colors).
+Steps 1, 2 and 4 carry over from tic-tac-toe directly. Step 3 is where the Sudoku net goes wrong. A collector's enabling rule is a conjunction over its inputs, so a constraint with a disjunction inside it — "some cell of row 0 holds a 1" — needs structure in between. One shape would give each (digit, row) pair its own place, fed from that row's four history places, and give the row collector one input per digit. It has not been built, and it raises a question of its own: the column and block collectors need the same history tokens, so the new layer would have to test them without consuming them — with read arcs, which fall outside the free structure ([Appendix E: Categorical Foundations](appendix-e-categorical-foundations.md), "Where the Free Structure Stops") — or put them back. Even with working collectors, the digit layer has no arcs that make a conflicting placement cost anything, so whether the ODE would separate 2 from 4 at (0,1), or show 1 and 3 as zero flow, is open.
 
-The ODE simulation doesn't solve the CSP directly — it provides a heuristic for variable and value ordering. In constraint programming, the order in which you assign variables and try values dramatically affects performance. The ODE's flow-based ranking is a natural heuristic: try the assignment that creates the most flow toward the solution.
+The same layering can be sketched for other problems. An N-queens net would have N² square places, queen-placement transitions, and collectors for rows, columns and diagonals; a graph-coloring net would have vertex places, color transitions, and a collector for each edge. Neither is built in the repository, and neither has been checked against the collector problem above.
 
-No hardcoded solver. Constraints emerge from topology. The same four-term primitive — cell, func, arrow, guard — encodes Sudoku, N-queens, graph coloring, and any other CSP. The structure changes; the mechanism doesn't.
+In constraint programming, the order in which variables are assigned and values tried has a large effect on search time. Flow toward `solved` was meant as a value-ordering heuristic of that kind: try the assignment that sends the most flow toward the solution. On the net as built, every assignment sends none, so whether it can serve as one depends on a collector design that has not been tried.

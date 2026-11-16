@@ -2,9 +2,9 @@
 
 **Learning objective**: Read and write the formal notation; understand firing rules and state equations.
 
-Chapter 1 introduced Petri nets informally — circles, bars, arrows, dots. That's enough for intuition, but not enough for analysis. To prove that a system can't deadlock, or that a resource pool never goes negative, or that a workflow always terminates, you need precise definitions. This chapter provides them.
+Chapter 1 introduced Petri nets informally — circles, bars, arrows, dots. That's enough for intuition, but not enough for analysis. To prove that a system can't deadlock, that a resource pool never loses a unit, or that a workflow always terminates, you need precise definitions. This chapter provides them.
 
-The notation looks heavy at first. It isn't. Everything here follows from two ideas: a net is a bipartite graph with weights, and a marking is a vector of integers. The rest is matrix arithmetic.
+The notation looks heavier than it is. Everything here follows from two ideas: a net is a bipartite graph with weights, and a marking is a vector of integers. The rest is matrix arithmetic.
 
 ## The Formal Definition
 
@@ -22,7 +22,7 @@ Where:
 
 Two constraints keep things clean: $P \cap T = \emptyset$ (nothing is both a place and a transition) and $P \cup T \neq \emptyset$ (the net isn't empty).
 
-That's the entire definition. Five things. Places are where tokens live. Transitions are what moves them. Arcs say who connects to whom. Weights say how many tokens an arc carries. The initial marking says where tokens start.
+That is the whole definition. Places are where tokens live. Transitions are what moves them. Arcs say who connects to whom. Weights say how many tokens an arc carries. The initial marking says where tokens start.
 
 ### Presets and Postsets
 
@@ -44,7 +44,7 @@ A **marking** $M$ assigns a non-negative integer to each place — how many toke
 
 $$M = [M(p_1), M(p_2), \ldots, M(p_n)]^T \in \mathbb{N}^n$$
 
-This is the **state vector**. It captures everything about the system's current state. Two markings are equal if and only if every place has the same token count in both. There's no hidden state, no side channels, no context beyond the vector.
+This is the **state vector**. It captures everything about the system's current state. Two markings are equal if and only if every place has the same token count in both. For the nets of this chapter there is no state outside the vector.
 
 The initial marking $M_0$ is the starting state. For the traffic light from Chapter 1:
 
@@ -96,7 +96,7 @@ $$R(M_0) = \{M' \mid \exists \sigma: M_0 \xrightarrow{\sigma} M'\}$$
 
 ### Nondeterminism
 
-When multiple transitions are enabled simultaneously, either one could fire. The Petri net doesn't prescribe which. This **nondeterminism** is a feature, not a bug — it models real concurrency where the order of independent events is genuinely unspecified.
+When multiple transitions are enabled simultaneously, either one could fire. The Petri net doesn't prescribe which. This **nondeterminism** is deliberate: it models concurrency, where the order of independent events is unspecified.
 
 In the traffic light, only one transition is ever enabled at a time, so there's no nondeterminism. But in the intersection model from Chapter 1, when the shared token is available, both lights could claim it. The net structure constrains what's possible; it doesn't dictate the schedule.
 
@@ -108,7 +108,9 @@ The incidence matrix $C \in \mathbb{Z}^{n \times m}$ has one row per place and o
 
 $$C[i, j] = W(t_j, p_i) - W(p_i, t_j)$$
 
-Positive means the transition produces tokens in that place. Negative means it consumes. Zero means no effect.
+Positive means the transition produces tokens in that place. Negative means it consumes. Zero means no net effect, which includes a self-loop that consumes and produces the same number. Inhibitor and read arcs, which test a place without moving tokens, have no entry in $C$ at all; [Appendix E](appendix-e-categorical-foundations.md#where-the-free-structure-stops-two-boundaries) explains what that costs.
+
+go-pflow builds this matrix in `IncidenceMatrix` ([`reachability/invariants.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/invariants.go)) with the same orientation, rows for places and columns for transitions, sorted by name, and it skips inhibitor arcs for the same reason.
 
 ### Building the Matrix
 
@@ -124,7 +126,7 @@ Reading column $t_1$: firing $t_1$ removes one token from $p_1$ and adds one to 
 
 ### The State Equation
 
-This is the payoff. With the incidence matrix, the firing rule becomes matrix multiplication:
+With the incidence matrix, the firing rule becomes matrix multiplication:
 
 $$M' = M + C \cdot \vec{\sigma}$$
 
@@ -136,7 +138,7 @@ Fire both transitions once ($\vec{\sigma} = [1, 1]^T$) to go directly from $M_0$
 
 $$M_2 = \begin{bmatrix} 1 \\ 0 \\ 0 \end{bmatrix} + \begin{bmatrix} -1 & 0 \\ 1 & -1 \\ 0 & 1 \end{bmatrix} \cdot \begin{bmatrix} 1 \\ 1 \end{bmatrix} = \begin{bmatrix} 1 \\ 0 \\ 0 \end{bmatrix} + \begin{bmatrix} -1 \\ 0 \\ 1 \end{bmatrix} = \begin{bmatrix} 0 \\ 0 \\ 1 \end{bmatrix}$$
 
-The state equation is powerful because it's linear. Given any firing count vector, you can compute the resulting marking with one matrix multiplication. But there's a caveat: the state equation doesn't check enabling. A firing count vector might describe a sequence that isn't valid — some transition might need tokens that aren't there yet. The state equation gives you a necessary condition for reachability, not a sufficient one.
+The state equation is linear: given any firing count vector, one matrix multiplication gives the resulting marking. The caveat is that it doesn't check enabling. A firing count vector might describe a sequence that isn't valid — some transition might need tokens that aren't there yet. The state equation gives you a necessary condition for reachability, not a sufficient one.
 
 ### A Richer Example
 
@@ -159,7 +161,7 @@ With $M_0 = [1, 1, 0]^T$, firing $t_1$ gives $M_1 = [0, 0, 1]^T$. With $M_0 = [1
 
 ## P-Invariants and Conservation Laws
 
-The incidence matrix reveals something deeper than individual firings. It reveals what *cannot change*, no matter what sequence of transitions fires.
+The incidence matrix also shows what *cannot change*, whatever sequence of transitions fires.
 
 A **P-invariant** (place invariant) is a non-zero vector $w \in \mathbb{N}^n$ such that:
 
@@ -169,7 +171,11 @@ The vector $w$ assigns a weight to each place such that the weighted sum of toke
 
 $$w^T \cdot M = w^T \cdot M_0$$
 
-This is a **conservation law**. No matter what fires, no matter what order, the weighted token count stays constant.
+The proof is one line of the state equation. If $M_0 \xrightarrow{\sigma} M$, then $M = M_0 + C \cdot \vec{\sigma}$, so
+
+$$w^T \cdot M = w^T \cdot M_0 + (w^T \cdot C) \cdot \vec{\sigma} = w^T \cdot M_0 + \vec{0} \cdot \vec{\sigma} = w^T \cdot M_0$$
+
+This is a **conservation law**: whatever fires, in whatever order, the weighted token count stays constant. The argument needs only the state equation, which holds for every valid firing sequence, so the caveat about enabling does not weaken it.
 
 ### Finding P-Invariants
 
@@ -181,7 +187,13 @@ It works. The invariant says:
 
 $$M(p_1) + M(p_2) + M(p_3) = M_0(p_1) + M_0(p_2) + M_0(p_3) = 1$$
 
-The total number of tokens is always 1. We proved this for the traffic light informally in Chapter 1 — now we've proved it with linear algebra, and the proof works for any net where $[1, 1, \ldots, 1] \cdot C = \vec{0}$.
+The total number of tokens is always 1. go-pflow's `TestPInvariantThreePlaces` ([`reachability/farkas_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/farkas_test.go)) builds the same chain with five tokens in the first place, asserts that the only minimal invariant found is `a + b + c == 5`, and checks it on every reachable marking (not re-run here).
+
+Chapter 1 argued informally that the traffic light keeps exactly one token. The same check makes that argument formal. With places Green, Yellow, Red as rows and transitions `go_yellow`, `go_red`, `go_green` as columns, the light's incidence matrix and the all-ones vector give
+
+$$[1, 1, 1] \cdot \begin{bmatrix} -1 & 0 & 1 \\ 1 & -1 & 0 \\ 0 & 1 & -1 \end{bmatrix} = [0, 0, 0]$$
+
+so $M(\text{Green}) + M(\text{Yellow}) + M(\text{Red}) = 1$ in every reachable marking. Each column sums to zero because each transition moves one token from one place to the next.
 
 ### What Conservation Laws Tell You
 
@@ -191,25 +203,36 @@ P-invariants answer practical questions:
 
 **"Is this resource pool managed correctly?"** If two places $p_a$ (available) and $p_b$ (busy) satisfy $M(p_a) + M(p_b) = c$ for some constant $c$, then resources are always either available or busy, never duplicated or lost.
 
-**"Is the net bounded?"** If every place appears in at least one P-invariant with a positive coefficient, then no place can accumulate unbounded tokens. The net is **structurally bounded** — it stays within limits regardless of the initial marking.
+**"Is the net bounded?"** If every place appears in at least one P-invariant with a positive coefficient, then no place can accumulate unbounded tokens: $M(p) \leq w^T M_0 / w(p)$ for any invariant $w$ covering $p$. The net is **structurally bounded**, bounded from every initial marking, with the bound depending on $M_0$. The test is sufficient, not necessary; a net can be bounded without a covering invariant. go-pflow implements this test as `StructuralBoundedness` in [`reachability/invariants.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/invariants.go).
 
 ### Partial Invariants
 
 Not every net has a P-invariant covering all places. A net with a "source" transition (one that produces tokens from nothing) or a "sink" transition (one that consumes tokens into nothing) breaks total conservation. But subsets of places may still be conserved.
 
-For example, in a producer-consumer system:
+For example, in an open producer-consumer system, $t_{produce}$ has no input place and $t_{consume}$ has no output place:
 
 ```
-[source] -> t_produce -> [buffer] -> t_consume -> [sink]
+t_produce -> [buffer] -> t_consume
 ```
 
-The total token count isn't conserved — $t_{produce}$ creates tokens and $t_{consume}$ destroys them. But if you add a capacity limit by looping tokens back:
+The buffer's row of $C$ is $[+1, -1]$, and no non-zero $w \geq 0$ makes $w \cdot [+1, -1] = [0, 0]$, so this net has no P-invariant at all. go-pflow's `TestPInvariantNoneForUnbounded` ([`reachability/farkas_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/farkas_test.go)) checks the producer half of this net and expects an empty result.
+
+Now add a capacity limit by looping a token back to a pool of empty slots, and let $t_{consume}$ also record each delivery:
 
 ```
 [empty_slots: 5] -> t_produce -> [buffer] -> t_consume -> [empty_slots]
+                                                      \-> [delivered]
 ```
 
-Now $M(\text{empty\_slots}) + M(\text{buffer}) = 5$ is an invariant. The buffer can never exceed 5.
+The incidence matrix, with rows empty\_slots, buffer, delivered:
+
+| | $t_{produce}$ | $t_{consume}$ |
+|:---:|:---:|:---:|
+| empty\_slots | $-1$ | $+1$ |
+| buffer | $+1$ | $-1$ |
+| delivered | $0$ | $+1$ |
+
+Solving $w^T C = \vec{0}$ by hand: the first column forces $w_{\text{empty}} = w_{\text{buffer}}$, and the second then forces $w_{\text{delivered}} = 0$. So $w = [1, 1, 0]$, and $M(\text{empty\_slots}) + M(\text{buffer}) = 5$ in every reachable marking. The buffer can never exceed 5. The `delivered` place is in no invariant, and it grows by one on every consumption without limit: the conservation law covers part of the net and not the rest.
 
 ### In Code
 
@@ -228,18 +251,18 @@ for _, inv := range invariants {
 isConservative := analyzer.CheckConservation(initialMarking)
 ```
 
-The `IncidenceMatrix` method builds the $C$ matrix from the net's arc structure. `FindPInvariants` solves $w^T \cdot C = \vec{0}$ to find conservation laws. `CheckConservation` tests whether the all-ones vector is an invariant — whether total token count is preserved.
+The `IncidenceMatrix` method builds the $C$ matrix from the net's arc structure. `FindPInvariants` solves $w^T \cdot C = \vec{0}$ for semi-positive $w$ with the Farkas algorithm and returns the minimal-support invariants, each with its constant evaluated at the given marking; every semi-positive invariant is a non-negative combination of these, so an empty result means the net has no conservation law (provided the search did not hit its row limit, which `PInvariantBasis` reports). `CheckConservation` tests only whether the all-ones vector is an invariant, that is, whether the total token count is preserved. All three are in [`reachability/invariants.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/invariants.go); the tests in [`reachability/farkas_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/farkas_test.go) cover weighted invariants, invariants over three places, and the mutual-exclusion net with its three separate laws.
 
 ## Putting It Together
 
-The mathematics of this chapter — the 5-tuple, the state equation, the incidence matrix, P-invariants — forms a complete toolkit for structural analysis. Given a Petri net, you can:
+The mathematics of this chapter — the 5-tuple, the state equation, the incidence matrix, P-invariants — is the toolkit for structural analysis. Given a Petri net, you can:
 
 1. **Write the incidence matrix** from the arc structure
-2. **Compute reachable markings** using the state equation $M' = M + C \cdot \vec{\sigma}$
+2. **Rule out markings** with the state equation $M' = M + C \cdot \vec{\sigma}$: a marking with no non-negative integer solution $\vec{\sigma}$ is unreachable, though a solution does not prove reachability
 3. **Find conservation laws** by solving $w^T \cdot C = \vec{0}$
 4. **Prove boundedness** from positive P-invariants
-5. **Check for deadlocks** by finding markings where no transition is enabled
+5. **Check for deadlocks** by finding reachable markings where no transition is enabled
 
-All of this is static analysis — you don't run the net, you reason about its structure. This is what distinguishes Petri nets from simulation frameworks: the topology itself is a proof.
+Items 1 to 4 are static analysis: you reason about the structure without running the net, and the results hold for every firing sequence. Item 5 is different. Deadlock depends on which markings are reachable, so it is found by building the reachability graph; go-pflow's `Analyzer.BuildGraph` reports the dead markings in `Result.Deadlocks` ([`reachability/analyzer.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/analyzer.go), checked by `TestGraphDeadlock` in [`reachability/reachability_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/reachability_test.go)).
 
-But there's a limit. Discrete Petri nets track individual tokens and individual firings. For large systems — thousands of tokens, complex topologies — the reachability set can be enormous. The next chapter shows how to break through this limit by letting tokens be real numbers and transitions fire continuously, turning the state equation into a differential equation.
+That exploration is where discrete nets run into their limit. They track individual tokens and individual firings, and for large systems — thousands of tokens, complex topologies — the reachability set can be enormous. The next chapter trades exactness for scale by letting tokens be real numbers and transitions fire continuously, turning the state equation into a differential equation.

@@ -188,4 +188,12 @@ So the assume-guarantee reasoning of Chapter 4 — each component's seal witness
 - **Riley, M.** (2018). *Categories of Optics.* MSc thesis, Cambridge. The formal theory of lenses and optics in monoidal categories.
 - **Montanari, U. & Rossi, F.** (1995). *Contextual Nets.* Acta Informatica, 32(6). Read arcs as contextual dependencies; nets with them do not generate the free SMC.
 - **Vogler, W., Semenov, A. & Yakovlev, A.** (1998). *Unfolding and Finite Prefix for Nets with Read Arcs.* CONCUR 1998. The self-loop encoding of a read arc is inequivalent under unfolding semantics — and only there.
+- **Baez, J.C. & Master, J.** (2020). *Open Petri Nets.* Mathematical Structures in Computer Science, 30(3). Open nets as morphisms between boundaries of places, composed by gluing (cospans); the structure the Preface's canonical-carrier claim is about.
+- **Mayr, E.W.** (1981). *An Algorithm for the General Petri Net Reachability Problem.* STOC 1981. With Kosaraju (1982), reachability for ordinary nets is decidable.
+- **Kosaraju, S.R.** (1982). *Decidability of Reachability in Vector Addition Systems.* STOC 1982.
+- **Leroux, J. & Schmitz, S.** (2019). *Reachability in Vector Addition Systems is Primitive-Recursive in Fixed Dimension.* LICS 2019. The Ackermann upper bound.
+- **Czerwiński, W. & Orlikowski, Ł.** (2021). *Reachability in Vector Addition Systems is Ackermann-complete.* FOCS 2021. The matching lower bound, shown independently by Leroux (2021), *The Reachability Problem for Petri Nets is Not Primitive Recursive*, FOCS 2021.
+- **Lipton, R.J.** (1976). *The Reachability Problem Requires Exponential Space.* Yale technical report 62. With Rackoff (1978), coverability is EXPSPACE-complete.
+- **Rackoff, C.** (1978). *The Covering and Boundedness Problems for Vector Addition Systems.* Theoretical Computer Science, 6(2).
+- **Minsky, M.L.** (1967). *Computation: Finite and Infinite Machines.* Prentice-Hall. Two-counter machines are Turing-complete; zero tests on two places are all an inhibitor net needs to simulate one.
 - **Karp, R.M.** (1978). *A characterization of the minimum cycle mean in a digraph.* Discrete Mathematics, 23(3). Computes the tropical eigenvalue; restricted to glue cycles, it is the compositional throughput step.

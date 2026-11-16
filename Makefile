@@ -31,7 +31,8 @@ CHAPTERS = chapters/preface.md \
 # mdBook → HTML site
 book:
 	mdbook build
-	cp robots.txt sitemap.xml build/html/
+	cp robots.txt build/html/
+	go run ./cmd/sitemap > build/html/sitemap.xml
 	python3 seo-postprocess.py build/html
 
 # Pandoc → EPUB

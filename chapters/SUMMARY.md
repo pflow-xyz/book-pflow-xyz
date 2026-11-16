@@ -30,7 +30,7 @@
 # Part IV: Building with pflow
 
 - [The Visual Editor — pflow.xyz](ch17-visual-editor.md)
-- [Code Generation — From Model to Application](ch18-code-generation.md)
+- [sim.pflow.xyz — From Description to Checked Model](ch18-code-generation.md)
 - [The go-pflow Library](ch19-go-pflow-library.md)
 - [Dual Implementation and Verification](ch20-dual-implementation.md)
 
