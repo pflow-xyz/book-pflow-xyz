@@ -4,7 +4,7 @@
 
 The previous chapters used go-pflow implicitly — building nets, running simulations, analyzing results. This chapter makes the library itself the subject. It covers the package structure, the fluent builder API, solver configuration, and the higher-level abstractions (state machines, workflows, actors) that compile to, or describe themselves as, Petri nets.
 
-Think of this chapter as the reference that ties together everything from Parts I through III. The snippets below follow the go-pflow source but are not compiled as part of this book; where a test in the repository exercises the same calls, the section links it.
+The snippets below follow the go-pflow source but are not compiled as part of this book; where a test in the repository exercises the same calls, the section links it.
 
 ## Package Overview
 
@@ -119,7 +119,7 @@ final := sol.GetFinalState()
 
 `RK4`, `Euler`, `Heun`, `Midpoint` and `BS32` are also available; [Appendix A: Solver Parameter Reference](appendix-a-solver-reference.md) describes each.
 
-Tsit5 is the library's default: `SolveUntilEquilibrium` falls back to it when given no method, and the `hypothesis` and `sensitivity` packages call it internally. The adaptive step size shrinks where dynamics are fast (early transients) and grows where they are smooth (approaching equilibrium).
+Tsit5 is the library's default: `Solve` and `SolveUntilEquilibrium` fall back to it when passed a nil method, and the `hypothesis` and `sensitivity` packages call it internally. The adaptive step size shrinks where dynamics are fast (early transients) and grows where they are smooth (approaching equilibrium).
 
 ### Solver Presets
 
@@ -141,7 +141,7 @@ Many models converge to a steady state where token counts stop changing:
 finalState, reached := solver.FindEquilibrium(prob)
 ```
 
-`FindEquilibrium` integrates with Tsit5 and watches the largest absolute derivative across all places. With the default settings it checks every ten accepted steps, starting 0.1 time units into the run, and stops once that maximum has stayed below 10⁻⁶ on five consecutive checks ([`solver/equilibrium.go`](https://github.com/pflow-xyz/go-pflow/blob/main/solver/equilibrium.go)). `reached` reports whether that happened before the time span ran out; if it did not, `finalState` is the state at the end of the span. Stopping early saves the steps a fixed horizon would spend after the system has settled. `TestFindEquilibrium` runs a single transition moving tokens from `A` to `B` and checks that `A` is nearly empty and `A + B` is conserved.
+`FindEquilibrium` integrates with Tsit5 and watches the largest absolute derivative across all places. With the default settings it checks every ten accepted steps, starting 0.1 time units into the run, and stops once that maximum has stayed below 10⁻⁶ on five consecutive checks ([`solver/equilibrium.go`](https://github.com/pflow-xyz/go-pflow/blob/main/solver/equilibrium.go)). `reached` reports whether that happened before the time span ran out; if it did not, `finalState` is the state at the end of the span. Stopping early saves the steps a fixed horizon would spend after the system has settled. `TestFindEquilibrium` in [`solver/solver_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/solver/solver_test.go) runs a single transition moving tokens from `A` to `B`, starting from 50 each, and checks that `A` ends below 5 and that `A + B` stays within 1 of 100. It logs, but does not fail, when `reached` is false, so it tests the final state rather than the stopping rule.
 
 ## Reading Results
 
@@ -197,10 +197,10 @@ The result reports, among other fields:
 
 - `Bounded` — false if some place exceeded the token limit (`WithMaxTokens`, default 1,000) during exploration. This is a cut-off, not a proof: a bounded net whose places legitimately hold more than 1,000 tokens also reads as unbounded.
 - `HasCycle` — whether the explored state space contains a cycle (the system can return to a previous state); `Cycles` lists the transition sequences.
-- `Live` — whether every transition fires somewhere in the reachability graph. This is the weaker property of having no dead transitions, not liveness in the [Glossary](appendix-d-glossary.md)'s sense (every transition can eventually fire again from every reachable marking). It is reported true only when exploration finished.
-- `Deadlocks` — terminal states, where no transition is enabled, whose marking is not empty. A terminal state with no tokens left counts as a normal end.
+- `Live` — liveness in the [Glossary](appendix-d-glossary.md)'s sense: from every reachable marking, every transition can eventually fire again. It is reported true only when exploration finished. `QuasiLive` is the weaker property that every transition fires somewhere in the graph; a quasi-live net can still deadlock. `Liveness` holds both as three-valued verdicts (true, false, unknown) and, when one is refuted, a `Witness`: a replayable firing sequence to the dead marking or to the closed region the net cannot leave ([`reachability/liveness.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/liveness.go)). `TestPhilosophersDeadlockIsNotLive` and `TestLivelockIsDeadlockFreeButNotLive` in [`reachability/liveness_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/liveness_test.go) check one refutation of each kind.
+- `Deadlocks` — terminal states, where no transition is enabled, whose marking is not empty. A terminal state with no tokens left counts as a normal end. This is a heuristic for "stuck, not finished"; `DeadMarkings` lists every terminal state under the standard definition, empty ones included.
 
-This is the discrete counterpart to ODE simulation. Where ODE simulation tracks continuous dynamics ([Chapter 3](ch03-discrete-to-continuous.md)), reachability analysis enumerates discrete states. It is exact when the exploration completes, but the state space can grow exponentially with the size of the net. `WithMaxStates` (10,000 is also the default) caps the exploration; a capped run sets `Truncated`, lists unfired transitions as `PotentiallyDead` rather than dead, and reports `Live` as false.
+This is the discrete counterpart to ODE simulation. Where ODE simulation tracks continuous dynamics ([Chapter 3](ch03-discrete-to-continuous.md)), reachability analysis enumerates discrete states. It is exact when the exploration completes, but the state space can grow exponentially with the size of the net. `WithMaxStates` (10,000 is also the default) caps the exploration; a capped run sets `Truncated`, lists unfired transitions as `PotentiallyDead` rather than dead, and reports `Live` and `QuasiLive` as false. Its `Liveness` verdicts are never true; they read false only when the explored part already refutes them, with a dead marking that was reached or a closed region whose markings were all expanded, and unknown otherwise.
 
 ## Hypothesis Evaluation
 
@@ -249,7 +249,7 @@ m.State("light")  // "green"
 
 This is the chart from `TestSimpleStateMachine` in [`statemachine/statemachine_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/statemachine/statemachine_test.go), which asserts that three `timer` events take the light from red to green to yellow and back to red.
 
-The statechart API is familiar to anyone who has used UML state diagrams. `Chart.ToPetriNet` ([`statemachine/builder.go`](https://github.com/pflow-xyz/go-pflow/blob/main/statemachine/builder.go)) compiles it: each state becomes a place named `region_state`, and each chart transition becomes a net transition with one arc in from its source state and one arc out to its target. For a flat region like this one, every transition therefore moves exactly one token within the region, so the region's token count — one, placed on the initial state — is a P-invariant. That follows from the arcs; it is derived here, not computed by a test. `NewMachine` runs on the compiled net's marking but routes events itself: `SendEvent` takes the first transition for the event whose source place is marked and whose guard holds, then clears the source and marks the target. Nested substates use the same one-token pattern, with extra arcs for the parent states.
+The statechart API is familiar to anyone who has used UML state diagrams. `Chart.ToPetriNet` ([`statemachine/builder.go`](https://github.com/pflow-xyz/go-pflow/blob/main/statemachine/builder.go)) compiles it: each state becomes a place named `region_state`, and each chart transition becomes a net transition with one arc in from its source state and one arc out to its target; an `Increment` action adds an output arc to a counter place outside the region. For a flat region like this one, every transition therefore moves exactly one token within the region, so the region's token count — one, placed on the initial state — is a P-invariant. That follows from the arcs; it is derived here, not computed by a test. `NewMachine` runs on the compiled net's marking but routes events itself: `SendEvent` takes the first transition for the event whose source place is marked and whose guard holds, then clears the source and marks the target. Nested substates use the same one-token pattern, with extra arcs for the parent states.
 
 ### Workflows
 
@@ -269,7 +269,7 @@ engine := workflow.NewEngine(wf)
 engine.StartCase("case-1", nil, workflow.PriorityMedium)
 ```
 
-Tasks are labelled manual (human-performed) or automatic (system-performed). The engine does not treat the two differently; your code moves each task along with `StartTask` and `CompleteTask` either way. `WithSLA` sets a deadline per case with warning and critical thresholds at 80% and 95% of it ([`workflow/sugar.go`](https://github.com/pflow-xyz/go-pflow/blob/main/workflow/sugar.go)), and `Engine.CheckSLAs` returns alerts for cases past those thresholds. `NewEngine` compiles the workflow with `Workflow.ToPetriNet`, but it tracks cases and resource pools in its own Go structures ([`workflow/engine.go`](https://github.com/pflow-xyz/go-pflow/blob/main/workflow/engine.go)). Formal properties are therefore something you check rather than something the engine guarantees: passing `wf.ToPetriNet()` to the reachability analyzer is how you would establish that every started case can complete. No example in the repository does this yet for a workflow.
+Tasks are labelled manual (human-performed) or automatic (system-performed). The engine does not treat the two differently; your code moves each task along with `StartTask` and `CompleteTask` either way. `WithSLA` sets a deadline per case with warning and critical thresholds at 80% and 95% of it ([`workflow/sugar.go`](https://github.com/pflow-xyz/go-pflow/blob/main/workflow/sugar.go)), and `Engine.CheckSLAs` returns alerts for cases past those thresholds. `NewEngine` compiles the workflow with `Workflow.ToPetriNet`, but it tracks cases and resource pools in its own Go structures ([`workflow/engine.go`](https://github.com/pflow-xyz/go-pflow/blob/main/workflow/engine.go)). Formal properties are therefore something you check rather than something the engine guarantees: passing `wf.ToPetriNet()` to the reachability analyzer is how you would establish that every started case can complete. `TestInventoryAndWorkflowIntegration` in [`examples/coffeeshop/coffeeshop_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/examples/coffeeshop/coffeeshop_test.go) does pass a compiled order workflow to the analyzer, capped at 100 states, but it checks only that the net is bounded. No test yet checks the completion property.
 
 ### Actors
 
