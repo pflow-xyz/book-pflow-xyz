@@ -26,7 +26,7 @@ That is the whole definition. Places are where tokens live. Transitions are what
 
 ### Presets and Postsets
 
-Every transition has inputs and outputs. The notation for these is compact and worth memorizing:
+Every transition has inputs and outputs, written in a compact notation:
 
 - $\bullet t = \{p \in P \mid (p, t) \in F\}$ — the **preset** of $t$ (input places)
 - $t\bullet = \{p \in P \mid (t, p) \in F\}$ — the **postset** of $t$ (output places)
@@ -236,22 +236,29 @@ Solving $w^T C = \vec{0}$ by hand: the first column forces $w_{\text{empty}} = w
 
 ### In Code
 
-The go-pflow library computes incidence matrices and checks invariants directly:
+The go-pflow library computes incidence matrices and checks invariants directly. The net below is this chapter's three-place chain with five tokens in the first place, built the way `TestPInvariantThreePlaces` builds it; the calls after it are the analyzer's public methods:
 
 ```go
+net := petri.Build().
+    Place("a", 5).Place("b", 0).Place("c", 0).
+    Transition("t1").Transition("t2").
+    Arc("a", "t1", 1).Arc("t1", "b", 1).
+    Arc("b", "t2", 1).Arc("t2", "c", 1).
+    Done()
+initial := reachability.Marking{"a": 5, "b": 0, "c": 0}
+
 analyzer := reachability.NewInvariantAnalyzer(net)
 matrix, places, transitions := analyzer.IncidenceMatrix()
-invariants := analyzer.FindPInvariants(initialMarking)
+fmt.Println(places, transitions, matrix)
 
-for _, inv := range invariants {
-    fmt.Printf("Conserved: %v = %d\n", inv.Coefficients, inv.Value)
+for _, inv := range analyzer.FindPInvariants(initial) {
+    fmt.Println(inv.String()) // the test expects exactly one: "a + b + c == 5"
 }
 
-// Check if total tokens are conserved
-isConservative := analyzer.CheckConservation(initialMarking)
+fmt.Println(analyzer.CheckConservation(initial)) // is the all-ones vector an invariant?
 ```
 
-The `IncidenceMatrix` method builds the $C$ matrix from the net's arc structure. `FindPInvariants` solves $w^T \cdot C = \vec{0}$ for semi-positive $w$ with the Farkas algorithm and returns the minimal-support invariants, each with its constant evaluated at the given marking; every semi-positive invariant is a non-negative combination of these, so an empty result means the net has no conservation law (provided the search did not hit its row limit, which `PInvariantBasis` reports). `CheckConservation` tests only whether the all-ones vector is an invariant, that is, whether the total token count is preserved. All three are in [`reachability/invariants.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/invariants.go); the tests in [`reachability/farkas_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/farkas_test.go) cover weighted invariants, invariants over three places, and the mutual-exclusion net with its three separate laws.
+`IncidenceMatrix` builds $C$ from the net's arcs and sorts places and transitions by name, so for this net it returns rows `a`, `b`, `c` and columns `t1`, `t2`: the table printed earlier in this chapter (read from the code, not re-run). `FindPInvariants` solves $w^T \cdot C = \vec{0}$ for semi-positive $w$ with the Farkas algorithm and returns the minimal-support invariants, each with its constant evaluated at the given marking; every semi-positive invariant is a non-negative combination of these, so an empty result means the net has no conservation law (provided the search did not hit its row limit, which `PInvariantBasis` reports). `CheckConservation` tests only whether the all-ones vector is an invariant, that is, whether the total token count is preserved. All three are in [`reachability/invariants.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/invariants.go); the tests in [`reachability/farkas_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/farkas_test.go) cover weighted invariants, invariants over three places, and the mutual-exclusion net with its three separate laws.
 
 ## Putting It Together
 
@@ -260,9 +267,9 @@ The mathematics of this chapter — the 5-tuple, the state equation, the inciden
 1. **Write the incidence matrix** from the arc structure
 2. **Rule out markings** with the state equation $M' = M + C \cdot \vec{\sigma}$: a marking with no non-negative integer solution $\vec{\sigma}$ is unreachable, though a solution does not prove reachability
 3. **Find conservation laws** by solving $w^T \cdot C = \vec{0}$
-4. **Prove boundedness** from positive P-invariants
+4. **Prove boundedness** when P-invariants cover every place (sufficient, not necessary)
 5. **Check for deadlocks** by finding reachable markings where no transition is enabled
 
-Items 1 to 4 are static analysis: you reason about the structure without running the net, and the results hold for every firing sequence. Item 5 is different. Deadlock depends on which markings are reachable, so it is found by building the reachability graph; go-pflow's `Analyzer.BuildGraph` reports the dead markings in `Result.Deadlocks` ([`reachability/analyzer.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/analyzer.go), checked by `TestGraphDeadlock` in [`reachability/reachability_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/reachability_test.go)).
+Items 1 to 4 are static analysis: you reason about the structure without running the net, and the results hold for every firing sequence. Item 5 is different. Deadlock depends on which markings are reachable, so it is found by building the reachability graph. go-pflow's `Analyzer.BuildGraph` ([`reachability/analyzer.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/analyzer.go)) collects every explored marking with no enabled transition in `Result.DeadMarkings`, which is the definition used here. By that definition the chain's final marking $[0, 0, 1]^T$ is dead. The separate `Result.Deadlocks` list is a heuristic for "stuck, not finished" that leaves out a marking drained to empty; `TestEmptyDeadMarkingCounts` in [`reachability/liveness_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/liveness_test.go) pins the case where the two disagree, and `TestGraphDeadlock` in [`reachability/reachability_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/reachability_test.go) checks the heuristic on a net that stalls for want of a second resource token.
 
 That exploration is where discrete nets run into their limit. They track individual tokens and individual firings, and for large systems — thousands of tokens, complex topologies — the reachability set can be enormous. The next chapter trades exactness for scale by letting tokens be real numbers and transitions fire continuously, turning the state equation into a differential equation.
