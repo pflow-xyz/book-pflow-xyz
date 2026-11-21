@@ -35,7 +35,7 @@ The state roots are commitments. They bind the prover to a specific marking with
 
 ## State Commitment via MiMC Hashing
 
-The hash function matters. Inside a ZK circuit, every operation becomes arithmetic constraints on a finite field. SHA-256 needs thousands of boolean operations — roughly 25,000 constraints per compression. **MiMC** (Minimal Multiplicative Complexity) is designed for arithmetic circuits: it operates over the same finite field the circuit uses. gnark's BN254 MiMC absorbs one field element at a time, running 110 rounds of $x \mapsto x^5$ on each, and each round costs three multiplications ([`encryptPow5`](https://github.com/Consensys/gnark/blob/v0.14.0/std/internal/mimc/encrypt.go) in gnark v0.14.0, the version the circuit code below pins; 110 rounds is `mimcNbRounds` in gnark-crypto's `bn254/fr/mimc`). That is 330 constraints per element, so hashing a marking of $N$ places costs $330N$ (derived from the code, not measured).
+The hash function matters. Inside a ZK circuit, every operation becomes arithmetic constraints on a finite field. SHA-256 is built from bitwise operations, each of which must be decomposed into bits, and is commonly quoted at roughly 25,000 constraints per compression (a literature figure, not measured here). **MiMC** (Minimal Multiplicative Complexity) is designed for arithmetic circuits: it operates over the same finite field the circuit uses. gnark's BN254 MiMC absorbs one field element at a time, running 110 rounds of $x \mapsto x^5$ on each, and each round costs three multiplications ([`encryptPow5`](https://github.com/Consensys/gnark/blob/v0.14.0/std/internal/mimc/encrypt.go) in gnark v0.14.0, the version the circuit code below pins; 110 rounds is `mimcNbRounds` in gnark-crypto's `bn254/fr/mimc`). That is 330 constraints per element, so hashing a marking of $N$ places costs $330N$ (derived from the code, not measured).
 
 The hash used throughout this chapter is from the ZK tic-tac-toe circuit code, `zk-tictactoe/petri_circuits.go` (not public):
 
@@ -158,11 +158,7 @@ This means:
 
 ## Groth16 Proofs
 
-The proving system is Groth16, implemented by gnark. It requires a one-time trusted setup per circuit but produces:
-
-- **Smallest proofs**: ~128 bytes (2 G1 points + 1 G2 point)
-- **Fastest verification**: ~2ms, constant regardless of circuit size
-- **Solidity export**: gnark generates a ready-to-deploy verifier contract
+The proving system is Groth16, implemented by gnark. It needs a trusted setup for each circuit, and in return its proofs are three curve points (two in G1, one in G2) and its verification time does not grow with the size of the circuit. For BN254, gnark can also write the verifier as a Solidity contract (`VerifyingKey.ExportSolidity` in `backend/groth16/bn254`).
 
 | Property | Groth16 | PLONK | STARKs |
 |----------|---------|-------|--------|
@@ -173,7 +169,7 @@ The proving system is Groth16, implemented by gnark. It requires a one-time trus
 
 The figures are typical orders of magnitude for each system, not measurements of the circuits in this chapter. The Groth16 proof size follows from its shape: on BN254 a compressed G1 point is 32 bytes and a G2 point 64, so $2 \times 32 + 64 = 128$.
 
-For applications with small circuits and many proofs — like games or token transfers — Groth16's compact proofs and fast verification dominate.
+For applications with small, fixed circuits and many proofs, such as games or token transfers, those two properties usually outweigh the cost of a per-circuit setup.
 
 ## ZK Tic-Tac-Toe: A Complete Example
 
@@ -206,7 +202,7 @@ func (c *PetriWinCircuit) Define(api frontend.API) error {
 
 The last four lines restrict `Winner` to `win_x` (place 29) or `win_o` (place 30). Without them a prover could name any marked place, an occupied cell for instance, as the winner.
 
-Because the game logic lives in the net topology, the circuit doesn't know anything about tic-tac-toe. Change the topology constants and you get ZK proofs for a different game.
+Because the game logic lives in the net topology, the transition circuit knows nothing about tic-tac-toe, and the win circuit knows only the indices of the two win places. Change the topology constants (and those indices) and you get ZK proofs for a different game.
 
 The tests in `zk-tictactoe/petri_circuits_test.go` check both circuits against gnark's test prover. `TestPetriTransitionCircuit_FullGameXWins` plays X to a left-column win (cells 0, 1, 3, 4, 6, alternating X and O) and asserts that a proof succeeds for every move and for the `x_win_col0` firing; `TestPetriWinCircuit_XWins` and `TestPetriWinCircuit_OWins` assert that the win proof succeeds for each player. Two tests assert failure: `TestPetriTransitionCircuit_WrongTurn` builds a witness that fires an X move on O's turn, and `TestPetriWinCircuit_NoWinnerFails` claims a win for X after two moves. Neither circuit has been re-run for this chapter.
 
@@ -236,7 +232,7 @@ Round n:
   1. Current player fires transition locally (computes new marking)
   2. Computes new_state_hash = MiMC(new_marking)
   3. Generates Groth16 proof: (old_hash, new_hash, transition_id, proof)
-  4. Opponent verifies proof (~2ms)
+  4. Opponent verifies proof
   5. If valid: state_hash = new_hash, continue
   6. If invalid: cheating detected, game forfeited
 ```
@@ -292,7 +288,7 @@ A common misconception is that ZK hides the transition ID. It doesn't: the verif
 
 In tic-tac-toe it can. The initial marking is a constant of the model (`InitialMarking` in `petri_state.go`), and every move's transition ID is public, so the opponent can replay the moves and recover all 33 places. This is the event-sourcing fold of [Chapter 20](ch20-dual-implementation.md) applied to public events. The tic-tac-toe proofs show that every move was legal; they hide nothing about the board. In the ERC-20 circuit, `Amount` is public as well, so balances stay hidden only if the verifier does not know the starting balances. Even then, as noted under MiMC above, an unsalted root gives away any marking drawn from a set small enough to enumerate.
 
-For applications where even the transition must be hidden, an additional layer of indirection is needed — proving that *some* valid transition fired without revealing which one. This is possible but increases circuit complexity significantly.
+An application that must hide the transition as well needs a proof that *some* valid transition fired without saying which. For the circuit in this chapter that step is small, because it already multiplexes over every transition: make `Transition` a private input instead of a public one. One constraint would have to be added, that exactly one selector `isThis` equals 1, since an out-of-range ID selects no transition and would let a prover pass off an unchanged marking as a move. This is read off the code; no such circuit has been built.
 
 ## The Proof Pipeline
 
@@ -301,8 +297,8 @@ A complete proof cycle for any Petri net application:
 1. **Client fires transition** locally (computes new marking)
 2. **Client computes** MiMC state roots for pre and post markings
 3. **Prover** receives witness (pre/post markings + transition ID) and generates Groth16 proof
-4. **Proof returned** as ~128 bytes with public inputs
-5. **Anyone can verify** the proof in constant time (~2ms)
-6. **On-chain verification** possible via auto-generated Solidity verifier contract
+4. **Proof returned** as 128 bytes (compressed) with public inputs
+5. **Anyone can verify** the proof, in time independent of the circuit's size
+6. **On-chain verification** through the exported Solidity verifier ([Chapter 14](ch14-on-chain-verification.md))
 
 The circuit doesn't encode tic-tac-toe, or token transfers, or workflow rules. It encodes *Petri net semantics*: hash the marking, compute the delta from topology, assert the change, check enabledness. The application logic is in the net, and the proof certifies that one firing followed it.
