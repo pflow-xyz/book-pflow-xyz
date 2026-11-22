@@ -47,7 +47,7 @@ The free construction means:
 
 2. **Universal property.** Any assignment of the net's places and transitions into another symmetric monoidal category extends uniquely to a monoidal functor out of $\mathcal{F}(N)$; the precise statement, with its strictness conditions, is Sassone's. The functors of the next section are offered as interpretations of this kind.
 
-3. **Concurrency is structural.** Two transitions that share no places compose via $\otimes$, not $;$. The monoidal product *is* concurrency — it's not simulated by interleaving.
+3. **Concurrency is structural.** Two transitions that share no places compose via $\otimes$, not $;$, so concurrency is expressed directly by the monoidal product rather than simulated by interleaving.
 
 ## Functors: Structure-Preserving Maps
 
@@ -69,7 +69,7 @@ The last property is the shape of the decoupling lemma behind the incidence redu
 
 ### The Proof Forms
 
-The two proof forms are the weakest fit for the functor reading. The Groth16 compilation maps markings to witness vectors and transitions to R1CS constraint blocks, one block per transition, with the fired transition selected by its public index (Chapters 12 and 13); the circuit construction is fixed, and only the topology arrays generated from the incidence matrix change from net to net. The Lean form is generated per model: pflow-polyglot's `tools/codegen -lang lean` emits theorems about the net's step function — the reachable set is closed under firing, every reachable marking is 1-safe, each structural P-invariant is conserved, and a conflict-free net has a unique deadlock — which the Lean kernel checks by `decide` over the reachable set ([`lean/proof.lean`](https://github.com/stackdump/pflow-polyglot/blob/main/lean/proof.lean)). What the two share is the property the Metamodel needs: neither proof is written by hand for a particular net. Change the document and the proof is regenerated from it.
+The two proof forms are the weakest fit for the functor reading. The Groth16 compilation maps markings to witness vectors and transitions to R1CS constraint blocks, one block per transition, with the fired transition selected by its public index (Chapters 12 and 13); the circuit construction is fixed, and only the topology arrays generated from the incidence matrix change from net to net. The Lean form is generated per model: pflow-polyglot's `tools/codegen -lang lean` emits theorems about the net's step function — the reachable set is closed under firing, every reachable marking is 1-safe, each vector of a basis of the P-invariants (the left nullspace of $C$) is conserved, and, when the net is conflict-free and has a single terminal marking, that marking is its only deadlock — which the Lean kernel checks by `decide` over the reachable set ([`lean/proof.lean`](https://github.com/stackdump/pflow-polyglot/blob/main/lean/proof.lean)). What the two share is the property the Metamodel needs: neither proof is written by hand for a particular net. Change the document and the proof is regenerated from it.
 
 ### The Analysis Functor
 
@@ -119,9 +119,9 @@ Every executing model in this book carries three kinds of data, and each has a t
 
 **The future is predicate.** A guard is a question — *am I enabled?* — answered from the current marking and discarded, never a value held in the model. Nothing about the future is stored, which is why nothing about it can drift: the only way two implementations disagree about what fires next is to disagree about $M$.
 
-**The present is the boundary.** The marking is simultaneously the output of accumulation and the argument to every guard. Change it and a different past is relevant and a different future is enabled. Chapter 6 shows the split on a net small enough to see whole: history places past, board and turn places present, the eighteen move transitions and their guards future.
+**The present is the boundary.** The marking is simultaneously the output of accumulation and the argument to every guard. Change it and a different past is relevant and a different future is enabled. Chapter 6 shows the split on a net small enough to see whole: history places past, board and turn places present, the eighteen move transitions and their enabling conditions future. (Tic-tac-toe has no guards in the contextual sense; its future is plain enabledness.)
 
-This is where the categorical reading stops and the Metamodel reading (Chapter 21) begins. The SMC is structure without execution. Execution is the same document read with tenses — and because all three tenses are data in that one document, an implementation that gets any of them wrong fails a byte-for-byte trace comparison (the golden trace of Chapter 20) rather than an argument.
+This is where the categorical reading stops and the Metamodel reading (Chapter 21) begins. The SMC is structure without execution. Execution is the same document read with tenses — and because all three tenses are data in that one document, two implementations that disagree about any of them can be caught by a byte-for-byte trace comparison (the golden trace of Chapter 20) wherever the trace exercises the disagreement, rather than by argument.
 
 ## Net Types as Sub-SMCs
 
@@ -130,7 +130,7 @@ A net type classifies whole nets, so the level to read it at is one up from $\ma
 | Net Type | Additional Structure |
 |----------|---------------------|
 | WorkflowNet | Single-token restriction: morphisms are paths in a free category |
-| ResourceNet | Conservation: P-invariants constrain the kernel of the incidence matrix |
+| ResourceNet | Conservation: a P-invariant, a vector $y$ in the left kernel of the incidence matrix ($y^T C = 0$) |
 | GameNet | Both: sequential paths with conserved resources |
 | ComputationNet | Rate structure: a monoidal functor to $\textbf{Dyn}$ |
 | ClassificationNet | Threshold structure: a transition needs $k$ tokens of evidence — an input arc of weight $k$ (a threshold written as a guard is contextual, and falls outside $\mathcal{F}(N)$; see below) |
@@ -174,7 +174,7 @@ When places are identified (TokenLinks, DataLinks), the other component can put 
 - *Extension by zero fails.* The cycle's invariant, all six places weighted 1, is not an invariant of the composite; the composite's only invariant weights the new `cleared` place 3, i.e. $(1,1,1,1,1,1,3)$.
 - *Gluing compatible invariants holds, and is proved.* If $y_1$ and $y_2$ are P-invariants of the two parts and agree on the identified places, the $y$ they induce is a P-invariant of the glued net. This is the theorem `invariant_lift`, checked by the Lean kernel in core Lean 4 ([`proofs/PflowProofs/InvariantLift.lean`](https://github.com/pflow-xyz/book-pflow-xyz/blob/main/proofs/PflowProofs/InvariantLift.lean)). It covers gluing along places only, not transition fusion.
 
-So the assume-guarantee reasoning of Chapter 4 — each component's seal witnesses its own properties, and composition verification checks only the boundary — holds as stated for rendezvous along transitions. For shared places the boundary check has real work to do: a component's conservation law is guaranteed to carry over when the other side has an invariant that agrees with it on the shared places, and not otherwise.
+So the assume-guarantee reasoning of Chapter 4 — each component is verified in isolation, and composition only needs to check the boundaries — holds as stated for rendezvous along transitions. For shared places the boundary check has real work to do: a component's conservation law is guaranteed to carry over when the other side has an invariant that agrees with it on the shared places, and not otherwise.
 
 *Liveness* — "this transition can always eventually fire" — is a statement about what the component *can* do, and a quotient can take that away under either kind of link. In the netting experiment every transition of the cycle is live; in the composite, the four firings `send_ab`, `send_bc`, `send_ca`, `net_abc` reach a dead marking, and none of the seven transitions is live. Composition refines; it does not extend.
 
