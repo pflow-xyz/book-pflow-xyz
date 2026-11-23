@@ -2,7 +2,7 @@
 
 **Learning objective**: Solve NP-hard problems approximately via mass-action kinetics.
 
-The previous chapter used ODE simulation as a heuristic for constraint satisfaction — ranking moves, not solving directly. This chapter goes further: applying continuous relaxation to a combinatorial optimization problem where the ODE provides direct insight into the solution structure.
+The previous chapter tested whether an ODE relaxation could rank moves in a constraint problem, and found that on the Sudoku net as built it cannot yet. This chapter applies the same continuous relaxation to a combinatorial optimization problem small enough that the dynamics can be solved by hand, so we can say exactly what the relaxation sees and what it misses.
 
 The 0/1 knapsack problem asks: given items with weights and values, select a subset that maximizes total value within a weight budget. It's NP-hard. Traditional approaches use branch-and-bound — systematic enumeration with pruning. The Petri net approach uses mass-action kinetics — items compete for capacity through continuous dynamics. Repeating the simulation with one item removed at a time shows which removal raises the value the dynamics settle at.
 
@@ -19,9 +19,9 @@ Four items with different weights and values, capacity budget of 15:
 | item2 | 6 | 12 | 2.0 |
 | item3 | 9 | 18 | 2.0 |
 
-These are the values in go-pflow's [`examples/knapsack`](https://github.com/pflow-xyz/go-pflow/blob/main/examples/knapsack/cmd/main.go), which produced every simulation number in this chapter; the example's [README](https://github.com/pflow-xyz/go-pflow/blob/main/examples/knapsack/README.md) records its output. The numbers were not re-run for this chapter, but each one also follows from the closed form derived below.
+These are the values in go-pflow's [`examples/knapsack`](https://github.com/pflow-xyz/go-pflow/blob/main/examples/knapsack/cmd/main.go), which produced every simulation number in this chapter; the example's [README](https://github.com/pflow-xyz/go-pflow/blob/main/examples/knapsack/README.md) records its output. The numbers were not re-run for this chapter, and no test pins them (the example only prints them), but each one also follows from the closed form derived below.
 
-The optimal solution takes items 0, 1, and 3 — total weight 15, total value 38. Item2 and item3 tie on efficiency at 2.0, so the ratio can't choose between them; capacity does. After items 0 and 1 take 6 units, item3 fills the remaining 9 exactly, while item2 would leave 3 idle (items 0, 1, 2 weigh 12 and are worth 32).
+The optimal solution takes items 0, 1, and 3 — total weight 15, total value 38. The example prints that as a constant rather than computing it; it is checked by enumeration under [Comparison with Branch-and-Bound](#comparison-with-branch-and-bound). Item2 and item3 tie on efficiency at 2.0, so the ratio can't choose between them; capacity does. After items 0 and 1 take 6 units, item3 fills the remaining 9 exactly, while item2 would leave 3 idle (items 0, 1, 2 weigh 12 and are worth 32).
 
 ### Net Structure
 
@@ -31,18 +31,19 @@ The Petri net encodes the knapsack as a dynamic system:
 - **Capacity place**: Holds tokens representing available weight budget. Initial marking = 15 (the weight limit).
 - **Take transitions**: One per item. Consumes the item token plus capacity tokens equal to the item's weight. Produces tokens into value and weight tracking places.
 
-For item0 (weight 2, value 10):
+For item0 (weight 2, value 10), with arc weights in parentheses:
 
 ```
-item0 --> take_item0 --> value_taken
-           ^                (weight 10)
-capacity --+
- (weight 2)
+item0 ----(1)---> take_item0 ---(10)--> value
+                   ^        \
+capacity ---(2)----+         `--(2)---> weight
 ```
+
+`createKnapsackNet` in `main.go` builds these places and arcs, and the same net in the editor's JSON format is checked into go-pflow as a [parse golden](https://github.com/pflow-xyz/go-pflow/blob/main/parser/testdata/editor-shape/knapsack.json), where the transitions are named `txn0`–`txn3`.
 
 The arc from `capacity` to `take_item0` has weight 2 — taking item0 costs 2 units of capacity. The enabling condition requires $M(\text{item0}) \geq 1$ AND $M(\text{capacity}) \geq 2$. If the remaining capacity is less than 2, this item can't be taken.
 
-The critical structural property: all items compete for the same capacity pool. Taking item2 (weight 6) leaves less capacity for item3 (weight 9). This competition is encoded in the shared input place, not in any explicit exclusion logic.
+The structural point is that all items compete for the same capacity pool. Taking item2 (weight 6) leaves less capacity for item3 (weight 9). This competition is encoded in the shared input place, not in any explicit exclusion logic.
 
 ## Why Every Item Is Taken Equally
 
@@ -95,7 +96,7 @@ Three of the four items behave as expected — excluding them reduces the total 
 
 The formula explains the whole table. While the active items overweigh the capacity, the value is $15V/W$ — capacity times the aggregate value density of the active set. Excluding item0 costs the most because it is the densest item: $V/W$ falls from $50/21 = 2.38$ to $40/19 = 2.11$, giving 31.58. Excluding item3 leaves items weighing 12, which fit, so the net collects their full value of 32. Item2 is the only exclusion that raises the value, because without it the remaining weights sum to exactly 15 and the net can take all of items 0, 1 and 3.
 
-So item2 is "hurting" the solution in a precise sense: its exclusion is the one that makes the rest fit. On this instance one sensitivity pass — five ODE runs — points at the optimum. Single exclusions only examine subsets of size $n-1$, though, and on a larger instance the optimum usually drops several items; that this heuristic finds the optimum in general is not shown here.
+So item2 is "hurting" the solution in a precise sense: its exclusion is the one that makes the rest fit. On this instance one sensitivity pass — five ODE runs — points at the optimum. Single exclusions only examine subsets of size $n-1$, though, and on a larger instance the optimum can drop several items; that this heuristic finds the optimum in general is not shown here.
 
 ### Convergence After Exclusion
 
@@ -113,7 +114,7 @@ The exclusion step removes the item whose presence keeps the rest from fitting; 
 
 ## Comparison with Branch-and-Bound
 
-The two approaches solve the same problem through fundamentally different mechanisms.
+The two approaches work through different mechanisms, and only one of them solves the problem.
 
 **Branch-and-bound** treats optimization as *search*. It builds a decision tree where each node represents a binary choice: take this item or skip it. The algorithm explores branches, computing upper bounds to prune paths that can't improve on the best solution found so far. It's systematic enumeration with smart pruning — still exponential in the worst case, but practical for moderate problem sizes.
 
@@ -127,7 +128,7 @@ The two approaches solve the same problem through fundamentally different mechan
 | Cost | Exponential worst case (pruned) | One ODE solve per run; does not solve the integer problem |
 | Primary output | The optimal subset | A relaxed value, and its sensitivity to each item |
 
-For the exact answer, search wins. Branch-and-bound finds items 0, 1, 3 with value 38, and on four items so does plain enumeration: of the 16 subsets, {0, 1, 3} is the only one worth 38. The ODE reaches 35.71 by taking the same fraction of everything.
+For the exact answer, search wins. No branch-and-bound was run on this instance, and go-pflow has no implementation, but on four items plain enumeration settles it: of the 16 subsets, three are over capacity ({0, 2, 3} at 17, {1, 2, 3} at 19, all four at 21), and of the thirteen that fit, {0, 1, 3} is the best at 38, then {0, 1, 2} at 32. Any exact method has to return that subset. The ODE reaches 35.71 by taking the same fraction of everything.
 
 What the ODE adds is the sensitivity table. The exclusion pass singles out item2 as the one item whose removal raises the relaxed value; branch-and-bound reaches the same subset by pruning, without reporting why. The closed form says how much that table can carry: the dynamics never read the values, so on this instance the signal is the weight fit — without item2 the remaining items fill capacity exactly.
 
@@ -139,7 +140,7 @@ The two can be chained: run the exclusion pass to find items whose removal helps
 
 The 4-item example is intentionally small. For larger instances:
 
-- **100 items**: Each ODE run stays cheap — the number of transitions scales linearly — and single-item exclusion analysis is 101 runs. But single exclusions only look at 99-item subsets, and the optimum will typically drop many items, so this does not replace branch-and-bound's exponential worst case; a benchmark on larger instances has not been done.
+- **100 items**: Each ODE run stays cheap — the number of transitions scales linearly — and single-item exclusion analysis is 101 runs. But single exclusions only look at 99-item subsets, and the optimum can drop many items, so this does not replace branch-and-bound's exponential worst case; a benchmark on larger instances has not been done.
 
 - **Items with equal efficiency**: item2 and item3 tie at 2.0 here, and the exclusion pass separates them only by how their weights fit the capacity, since the dynamics never read values. Whether it tells interchangeable items apart on other instances has not been demonstrated.
 
@@ -151,7 +152,7 @@ The knapsack model demonstrates a fourth application pattern, distinct from reso
 
 1. **Decision variables** become places (items available or taken)
 2. **Resource constraints** become shared capacity places with weighted arcs
-3. **Competition** emerges from mass-action kinetics — items fight for capacity
+3. **Competition** comes from the shared input place: under uniform rates every item is drawn down by the same fraction, and capacity in proportion to weight
 4. **Exclusion analysis** shows which single removal raises the relaxed value
 5. **Continuous relaxation** settles below the optimum here; the exclusion pass leads to the exact solution on this instance
 
