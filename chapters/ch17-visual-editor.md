@@ -50,7 +50,7 @@ Building a Petri net in the editor follows a direct manipulation pattern:
 
 ### The Bipartite Constraint
 
-The editor enforces the fundamental Petri net structure: an arc connects a place to a transition or a transition to a place, never two nodes of the same kind. This is the definition of a Petri net rather than a UI preference. The firing rule, the conservation laws and reachability analysis all assume it.
+The editor enforces the bipartite structure that defines a Petri net: an arc connects a place to a transition or a transition to a place, never two nodes of the same kind. The firing rule, the conservation laws and reachability analysis all assume it.
 
 If, in arc mode, you click a place and then another place, the editor flashes both and discards the draft (`_arcNodeClicked` in `petri-view.js`). The check runs when you draw. The file format does not encode the restriction: an arc in the JSON is a `source` id and a `target` id, and a hand-edited document could name two places.
 
@@ -60,7 +60,7 @@ Arc weights default to 1. Resource models like the coffee shop (Chapter 5) need 
 
 ## From Visual to Formal
 
-Every action in the editor produces a corresponding change in the JSON-LD model. The visual and formal representations are synchronized:
+Each editing action writes a corresponding change into the JSON-LD model:
 
 | Visual Action | Formal Effect |
 |---------------|---------------|
@@ -111,11 +111,7 @@ The editor runs both simulations in the browser, so you can draw a net, press pl
 
 ### Discrete-Event Mode
 
-Step through the model one transition at a time. The editor fills enabled transitions (those with sufficient input tokens) green; click one to fire it, and the token counts update immediately. The play button fires enabled transitions automatically. This is useful for:
-
-- Understanding firing rules by example
-- Tracing specific execution paths
-- Debugging unexpected behavior ("why can't this transition fire?")
+Step through the model one transition at a time. The editor fills enabled transitions (those with sufficient input tokens) green; click one to fire it, and the token counts update immediately. The play button fires enabled transitions automatically. Stepping by hand is the quickest way to learn the firing rule, to trace one execution path, or to find out why a transition you expected to fire is not enabled.
 
 ### Continuous-Time Mode
 
@@ -131,7 +127,7 @@ The browser solver ([`public/petri-solver.js`](https://github.com/pflow-xyz/pflo
 - dt = 0.01, dtmax = 0.1, abstol = 1e-6, reltol = 1e-3
 - Time span configurable via controls
 
-A model that behaves differently in the browser and in Go is a bug, and two tests in the pflow-xyz repository exist to catch one. [`parity/ode/ode_parity_test.go`](https://github.com/pflow-xyz/pflow-xyz/blob/main/parity/ode/ode_parity_test.go) integrates a fixed set of fixture models with both solvers and requires the final states to agree within 1e-6 per place; the file records the measured agreement as about 1e-15, because the two implementations take the same steps. [`parity/sim/sim_parity_test.go`](https://github.com/pflow-xyz/pflow-xyz/blob/main/parity/sim/sim_parity_test.go) does the same for discrete firing: it walks 200 seeded random models through `petri-sim.js` and go-pflow's reachability engine in lockstep and compares the enabled sets and markings at every step. Both run under `make test-parity-behavior` and need `node`; they were not re-run for this chapter.
+A model that behaves differently in the browser and in Go is a bug, and two tests in the pflow-xyz repository exist to catch one. [`parity/ode/ode_parity_test.go`](https://github.com/pflow-xyz/pflow-xyz/blob/main/parity/ode/ode_parity_test.go) integrates a fixed set of fixture models with both solvers and requires the final states to agree within a relative tolerance of 1e-6 per place; the file records the measured agreement as about 1e-15, because the two implementations take the same steps. [`parity/sim/sim_parity_test.go`](https://github.com/pflow-xyz/pflow-xyz/blob/main/parity/sim/sim_parity_test.go) does the same for discrete firing: it walks 200 seeded random models through `petri-sim.js` and go-pflow's reachability engine in lockstep and compares the enabled sets and markings at every step. Both run under `make test-parity-behavior` and need `node`; they were not re-run for this chapter.
 
 ## Export Formats
 
@@ -139,7 +135,7 @@ The editor supports multiple export paths:
 
 ### JSON-LD
 
-The native format. The menu's Download JSON item saves the model, including its x/y layout, as a file named after its CID. JSON-LD is the interchange format between all pflow ecosystem tools.
+The native format. The menu's Download JSON item saves the model, including its x/y layout, as a file named after its CID. The other pflow tools read this format, either directly or through a converter such as `parser.ModelFromJSON`.
 
 ### SVG
 
@@ -147,14 +143,14 @@ SVG comes from the Go backend rather than from the editor's canvas. `GET /img/{c
 
 ### Content-Addressed Storage
 
-When you save to the pflow.xyz server (which requires a GitHub login), the server canonicalizes the model with URDNA2015 and hashes the result into a CIDv1: dag-json codec, SHA-256, base58btc, so every CID begins with `z` (Chapter 16):
+When you save to the pflow.xyz server (the editor's Save asks you to log in with GitHub first; the `POST /api/save` endpoint itself also accepts an anonymous document and stores it with no author), the server canonicalizes the model with URDNA2015 and hashes the result into a CIDv1: dag-json codec, SHA-256, base58btc, so every CID begins with `z` (Chapter 16):
 
 ```
 POST /api/save   ->  { "cid": "z4EBG9j..." }
 GET  /o/{cid}    ->  { "@context": "https://pflow.xyz/schema", ... }
 ```
 
-The editor computes the same CID in the browser with `seal-cid.mjs`; that is how Download JSON names its file. The Go and JavaScript sides are held to byte-identical CIDs by [`parity/golden.json`](https://github.com/pflow-xyz/pflow-xyz/blob/main/parity/golden.json), five fixtures with their expected CIDs, which `make test-parity` checks from both languages.
+The editor computes the same CID in the browser with `seal-cid.mjs`; that is how Download JSON names its file. The Go and JavaScript sides are held to byte-identical CIDs by [`parity/golden.json`](https://github.com/pflow-xyz/pflow-xyz/blob/main/parity/golden.json), six fixtures with their expected CIDs, which `make test-parity` checks from both languages.
 
 The CID is derived from the model's content, not from a counter or timestamp, so two people who produce the same document get the same CID. "The same document" is strict. The coordinates and labels are part of the sealed content, so moving a node changes the CID even though it changes nothing about how the net behaves. Within that limit, the CID supports deduplication and verifiable references.
 
@@ -188,7 +184,7 @@ An unrecognized layout name is logged and the model is drawn at its stored posit
 
 ## The Editor as a Design Tool
 
-The visual editor is where models typically begin. A domain expert sketches places and transitions — "there's a waiting room, a triage station, a doctor's office" — and connects them with arcs. The initial model is rough but captures the essential structure.
+A model often begins in the visual editor. A domain expert sketches places and transitions — "there's a waiting room, a triage station, a doctor's office" — and connects them with arcs. The initial model is rough but captures the essential structure.
 
 Then iteration: add initial tokens, set arc weights, run a simulation, observe the dynamics. "The tokens pile up before the doctor — that's the bottleneck." Adjust rates, add a second doctor transition, simulate again. Because the model is on screen while it runs, this loop can be quicker than editing code.
 
@@ -196,8 +192,8 @@ Once the model stabilizes, it travels through the ecosystem:
 1. **Editor** — design and iterate visually
 2. **go-pflow** — run formal analysis (reachability, P-invariants, sensitivity)
 3. **sim.pflow.xyz** — run seeded what-ifs and check verdicts against the stored model
-4. **ZK circuit** — add privacy with zero-knowledge proofs
+4. **ZK circuit** — derive a circuit from the same net when its firings need to be proved (Chapter 12)
 
-The circles and rectangles on screen are the same places and transitions that appear in incidence matrices, ODE systems and ZK circuits. The drawing is one view of a document that the other tools read directly.
+The circles and rectangles on screen are the same places and transitions that appear in incidence matrices, ODE systems and ZK circuits. The drawing is one view of a document that the other tools also read.
 
 > **Try it live:** Design your own Petri net at [pflow.xyz](https://pflow.xyz/), then see stored models run as seeded what-ifs at [sim.pflow.xyz](https://sim.pflow.xyz/).
