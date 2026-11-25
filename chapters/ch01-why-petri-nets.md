@@ -16,7 +16,7 @@ Informal models fail in predictable ways:
 
 **State machines explode.** A state machine with $n$ boolean variables has $2^n$ possible states. A system tracking 10 independent conditions has 1,024 states. Most of those states are meaningless combinations, but the machine doesn't know that. You end up either enumerating impossible states or pretending they can't happen.
 
-**Ad-hoc models can't be analyzed.** When the workflow lives in code — scattered across handlers, middleware, and database triggers — there's no way to ask "can this system deadlock?" or "is this queue bounded?" You find out in production, at 3am.
+**Ad-hoc models can't be analyzed.** When the workflow lives in code — scattered across handlers, middleware, and database triggers — there's no way to ask "can this system deadlock?" or "is this queue bounded?" You find out in production.
 
 The root problem is the same in each case: the model doesn't capture the structure of the system it represents. Concurrency, resources and state are left implicit, and you can't analyze what you haven't modeled.
 
@@ -77,7 +77,7 @@ The token's position tells you which light is on. Fire `go_yellow` and the token
 
 The same net is in go-pflow as [`examples/stoplight/petri_net.go`](https://github.com/pflow-xyz/go-pflow/blob/main/examples/stoplight/petri_net.go), with the token starting in `Red` and the transitions named `RedToGreen`, `GreenToYellow` and `YellowToRed`; its test checks the shape — three places, three transitions, six arcs ([`petri_net_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/examples/stoplight/petri_net_test.go)).
 
-This is almost trivially simple — a state machine would work just as well. But notice what the Petri net gives you for free:
+For one light, a state machine would work as well. The net's advantage shows in three properties that follow from its structure:
 
 **Conservation.** Each transition takes one token from one place and puts one token into the next, so no firing changes the sum $M(\text{Green}) + M(\text{Yellow}) + M(\text{Red})$. It starts at 1 and stays at 1: exactly one light is on in every reachable marking. That follows from the arcs alone, with no runtime check. Chapter 2 restates the argument in matrix form, as a P-invariant $w$ with $w^T C = 0$ and $w = [1, 1, 1]$.
 
@@ -110,13 +110,13 @@ Say "model" in a meeting today and most people hear "large language model": bill
 
 A coffee shop with five ingredients and five recipes is ten places and five transitions ([Chapter 5](ch05-resource-modeling.md)). The tutorial Texas Hold'em model of [Chapter 10](ch10-complex-state-machines.md), a simplified five-player table with all four betting rounds, has 18 places and 32 transitions. A Sudoku solver is larger but still finite and fully visible.
 
-Small models offer properties that large models cannot:
+Small models offer properties that large models do not:
 
 | Property | Large Language Models | Petri Nets |
 |----------|---------------------|------------|
-| Inspectable | No | Yes — read the topology |
+| Inspectable | Not in practice | Yes — read the topology |
 | Composable | Awkward | Native — connect shared places |
-| Provable properties | No | Yes — invariants from the structure; reachability and deadlock by exploring states |
+| Provable properties | Limited | Yes — invariants from the structure; reachability and deadlock by exploring states |
 | Executable | Via code generation | Directly — tokens flow |
 | Deterministic | Not in general | Yes, given the same firing sequence |
 
@@ -126,9 +126,9 @@ A Petri net model lets you answer questions before writing implementation code:
 
 **Boundedness**: "Does the system stay within limits?" This tells you whether a queue can overflow, whether a resource pool is properly managed, whether your system is closed or leaking.
 
-**Deadlock and liveness**: "Can the system get stuck?" Deadlock-freedom means no reachable marking leaves every transition disabled. Liveness is stronger: every transition can always fire again, from every reachable marking. go-pflow's `pflow verify` checks `deadlock-free` directly, and its `live` property is the weaker check that every transition fires from some reachable marking; the code's own comment warns that a proved `live` does not imply deadlock-freedom ([`verify/property.go`](https://github.com/pflow-xyz/go-pflow/blob/main/verify/property.go)).
+**Deadlock and liveness**: "Can the system get stuck?" Deadlock-freedom means no reachable marking leaves every transition disabled. Liveness is stronger: every transition can always fire again, from every reachable marking. go-pflow's `pflow verify` checks `deadlock-free` directly and this textbook liveness as `l4-live`, computed from the terminal strongly connected components of the reachability graph. Its property named `live` is the weaker check that every transition fires from some reachable marking, and the code's own comment warns that a proved `live` does not imply deadlock-freedom ([`verify/property.go`](https://github.com/pflow-xyz/go-pflow/blob/main/verify/property.go)).
 
-These are questions about the model's state space, so they can be asked before the implementation exists. They are answered in two different ways. Invariants come from the incidence matrix by linear algebra and hold for any initial marking. Reachability, boundedness and deadlock are decided by exploring the reachable markings ([`reachability/graph.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/graph.go)), which finishes for a bounded net of modest size and is cut off at a configurable state limit otherwise; an unbounded net is caught instead by a finite witness, a firing sequence that strictly grows the marking (the Karp–Miller criterion; [`reachability/coverability.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/coverability.go)).
+These are questions about the model's state space, so they can be asked before the implementation exists. They are answered in two different ways. Invariants come from the incidence matrix by linear algebra and hold for any initial marking. Reachability, boundedness and deadlock are decided by exploring the reachable markings ([`reachability/analyzer.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/analyzer.go)), which finishes for a bounded net of modest size and otherwise stops at a configurable state limit (10,000 states by default) and marks the result truncated; an unbounded net is caught instead by a finite witness, a firing sequence that strictly grows the marking (the Karp–Miller criterion; [`reachability/coverability.go`](https://github.com/pflow-xyz/go-pflow/blob/main/reachability/coverability.go)).
 
 Exploring states is a decision procedure only in principle. Reachability for ordinary nets is decidable but Ackermann-complete in the worst case, so for a net of real size the state limit, not the theory, is what ends the search. An inhibitor arc or a data guard removes even the in-principle guarantee (Chapter 4).
 
@@ -141,10 +141,8 @@ Here's the workflow this book advocates:
 3. **Analyze** — check invariants, reachability, boundedness
 4. **Generate code** — derive the implementation from the validated model
 
-The model becomes the specification. The code becomes a derived artifact. When the model changes, the code changes with it. When model and implementation disagree, the model wins, because it is the artifact whose properties you checked.
+The model becomes the specification and the code a derived artifact, regenerated when the model changes. When model and implementation disagree, the model wins, because it is the artifact whose properties you checked. In most software the code is the model, and the specification, if there is one, drifts out of date.
 
-In most software the code is the model, and the specification, if there is one, drifts out of date. Here the model is the artifact that is executed and analyzed, and it stays authoritative for the life of the project.
+The rest of this book shows what this looks like in practice, from a coffee shop inventory system to a kernel-checked theorem and a zero-knowledge proof of a game move, all built from the same four primitives: places, transitions, arcs, and guards.
 
-The rest of this book shows what this looks like in practice — from a coffee shop inventory system to a running application, a kernel-checked theorem and a zero-knowledge proof of a game move — all derived from the same four primitives: places, transitions, arcs, and guards.
-
-> **Try it live:** The [what-if console](https://sim.pflow.xyz/whatif/) at sim.pflow.xyz runs any stored Petri net model on a seeded simulator, and its [catalog](https://sim.pflow.xyz/) lists the models it holds, from a [vet clinic](https://sim.pflow.xyz/whatif/?id=ae6ab5aeb95dd994bc561479) to [tic-tac-toe](https://sim.pflow.xyz/whatif/?id=5a08c67862a2eb55799f5229).
+> **Try it live:** Draw the traffic light in the browser editor at [pflow.xyz](https://pflow.xyz/) ([Chapter 17: The Visual Editor — pflow.xyz](ch17-visual-editor.md)): three places, three transitions, one token in `Green`. The editor fills enabled transitions green; click one to fire it and watch the token move.
