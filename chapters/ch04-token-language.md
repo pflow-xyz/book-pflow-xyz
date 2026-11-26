@@ -17,8 +17,6 @@ The token language distills to four primitives:
 | `arrow` | Arc | Flow connections with optional bindings |
 | `guard` | Predicate | Boolean conditions gating actions |
 
-Every token model — from an ERC-20 token standard to a poker game to a hospital workflow — is expressed with these four terms. `cell` defines what exists. `func` defines what happens. `arrow` defines what flows where. `guard` defines what's allowed.
-
 The four terms are the book's vocabulary, not the DSL's keywords. In the DSL a cell is written `state`, a func `action` and an arrow `arc`; a guard is attached to an action as `:guard {...}`; and a fifth form, `constraint`, declares an invariant. We make no claim that four is a minimum. They are the four things every model in this book needs, and the rest of the language is annotation on them.
 
 ## S-Expression Syntax
@@ -100,6 +98,36 @@ schema := Build("ERC-020").
 
 The test checks the same counts — 3 states, 5 actions, 10 arcs, 1 constraint — and that validation passes. Both front ends build the same kind of syntax tree and hand it to the same interpreter, but the trees are not always identical: the builder gives token states the type `int` and defaults the version to `v1.0.0`, where the parser leaves both empty unless the source sets them (Appendix B). The builder's `String()` method prints the S-expression form, so a schema built in code can be read and shared as text.
 
+### As Struct Tags
+
+A third front end declares the schema as a Go struct ([`tokenmodel/dsl/tags.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/dsl/tags.go)). Fields of the marker types `DataState`, `TokenState` and `Action` become states and actions, their `meta` tags carry the type, initial value, `exported` flag or guard, and a `Flows()` method lists the arcs. This is the `ERC20` struct from [`tokenmodel/dsl/tags_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/dsl/tags_test.go), with its `Flows()` method cut after the first two entries:
+
+```go
+type ERC20 struct {
+    _ struct{} `meta:"name:ERC-020,version:ERC-020:1.0.0"`
+
+    TotalSupply DataState `meta:"type:uint256"`
+    Balances    DataState `meta:"type:map[address]uint256,exported"`
+    Allowances  DataState `meta:"type:map[address]map[address]uint256,exported"`
+
+    Transfer     Action `meta:"guard:balances[from] >= amount && to != address(0)"`
+    Approve      Action `meta:""`
+    TransferFrom Action `meta:"guard:balances[from] >= amount && allowances[from][caller] >= amount"`
+    Mint         Action `meta:"guard:to != address(0)"`
+    Burn         Action `meta:"guard:balances[from] >= amount"`
+}
+
+func (ERC20) Flows() []Flow {
+    return []Flow{
+        {From: "Balances", To: "Transfer", Keys: []string{"from"}},
+        {From: "Transfer", To: "Balances", Keys: []string{"to"}},
+        // ... the other eight arcs of the S-expression version
+    }
+}
+```
+
+`SchemaFromStruct` reads the struct by reflection and lowercases the first letter of each name, so the field `Balances` becomes the state `balances`. `TestTagsERC20` checks the result: 3 states, 5 actions, 10 arcs, the `transfer` guard, and `balances` exported with type `map[address]uint256`. The test's struct also has a `Constraints()` method declaring two invariants, so it expects 2 constraints where the S-expression version has 1.
+
 ## Guards and Conditional Firing
 
 In a basic Petri net, a transition fires whenever its input places have enough tokens. Guards add a second condition: even if tokens are available, the transition fires only when its guard expression evaluates to true.
@@ -127,7 +155,7 @@ Functions:     address(0)
                sum("balances_")
 ```
 
-go-pflow's evaluator ([`tokenmodel/guard/eval.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/guard/eval.go)) short-circuits: `&&` stops on the first false and `||` on the first true, so the right operand is not evaluated when the left one decides the result. `address` is the only function a guard gets by default. The marking aggregates `sum`, `count`, `tokens`, `min` and `max` ([`aggregate.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/guard/aggregate.go)) take a place ID or ID prefix as a string, and are supplied when an expression is evaluated as an invariant; a guard has them only if the caller passes them in.
+go-pflow's evaluator ([`tokenmodel/guard/eval.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/guard/eval.go)) short-circuits: `&&` stops on the first false and `||` on the first true, so the right operand is not evaluated when the left one decides the result. Every evaluation gets the built-in functions that `addBuiltins` in [`guard.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/guard/guard.go) installs: `address`, `len`, two-number `min` and `max`, `abs`, the string tests `contains`, `startsWith` and `endsWith`, `includes` for arrays, and `hasRole`, which looks for a role name in the `roles` list of a `user` binding. A function the caller supplies under the same name replaces the built-in. The marking aggregates `sum`, `count`, `tokens`, `minOf` and `maxOf` (with `min` and `max` as aliases) are defined in [`aggregate.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/guard/aggregate.go) and take a place ID or ID prefix as a string. They are supplied when an expression is evaluated as an invariant; a guard has them only if the caller passes them in.
 
 ### Guard vs. Invariant
 
@@ -144,14 +172,14 @@ A guard asks: "Is this action allowed right now?" An invariant asks: "Did this a
 
 The "on failure" row is go-pflow's `tokenmodel.Runtime` ([`runtime.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/runtime.go)). It applies the arcs first and checks constraints afterwards, and a violated constraint makes `Execute` return `ErrConstraintViolated` with the new state already in place. A caller that wants all-or-nothing behaviour runs the action on `Runtime.Clone()` and keeps the clone only if no error comes back. Both checks also need an evaluator: `Runtime.GuardEvaluator` is an interface that go-pflow declares but does not implement, and with it left nil the runtime skips guards and constraints alike.
 
-For the ERC-20 transfer, the guard `balances[from] >= amount` prevents overdrafts. The invariant `sum(balances) == totalSupply` states that no action creates or destroys tokens. As written, it is a constraint for sim.pflow.xyz's evaluator, whose `sum` totals the values of a map. go-pflow's runtime evaluates constraints against token counts only, so it cannot check a constraint over the `balances` map (Appendix B compares the two evaluators). In either case a constraint is a runtime assertion about the states a run actually visits; it does not prove the property for every reachable state.
+For the ERC-20 transfer, the guard `balances[from] >= amount` prevents overdrafts. The invariant `sum(balances) == totalSupply` states that no action creates or destroys tokens. Evaluating it needs the map: go-pflow's `EvaluateInvariantWithData` ([`guard/invariant.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/guard/invariant.go)) binds each data state by name, and its `sum` totals the values of a map. `tokenmodel.Runtime` does not call it. Its constraint check receives only the token counts, so the runtime cannot check a constraint over the `balances` map (Appendix B gives the detail). Either way, a constraint is a runtime assertion about the states a run actually visits; it does not prove the property for every reachable state.
 
 ### Evaluation Context
 
 go-pflow's guard evaluator works from a context with two parts ([`guard/eval.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/guard/eval.go)):
 
 1. **Bindings** — every name the expression mentions, mapped to a value
-2. **Functions** — `address`, plus whatever the caller supplies
+2. **Functions** — the built-ins listed above, plus whatever the caller supplies
 
 There is no separate state component. When the guard `balances[from] >= amount` runs, `from` and `amount` come from the action's parameters, and `balances` resolves only if the caller has put the current map into the bindings too; a name with no binding is an error ("unknown identifier"). When an expression is checked as an invariant ([`guard/invariant.go`](https://github.com/pflow-xyz/go-pflow/blob/main/tokenmodel/guard/invariant.go)), the bindings are built from the marking, one per place, so `pending + confirmed + shipped == 1` reads token counts by place name. Missing map keys default to zero: indexing a map with a key it lacks returns 0 rather than an error.
 
@@ -208,7 +236,7 @@ This uses a complementary place (`empty_slots`) rather than an inhibitor arc, a 
 
 ## Tokens vs. Data
 
-The token language distinguishes two kinds of state, reflecting two fundamentally different ways that places hold information.
+The token language distinguishes two kinds of state, for two different ways that places hold information.
 
 ### TokenState
 
@@ -284,9 +312,9 @@ EventLinks:
 1. `orders.confirm → inventory.reserve` — confirming reserves stock
 2. `orders.ship → inventory.ship_out` — shipping consumes reserved stock
 
-This bundle exists as code: `ordersInventoryBundle` in go-pflow's [`metamodel/compose_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/metamodel/compose_test.go), with one token in `pending` and 10 in `available`. Each schema declares its own property. The Orders WorkflowNet declares mutual exclusion, `pending + confirmed + shipped == 1`; the Inventory ResourceNet declares conservation, `available + reserved + consumed == 10`.
+This bundle exists as code: `ordersInventoryBundle` in go-pflow's [`metamodel/compose_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/metamodel/compose_test.go), with one token in `pending` and 10 in `available`. Each schema declares its own property. The Orders WorkflowNet declares mutual exclusion, `tokens("pending") + tokens("confirmed") + tokens("shipped") == 1`; the Inventory ResourceNet declares conservation, `tokens("available") + tokens("reserved") + tokens("consumed") == 10`.
 
-This is **assume-guarantee reasoning**: each component is verified in isolation, and composition only needs to check the boundaries. `TestComponentInvariantsSurviveComposition` in [`metamodel/compose_verify_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/metamodel/compose_verify_test.go) flattens the bundle, recomputes the P-invariants from the incidence matrix of the whole, and checks that both component laws are still among them.
+This is **assume-guarantee reasoning**: each component is verified in isolation, and composition only needs to check the boundaries. `TestComponentInvariantsSurviveComposition` in [`metamodel/compose_verify_test.go`](https://github.com/pflow-xyz/go-pflow/blob/main/metamodel/compose_verify_test.go) flattens the bundle, recomputes the P-invariants from the incidence matrix of the whole, and checks that for each component some composite invariant covers all three of its places. It checks the support of the invariants, not their weights.
 
 The flattened net does not depend on the order in which subnets and links are declared. `TestFlattenAssociativity` checks this on a chain of three subnets, swapping the order of the links and of the subnets and comparing the results.
 
