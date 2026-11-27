@@ -39,7 +39,7 @@ Four places, three transitions:
 
 The arc structure encodes the chemistry directly. `bind` consumes a free enzyme, and both `unbind` and `catalyze` give one back. The enzyme is not an input of `catalyze`; it is a catalyst because every path out of `complex` returns it.
 
-The net is declared as `services/enzyme-kinetics.json` in sim.pflow.xyz's source (a private repository): the four places and three rates above, and nine arcs, all of weight 1.
+The net is declared as `services/enzyme-kinetics.json` in the source of sim.pflow.xyz (a private repository; sim itself is retired): the four places and three rates above, and nine arcs, all of weight 1. The public net you can open is the [Enzyme Kinetics example on pflow.xyz](https://pflow.xyz/?cid=z4EBG9j1aMiBny6hgTAKFXfXxTASCD5vT6NVY3opfQx4FfBf42a) (source: [`examples/landing/enzyme-kinetics.jsonld`](https://github.com/pflow-xyz/pflow-xyz/blob/main/examples/landing/enzyme-kinetics.jsonld)). It has the same four places and the same nine weight-1 arcs, but it starts from 50 substrate and stores no rate constants, so its curves are not the ones quoted in this chapter.
 
 ### In Code
 
@@ -122,7 +122,7 @@ Both values are the two formulas above applied to the rate constants. Neither is
 
 ### Simulation Readouts
 
-A browser demo built from the same net and default rates (now retired) integrated it with Tsit5 at a fixed step $dt = 0.05$ over a 30-second window and reported four readouts. Its source is `frontends/enzyme-kinetics/main.js` in petri-pilot (`runODE` and `computePredictions`):
+A browser demo built from the same net and default rates (now retired) integrated it with Tsit5 at a fixed step $dt = 0.05$ over a 30-second window and reported four readouts. Its source is `frontends/enzyme-kinetics/main.js` in petri-pilot (`runODE` and `computePredictions`). With the demo retired, no live page reproduces the table:
 
 | Readout | Default Value | What It Is |
 |------------|---------------|---------------|
@@ -177,7 +177,7 @@ Changing the rate constants explores the model. The values below follow from the
 
 **Equal $k_{-1}$ and $k_{cat}$** ($k_{-1}=0.5, k_{cat}=0.5$): a complex is equally likely to unbind or to catalyze, so half the binding events are "wasted" on unbinding. $K_m = (0.5 + 0.5)/0.01 = 100$, higher than the default.
 
-Each scenario is a different set of rate constants on the same net; the structure does not change. This is the pattern throughout the book: one model, many scenarios.
+Each scenario is a different set of rate constants on the same net; the structure does not change.
 
 ## Beyond Chemistry
 
